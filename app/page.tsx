@@ -216,10 +216,10 @@ export default function DevocionariosApp() {
                 <BookOpen className="h-8 w-8 text-white" />
               </div>
               <div>
-                <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+                <h1 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
                   Devocionarios Bíblicos
                 </h1>
-                <p className="text-gray-400 text-lg">Registra tus reflexiones y crece espiritualmente</p>
+                <p className="text-gray-400 text-base sm:text-lg">Registra tus reflexiones y crece espiritualmente</p>
               </div>
             </div>
 
@@ -249,7 +249,7 @@ export default function DevocionariosApp() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-400 mb-1">Días Completados</p>
-                    <p className="text-3xl font-bold text-white">{stats.completados}</p>
+                    <p className="text-2xl sm:text-3xl font-bold text-white">{stats.completados}</p>
                   </div>
                   <div className="p-3 bg-blue-500/20 rounded-xl group-hover:bg-blue-500/30 transition-colors">
                     <CheckCircle2 className="h-6 w-6 text-blue-400" />
@@ -263,7 +263,7 @@ export default function DevocionariosApp() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-400 mb-1">Versículos Estudiados</p>
-                    <p className="text-3xl font-bold text-white">{stats.versiculos}</p>
+                    <p className="text-2xl sm:text-3xl font-bold text-white">{stats.versiculos}</p>
                   </div>
                   <div className="p-3 bg-purple-500/20 rounded-xl group-hover:bg-purple-500/30 transition-colors">
                     <Book className="h-6 w-6 text-purple-400" />
@@ -277,7 +277,7 @@ export default function DevocionariosApp() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-400 mb-1">Referencias</p>
-                    <p className="text-3xl font-bold text-white">{stats.referencias}</p>
+                    <p className="text-2xl sm:text-3xl font-bold text-white">{stats.referencias}</p>
                   </div>
                   <div className="p-3 bg-green-500/20 rounded-xl group-hover:bg-green-500/30 transition-colors">
                     <LinkIcon className="h-6 w-6 text-green-400" />
@@ -291,7 +291,7 @@ export default function DevocionariosApp() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-400 mb-1">Racha Actual</p>
-                    <p className="text-3xl font-bold text-white">{stats.racha}</p>
+                    <p className="text-2xl sm:text-3xl font-bold text-white">{stats.racha}</p>
                   </div>
                   <div className="p-3 bg-orange-500/20 rounded-xl group-hover:bg-orange-500/30 transition-colors">
                     <TrendingUp className="h-6 w-6 text-orange-400" />
@@ -505,11 +505,11 @@ export default function DevocionariosApp() {
               className="bg-[#1a1a1a]/50 border-gray-700 hover:bg-[#2a2a2a]/50 backdrop-blur-sm"
             >
               <ChevronLeft className="h-4 w-4 mr-2" />
-              Volver al Dashboard
+              {/* Volver al Dashboard */}
             </Button>
 
             <div className="text-center">
-              <h1 className="text-2xl font-bold text-white capitalize mb-1">{formatDate(currentDevocional.fecha)}</h1>
+              <h1 className="text-xl sm:text-2xl font-bold text-white capitalize mb-1">{formatDate(currentDevocional.fecha)}</h1>
               <p className="text-gray-400">Devocional Diario</p>
             </div>
 
@@ -945,11 +945,11 @@ export default function DevocionariosApp() {
               className="bg-[#1a1a1a]/50 border-gray-700 hover:bg-[#2a2a2a]/50 backdrop-blur-sm"
             >
               <ChevronLeft className="h-4 w-4 mr-2" />
-              Volver al Dashboard
+              {/* Volver al Dashboard */}
             </Button>
 
             <div className="text-center">
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+              <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
                 Búsqueda y Historial
               </h1>
               <p className="text-gray-400">Encuentra tus devocionarios anteriores</p>

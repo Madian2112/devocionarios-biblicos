@@ -1,5 +1,9 @@
 import type { Metadata } from 'next'
 import './globals.css'
+import { ThemeProvider } from "@/components/theme-provider";
+import { ZoomProvider } from "@/components/zoom-provider";
+import { ZoomControls } from "@/components/zoom-controls";
+import { Inter } from "next/font/google";
 
 export const metadata: Metadata = {
   title: 'v0 App',
@@ -7,14 +11,28 @@ export const metadata: Metadata = {
   generator: 'v0.dev',
 }
 
+const inter = Inter({ subsets: ["latin"] });
+
 export default function RootLayout({
   children,
 }: Readonly<{
-  children: React.ReactNode
+  children: React.ReactNode;
 }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body className={inter.className}>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="dark"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <ZoomProvider>
+            {children}
+            <ZoomControls />
+          </ZoomProvider>
+        </ThemeProvider>
+      </body>
     </html>
-  )
+  );
 }

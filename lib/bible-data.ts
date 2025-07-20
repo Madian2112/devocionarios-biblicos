@@ -4,6 +4,8 @@ export interface BibleBook {
   id: number;
   name: string;
   shortname: string;
+  chapters: number;
+  chapter_verses: { [key: string]: number };
 }
 
 export interface BibleVerse {
