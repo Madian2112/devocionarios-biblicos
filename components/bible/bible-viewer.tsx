@@ -131,7 +131,7 @@ interface BibleViewerContentProps {
   defaultVersion?: string;
 }
 
-function BibleViewerContent({
+export function BibleViewerContent({
   reference,
   open,
   defaultVersion = "rv1960",
@@ -158,7 +158,7 @@ function BibleViewerContent({
   }, []);
 
   const eliminarTildes = (texto: string) => {
-    const tildes = { 'á': 'a', 'é': 'e', 'í': 'i', 'ó': 'o', 'ú': 'u', 'Á': 'A', 'É': 'E', 'Í': 'I', 'Ó': 'O', 'Ú': 'U' };
+    const tildes: { [key: string]: string } = { 'á': 'a', 'é': 'e', 'í': 'i', 'ó': 'o', 'ú': 'u', 'Á': 'A', 'É': 'E', 'Í': 'I', 'Ó': 'O', 'Ú': 'U' };
     return texto.replace(/[áéíóúÁÉÍÓÚ]/g, letra => tildes[letra]);
   };
 

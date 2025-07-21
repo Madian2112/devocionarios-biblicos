@@ -2,7 +2,7 @@
 
 import type React from "react";
 import { useState, useEffect } from "react";
-import { Book, Search } from "lucide-react";
+import { Book, Search, ChevronRight, Check } from "lucide-react";
 
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,15 @@ import {
   DrawerTitle,
   DrawerTrigger,
 } from "@/components/ui/drawer";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -144,9 +153,9 @@ function BibleSelectorForm({
   const [selectedChapter, setSelectedChapter] = useState(defaultChapter);
   const [startVerse, setStartVerse] = useState(defaultVerse);
   const [endVerse, setEndVerse] = useState<number | null>(null);
-  const [searchTerm, setSearchTerm] = useState("");
   const [books, setBooks] = useState<BibleBook[]>([]);
   const [loadingBooks, setLoadingBooks] = useState(true);
+  const [popoverOpen, setPopoverOpen] = useState(false);
 
   useEffect(() => {
     setLoadingBooks(true);
@@ -158,9 +167,13 @@ function BibleSelectorForm({
       .catch(() => setLoadingBooks(false));
   }, []);
 
-  const filteredBooks = books.filter((book) =>
-    book.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const normalizeText = (text: string) => {
+    return text
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase();
+  };
+
   const selectedBookData = books.find((book) => book.name === selectedBook);
   const maxChapters = selectedBookData?.chapters || 1;
 
@@ -186,58 +199,62 @@ function BibleSelectorForm({
 
   return (
     <div className="space-y-6 p-4">
-      {/* Buscador de libros */}
-      <div>
-        <Label className="text-gray-300 mb-2 block">Buscar Libro</Label>
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-          <Input
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Buscar libro bíblico..."
-            className="bg-[#2a2a2a]/50 border-gray-700 text-white pl-10"
-          />
-        </div>
-      </div>
-
       {/* Selector de libro */}
       <div>
         <Label className="text-gray-300 mb-2 block">Libro</Label>
-        <Select
-          value={selectedBook}
-          onValueChange={setSelectedBook}
-          defaultValue="Select Libro"
-        >
-          <SelectTrigger
-            className="bg-[#2a2a2a]/50 border-gray-700 text-white"
-            aria-placeholder="Seleccionar libro"
-          >
-            <SelectValue placeholder="Seleccionar libro" />
-          </SelectTrigger>
-          <SelectContent className="bg-[#1a1a1a] border-gray-800 text-white max-h-60" defaultValue="Seleccione un libro">
-            <ScrollArea className="h-60">
-              {loadingBooks ? (
-                <div className="text-center text-gray-400 py-4">
-                  Cargando libros...
-                </div>
-              ) : (
-                filteredBooks.map((book) => (
-                  <SelectItem
-                    key={book.name}
-                    value={book.name}
-                    className="hover:bg-[#2a2a2a]"
-                  >
-                    {book.name}
-                  </SelectItem>
-                ))
-              )}
-            </ScrollArea>
-          </SelectContent>
-        </Select>
+        <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              role="combobox"
+              aria-expanded={popoverOpen}
+              className="w-full justify-between bg-[#2a2a2a]/50 border-gray-700 text-white hover:bg-[#2a2a2a]/50"
+            >
+              {selectedBook
+                ? books.find((book) => book.name === selectedBook)?.name
+                : "Seleccione un libro"}
+              <ChevronRight className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-[--radix-popover-trigger-width] p-0 bg-[#1a1a1a] border-gray-800 text-white">
+            <Command
+              filter={(value, search) => {
+                const normalizedValue = normalizeText(value);
+                const normalizedSearch = normalizeText(search);
+                if (normalizedValue.includes(normalizedSearch)) return 1;
+                return 0;
+              }}
+            >
+              <CommandInput placeholder="Buscar libro..." className="focus:ring-0 focus:ring-offset-0" />
+              <CommandList className="max-h-60">
+                <CommandEmpty>No se encontró el libro.</CommandEmpty>
+                  {books.map((book) => (
+                    <CommandItem
+                      key={book.name}
+                      value={book.name}
+                      onSelect={(currentValue) => {
+                        setSelectedBook(currentValue === selectedBook ? "" : currentValue);
+                        setPopoverOpen(false);
+                        // Reset chapter and verse when book changes
+                        setSelectedChapter(1);
+                        setStartVerse(1);
+                        setEndVerse(null);
+                      }}
+                    >
+                      <Check
+                        className={`mr-2 h-4 w-4 ${selectedBook === book.name ? "opacity-100" : "opacity-0"}`}
+                      />
+                      {book.name}
+                    </CommandItem>
+                  ))}
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        </Popover>
       </div>
 
       {/* Selectores en fila */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         {/* Capítulo */}
         <div>
           <Label className="text-gray-300 mb-2 block">Capítulo</Label>
@@ -246,9 +263,10 @@ function BibleSelectorForm({
             onValueChange={(value) =>
               setSelectedChapter(Number.parseInt(value))
             }
+            disabled={!selectedBook}
           >
             <SelectTrigger className="bg-[#2a2a2a]/50 border-gray-700 text-white">
-              <SelectValue placeholder="Seleccionar capítulo" />
+              <SelectValue placeholder="Seleccione un capítulo" />
             </SelectTrigger>
             <SelectContent className="bg-[#1a1a1a] border-gray-800 text-white max-h-60">
               <ScrollArea className="h-60">
@@ -274,9 +292,10 @@ function BibleSelectorForm({
           <Select
             value={startVerse.toString()}
             onValueChange={(value) => setStartVerse(Number.parseInt(value))}
+            disabled={!selectedBook}
           >
             <SelectTrigger className="bg-[#2a2a2a]/50 border-gray-700 text-white">
-              <SelectValue placeholder="Seleccionar versículo" />
+              <SelectValue placeholder="Seleccione un versículo" />
             </SelectTrigger>
             <SelectContent className="bg-[#1a1a1a] border-gray-800 text-white max-h-60">
               <ScrollArea className="h-60">
@@ -306,6 +325,7 @@ function BibleSelectorForm({
             onValueChange={(value) =>
               setEndVerse(value === "none" ? null : Number.parseInt(value))
             }
+            disabled={!selectedBook}
           >
             <SelectTrigger className="bg-[#2a2a2a]/50 border-gray-700 text-white">
               <SelectValue placeholder="Seleccionar" />

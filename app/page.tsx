@@ -21,9 +21,15 @@ import {
   ExternalLink,
   Quote,
   Eye,
+  Download,
+  FileDown,
+  Library,
+  Pencil,
+  Check,
+  ChevronDown,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -34,13 +40,21 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import type { Devocional, Versiculo, Referencia } from "@/lib/firestore"
 import { Timestamp } from "firebase/firestore"
 import { BibleSelector } from "@/components/bible/bible-selector"
-import { BibleViewer } from "@/components/bible/bible-viewer"
+import { BibleViewer, BibleViewerContent } from "@/components/bible/bible-viewer"
+import { exportDevocionalToPDF } from "@/lib/pdf-exporter";
+import { TopicalStudy, StudyEntry } from "@/lib/firestore";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 export default function DevocionariosApp() {
-  const [currentView, setCurrentView] = useState<"dashboard" | "devocional" | "busqueda">("dashboard")
+  const [currentView, setCurrentView] = useState<"dashboard" | "devocional" | "busqueda" | "topical">("dashboard")
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0])
   const [devocionarios, setDevocionarios] = useState<Devocional[]>([])
   const [currentDevocional, setCurrentDevocional] = useState<Devocional | null>(null)
+  const [topicalStudies, setTopicalStudies] = useState<TopicalStudy[]>([]);
+  const [currentTopic, setCurrentTopic] = useState<TopicalStudy | null>(null);
+  const [newTopicName, setNewTopicName] = useState("");
+  const [editingTopicId, setEditingTopicId] = useState<string | null>(null);
+  const [editingTopicName, setEditingTopicName] = useState("");
   const [searchTerm, setSearchTerm] = useState("")
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -80,6 +94,7 @@ export default function DevocionariosApp() {
             versiculoId: "v1",
           },
         ],
+        tags: ["Fe", "Gracia", "Amor"],
         completado: true,
         createdAt: Timestamp.now(),
         updatedAt: Timestamp.now(),
@@ -91,6 +106,70 @@ export default function DevocionariosApp() {
       setLoading(false)
     }
   }
+
+  // --- Funciones para Estudio por Temas ---
+  const handleCreateNewTopic = () => {
+    if (!newTopicName.trim()) return;
+    const newTopic: TopicalStudy = {
+      id: Date.now().toString(),
+      name: newTopicName,
+      entries: [],
+    };
+    setTopicalStudies([...topicalStudies, newTopic]);
+    setCurrentTopic(newTopic);
+    setNewTopicName("");
+  };
+
+  const handleAddStudyEntry = (topicId: string) => {
+    const newEntry: StudyEntry = {
+      id: Date.now().toString(),
+      reference: "",
+      learning: "",
+    };
+    setTopicalStudies(topicalStudies.map(topic => 
+      topic.id === topicId 
+        ? { ...topic, entries: [...topic.entries, newEntry] }
+        : topic
+    ));
+    setCurrentTopic(prev => prev ? { ...prev, entries: [...prev.entries, newEntry] } : null);
+  };
+
+  const handleUpdateStudyEntry = (topicId: string, updatedEntry: StudyEntry) => {
+    setTopicalStudies(topicalStudies.map(topic => 
+      topic.id === topicId
+        ? { ...topic, entries: topic.entries.map(e => e.id === updatedEntry.id ? updatedEntry : e) }
+        : topic
+    ));
+     setCurrentTopic(prev => prev ? { ...prev, entries: prev.entries.map(e => e.id === updatedEntry.id ? updatedEntry : e) } : null);
+  };
+
+  const handleRemoveStudyEntry = (topicId: string, entryId: string) => {
+     setTopicalStudies(topicalStudies.map(topic => 
+      topic.id === topicId
+        ? { ...topic, entries: topic.entries.filter(e => e.id !== entryId) }
+        : topic
+    ));
+    setCurrentTopic(prev => prev ? { ...prev, entries: prev.entries.filter(e => e.id !== entryId) } : null);
+  }
+
+  const handleDeleteTopic = (topicId: string) => {
+    setTopicalStudies(topicalStudies.filter(topic => topic.id !== topicId));
+  };
+
+  const handleStartEditingTopic = (topic: TopicalStudy) => {
+    setEditingTopicId(topic.id);
+    setEditingTopicName(topic.name);
+  };
+
+  const handleUpdateTopicName = (topicId: string) => {
+    if (!editingTopicName.trim()) return;
+    setTopicalStudies(topicalStudies.map(topic =>
+      topic.id === topicId ? { ...topic, name: editingTopicName } : topic
+    ));
+    setEditingTopicId(null);
+    setEditingTopicName("");
+  };
+  // ------------------------------------
 
   const handleDateChange = (direction: "prev" | "next") => {
     const currentDate = new Date(selectedDate)
@@ -111,6 +190,7 @@ export default function DevocionariosApp() {
       aprendizajeGeneral: "",
       versiculos: [],
       referencias: [],
+      tags: [],
       completado: false,
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
@@ -195,7 +275,8 @@ export default function DevocionariosApp() {
     (d) =>
       d.citaBiblica.toLowerCase().includes(searchTerm.toLowerCase()) ||
       d.textoDevocional.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      d.aprendizajeGeneral.toLowerCase().includes(searchTerm.toLowerCase()),
+      d.aprendizajeGeneral.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      d.tags?.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase())),
   )
 
   const stats = {
@@ -231,6 +312,14 @@ export default function DevocionariosApp() {
               >
                 <Search className="h-4 w-4 mr-2" />
                 Buscar
+              </Button>
+              <Button
+                onClick={() => setCurrentView("topical")}
+                variant="outline"
+                className="bg-[#1a1a1a]/50 border-gray-700 hover:bg-[#2a2a2a]/50 backdrop-blur-sm"
+              >
+                <Library className="h-4 w-4 mr-2" />
+                Estudio por Temas
               </Button>
               <Button
                 onClick={createNewDevocional}
@@ -513,26 +602,37 @@ export default function DevocionariosApp() {
               <p className="text-gray-400">Devocional Diario</p>
             </div>
 
-            <Button
-              onClick={() => {
-                saveDevocional({ ...currentDevocional, completado: true })
-                setCurrentView("dashboard")
-              }}
-              disabled={saving}
-              className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
-            >
-              {saving ? (
-                <>
-                  <LoadingSpinner size="sm" className="mr-2" />
-                  Guardando...
-                </>
-              ) : (
-                <>
-                  <CheckCircle2 className="h-4 w-4 mr-2" />
-                  Guardar
-                </>
-              )}
-            </Button>
+            <div className="flex items-center gap-3">
+              <Button
+                onClick={() => exportDevocionalToPDF(currentDevocional)}
+                variant="outline"
+                disabled={saving}
+                className="bg-purple-500/20 text-purple-300 border-purple-500/30 hover:bg-purple-500/30"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Exportar
+              </Button>
+              <Button
+                onClick={() => {
+                  saveDevocional({ ...currentDevocional, completado: true })
+                  setCurrentView("dashboard")
+                }}
+                disabled={saving}
+                className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
+              >
+                {saving ? (
+                  <>
+                    <LoadingSpinner size="sm" className="mr-2" />
+                    Guardando...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="h-4 w-4 mr-2" />
+                    Guardar
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
 
           {/* Información Básica mejorada */}
@@ -928,6 +1028,58 @@ export default function DevocionariosApp() {
               </div>
             </TabsContent>
           </Tabs>
+
+          {/* Gestión de Etiquetas */}
+          <GradientCard gradient="purple" className="mt-8">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-3 text-white">
+                <div className="p-2 bg-yellow-500/20 rounded-lg">
+                  <Sparkles className="h-5 w-5 text-yellow-400" />
+                </div>
+                Etiquetas Temáticas
+              </CardTitle>
+              <CardDescription className="text-gray-400">
+                Organiza tu devocional con etiquetas para encontrarlo fácilmente. Presiona Enter para agregar una etiqueta.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-wrap gap-2 mb-4">
+                {currentDevocional.tags?.map((tag) => (
+                  <Badge key={tag} variant="secondary" className="bg-yellow-500/20 text-yellow-300 border-yellow-500/30 text-sm">
+                    {tag}
+                    <button
+                      onClick={() => {
+                        setCurrentDevocional({
+                          ...currentDevocional,
+                          tags: currentDevocional.tags?.filter((t) => t !== tag),
+                        });
+                      }}
+                      className="ml-2 text-yellow-400 hover:text-white"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                ))}
+              </div>
+              <Input
+                placeholder="Añadir etiqueta (ej: Fe, Gracia, Amor) y presionar Enter"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const newTag = e.currentTarget.value.trim();
+                    if (newTag && !currentDevocional.tags?.includes(newTag)) {
+                      setCurrentDevocional({
+                        ...currentDevocional,
+                        tags: [...(currentDevocional.tags || []), newTag],
+                      });
+                      e.currentTarget.value = "";
+                    }
+                  }
+                }}
+                className="bg-[#2a2a2a]/50 border-gray-700 text-white backdrop-blur-sm focus:border-yellow-500 transition-colors"
+              />
+            </CardContent>
+          </GradientCard>
         </div>
       </div>
     )
@@ -1061,6 +1213,14 @@ export default function DevocionariosApp() {
                         </p>
                       </div>
 
+                      <div className="flex items-center gap-4 pt-2 flex-wrap">
+                        {devocional.tags?.map(tag => (
+                          <Badge key={tag} variant="secondary" className="bg-yellow-500/20 text-yellow-300 border-yellow-500/30 text-xs">
+                            {tag}
+                          </Badge>
+                        ))}
+                      </div>
+
                       {(devocional.versiculos.length > 0 || devocional.referencias.length > 0) && (
                         <div className="flex items-center gap-4 pt-2">
                           {devocional.versiculos.length > 0 && (
@@ -1116,6 +1276,192 @@ export default function DevocionariosApp() {
         </div>
       </div>
     )
+  }
+
+  if (currentView === "topical") {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-[#0a0a0a] via-[#0f0f0f] to-[#0a0a0a] text-white">
+        <div className="container mx-auto px-4 py-6 max-w-5xl">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-8">
+            <Button
+              variant="outline"
+              onClick={() => setCurrentView("dashboard")}
+              className="bg-[#1a1a1a]/50 border-gray-700 hover:bg-[#2a2a2a]/50 backdrop-blur-sm"
+            >
+              <ChevronLeft className="h-4 w-4 mr-2" />
+              {/* Volver al Dashboard */}
+            </Button>
+
+            <div className="text-center">
+              <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-green-400 to-cyan-400 bg-clip-text text-transparent">
+                Estudio Bíblico por Temas
+              </h1>
+              <p className="text-gray-400">Profundiza en conceptos clave de la Escritura</p>
+            </div>
+
+            <div className="w-32"></div>
+          </div>
+          
+          {/* Contenido del Estudio por Temas */}
+          {!currentTopic ? (
+            // Vista de lista de temas
+            <div className="space-y-6">
+              <GradientCard gradient="green">
+                <CardHeader>
+                  <CardTitle>Crear Nuevo Tema de Estudio</CardTitle>
+                  <CardDescription>
+                    Inicia un nuevo tema para agrupar tus estudios bíblicos.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="flex gap-4">
+                  <Input
+                    value={newTopicName}
+                    onChange={(e) => setNewTopicName(e.target.value)}
+                    placeholder="Ej: Fe, Amor, Salvación..."
+                    className="bg-[#2a2a2a]/50 border-gray-700 text-white"
+                  />
+                  <Button onClick={handleCreateNewTopic} className="bg-gradient-to-r from-green-600 to-cyan-600">
+                    <Plus className="h-4 w-4 mr-2"/>
+                    Crear Tema
+                  </Button>
+                </CardContent>
+              </GradientCard>
+
+              <h2 className="text-2xl font-bold text-white pt-8">Temas Existentes</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {topicalStudies.map(topic => (
+                  <GradientCard key={topic.id} className="group flex flex-col justify-between">
+                     <CardContent className="p-6 cursor-pointer flex-1" onClick={() => setCurrentTopic(topic)}>
+                        {editingTopicId === topic.id ? (
+                          <div className="flex gap-2">
+                            <Input
+                              value={editingTopicName}
+                              onChange={(e) => setEditingTopicName(e.target.value)}
+                              onBlur={() => handleUpdateTopicName(topic.id)}
+                              onKeyDown={(e) => e.key === 'Enter' && handleUpdateTopicName(topic.id)}
+                              autoFocus
+                              className="bg-[#2a2a2a]/80"
+                            />
+                            <Button size="icon" onClick={() => handleUpdateTopicName(topic.id)}><Check className="h-4 w-4"/></Button>
+                          </div>
+                        ) : (
+                          <h3 className="text-xl font-semibold text-white">{topic.name}</h3>
+                        )}
+                        <p className="text-gray-400 mt-2">{topic.entries.length} {topic.entries.length === 1 ? 'entrada' : 'entradas'}</p>
+                     </CardContent>
+                     <CardHeader className="p-2 border-t border-gray-700/50 flex-row justify-around">
+                       <Button variant="ghost" size="sm" onClick={() => handleStartEditingTopic(topic)} className="w-full justify-center gap-2 text-gray-400 hover:text-white">
+                         <Pencil className="h-3 w-3" />
+                         Editar
+                       </Button>
+                       <Button variant="ghost" size="sm" onClick={() => handleDeleteTopic(topic.id)} className="w-full justify-center gap-2 text-red-400 hover:text-red-300">
+                         <Trash2 className="h-3 w-3" />
+                         Eliminar
+                       </Button>
+                     </CardHeader>
+                  </GradientCard>
+                ))}
+              </div>
+               {topicalStudies.length === 0 && (
+                  <div className="text-center py-16 text-gray-400">
+                    <p>No hay temas de estudio aún. ¡Crea el primero!</p>
+                  </div>
+              )}
+            </div>
+          ) : (
+            // Vista de un tema específico
+            <div className="space-y-8">
+              <div className="flex items-center justify-between mb-8">
+                <Button
+                  variant="outline"
+                  onClick={() => setCurrentTopic(null)}
+                  className="bg-[#1a1a1a]/50 border-gray-700 hover:bg-[#2a2a2a]/50"
+                >
+                  <ChevronLeft className="h-4 w-4 mr-2" />
+                  Volver a Temas
+                </Button>
+                <h2 className="text-2xl sm:text-3xl font-bold text-white text-center">{currentTopic.name}</h2>
+                <Button onClick={() => handleAddStudyEntry(currentTopic.id)} className="bg-gradient-to-r from-blue-600 to-purple-600">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Añadir Versículo
+                </Button>
+              </div>
+
+              {currentTopic.entries.map((entry, index) => (
+                <Collapsible key={entry.id} className="group">
+                  <GradientCard gradient="blue" >
+                      <div className="flex w-full items-center p-4">
+                          <CollapsibleTrigger className="flex flex-1 text-left min-w-0 items-center justify-between">
+                              <div className="flex-1 min-w-0">
+                                  <p className="font-semibold text-white truncate">{entry.reference || "Sin referencia"}</p>
+                                  <p className="text-sm text-gray-400 truncate mt-1">{entry.learning || "Sin aprendizaje"}</p>
+                              </div>
+                              <ChevronDown className="h-5 w-5 text-white transition-transform duration-300 group-data-[state=open]:rotate-180 ml-2 flex-shrink-0"/>
+                          </CollapsibleTrigger>
+                          {entry.reference && (
+                              <div className="ml-2 flex-shrink-0">
+                                  <BibleViewer
+                                      reference={entry.reference}
+                                      trigger={
+                                          <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-400 hover:text-blue-300">
+                                              <Eye className="h-4 w-4" />
+                                          </Button>
+                                      }
+                                  />
+                              </div>
+                          )}
+                      </div>
+                      <CollapsibleContent>
+                        <CardContent className="pt-4 space-y-6 border-t border-blue-500/20">
+                          <div>
+                              <label className="block text-sm font-medium text-gray-300 mb-3">Referencia(s) Bíblica(s)</label>
+                              <div className="flex gap-3">
+                                <div className="flex-1">
+                                  <Input
+                                    value={entry.reference}
+                                    onChange={(e) => handleUpdateStudyEntry(currentTopic.id, {...entry, reference: e.target.value})}
+                                    placeholder="Ej: Juan 3:16 o 1 Corintios 13:4-7"
+                                    className="bg-[#2a2a2a]/50 border-gray-700 text-white"
+                                  />
+                                </div>
+                                <BibleSelector onSelect={(ref) => handleUpdateStudyEntry(currentTopic.id, {...entry, reference: ref})} />
+                                <Button
+                                    variant="outline"
+                                    size="icon"
+                                    onClick={() => handleRemoveStudyEntry(currentTopic.id, entry.id)}
+                                    className="bg-red-500/20 border-red-500/30 hover:bg-red-500/30"
+                                  >
+                                    <Trash2 className="h-4 w-4 text-red-400" />
+                                  </Button>
+                              </div>
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-300 mb-3 mt-6">
+                                Apuntes y Aprendizaje
+                              </label>
+                              <Textarea
+                                value={entry.learning}
+                                onChange={(e) => handleUpdateStudyEntry(currentTopic.id, {...entry, learning: e.target.value})}
+                                placeholder="Escribe aquí tus reflexiones sobre este pasaje..."
+                                className="bg-[#2a2a2a]/50 border-gray-700 text-white min-h-[150px]"
+                              />
+                            </div>
+                        </CardContent>
+                      </CollapsibleContent>
+                  </GradientCard>
+                </Collapsible>
+              ))}
+               {currentTopic.entries.length === 0 && (
+                  <div className="text-center py-16 text-gray-400">
+                    <p>Este tema no tiene entradas. ¡Añade la primera!</p>
+                  </div>
+              )}
+            </div>
+          )}
+      </div>
+    </div>
+    );
   }
 
   return null

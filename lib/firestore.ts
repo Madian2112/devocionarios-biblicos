@@ -12,6 +12,18 @@ import {
 } from "firebase/firestore"
 import { db } from "./firebase"
 
+export interface StudyEntry {
+  id: string;
+  reference: string;
+  learning: string;
+}
+
+export interface TopicalStudy {
+  id: string;
+  name: string;
+  entries: StudyEntry[];
+}
+
 export interface Versiculo {
   id: string
   referencia: string
@@ -34,6 +46,7 @@ export interface Devocional {
   aprendizajeGeneral: string
   versiculos: Versiculo[]
   referencias: Referencia[]
+  tags?: string[]
   completado: boolean
   createdAt: Timestamp
   updatedAt: Timestamp

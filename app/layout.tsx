@@ -19,7 +19,6 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
       <body className={inter.className}>
         <ThemeProvider
           attribute="class"
@@ -33,6 +32,5 @@ export default function RootLayout({
           </ZoomProvider>
         </ThemeProvider>
       </body>
-    </html>
   );
 }
