@@ -29,6 +29,7 @@ import {
   ChevronDown,
   Home,
   BookCopy,
+  LogOut,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -46,8 +47,14 @@ import { BibleViewer, BibleViewerContent } from "@/components/bible/bible-viewer
 import { exportDevocionalToPDF, exportTopicalStudyToPDF } from "@/lib/pdf-exporter";
 import { TopicalStudy, StudyEntry } from "@/lib/firestore";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { LandingPage } from "@/components/landing-page";
+import { LoginPage } from "@/components/login-page";
 
-export default function DevocionariosApp() {
+interface AppContentProps {
+  onLogout: () => void;
+}
+
+function AppContent({ onLogout }: AppContentProps) {
   const [currentView, setCurrentView] = useState<"home" | "dashboard" | "devocional" | "busqueda" | "topical">("home");
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0])
   const [devocionarios, setDevocionarios] = useState<Devocional[]>([])
@@ -291,7 +298,19 @@ export default function DevocionariosApp() {
   if (currentView === "home") {
     return (
       <div className="min-h-screen bg-gradient-to-br from-[#0a0a0a] via-[#0f0f0f] to-[#0a0a0a] text-white">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 max-w-7xl">
+        <div className="relative container mx-auto px-4 sm:px-6 lg:px-8 py-8 max-w-7xl">
+          
+          <div className="absolute top-8 right-4 sm:right-6 lg:right-8 z-10">
+            <Button
+              variant="outline"
+              onClick={onLogout}
+              className="bg-[#1a1a1a]/50 border-gray-700 hover:bg-[#2a2a2a]/50 backdrop-blur-sm"
+            >
+              <LogOut className="h-4 w-4 mr-2" />
+              Cerrar Sesión
+            </Button>
+          </div>
+          
           {/* Header */}
           <div className="text-center mb-12">
             <div className="inline-flex flex-col sm:flex-row items-center gap-4 mb-4">
@@ -1483,4 +1502,34 @@ export default function DevocionariosApp() {
   }
 
   return null
+}
+
+
+export default function Page() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [view, setView] = useState<'landing' | 'login' | 'app'>('landing');
+
+  const handleLoginSuccess = () => {
+    setIsAuthenticated(true);
+    setView('app');
+  };
+
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    setView('landing');
+  };
+
+  const renderContent = () => {
+    switch (view) {
+      case 'login':
+        return <LoginPage onLoginSuccess={handleLoginSuccess} onBackClick={() => setView('landing')} />;
+      case 'app':
+        return isAuthenticated ? <AppContent onLogout={handleLogout} /> : <LoginPage onLoginSuccess={handleLoginSuccess} onBackClick={() => setView('landing')} />;
+      case 'landing':
+      default:
+        return <LandingPage onLoginClick={() => setView('login')} />;
+    }
+  };
+
+  return <>{renderContent()}</>;
 }
