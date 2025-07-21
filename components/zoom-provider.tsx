@@ -20,7 +20,7 @@ interface ZoomContextType {
 const ZoomContext = createContext<ZoomContextType | undefined>(undefined);
 
 export function ZoomProvider({ children }: { children: ReactNode }) {
-  const [zoom, setZoom] = useState<number>(100);
+  const [zoom, setZoom] = useState<number>(90);
 
   useEffect(() => {
     const storedZoom = localStorage.getItem(ZOOM_STORAGE_KEY);
@@ -43,7 +43,7 @@ export function ZoomProvider({ children }: { children: ReactNode }) {
   };
 
   const resetZoom = () => {
-    setZoom(100);
+    setZoom(90);
   };
 
   const value = { zoom, increaseZoom, decreaseZoom, resetZoom };

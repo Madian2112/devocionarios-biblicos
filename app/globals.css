@@ -19,12 +19,35 @@
     --accent: 10 10% 16%;
     --accent-foreground: 0 0% 98%;
     --destructive: 0 63% 31%;
-    --destructive-foreground: 0 0% 98%;
+    --destructive-foreground: 210 40% 98%;
     --border: 10 10% 16%;
     --input: 10 10% 16%;
     --ring: 217 91% 60%;
     --radius: 0.5rem;
   }
+}
+
+.day-with-devocional {
+  position: relative;
+  color: hsl(200 100% 70%) !important;
+  font-weight: bold;
+}
+
+.day-with-devocional::after {
+  content: '';
+  position: absolute;
+  bottom: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background-color: hsl(200 100% 50%);
+}
+ 
+body {
+  color: var(--foreground);
+  background: var(--background);
 }
 
 @layer utilities {

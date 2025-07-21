@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react"
 import {
-  Calendar,
   Book,
   Search,
   Plus,
@@ -30,6 +29,7 @@ import {
   Home,
   BookCopy,
   LogOut,
+  Calendar as CalendarIcon,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -40,15 +40,20 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { GradientCard } from "@/components/ui/gradient-card"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
-import type { Devocional, Versiculo, Referencia } from "@/lib/firestore"
+import type { Devocional, Versiculo, Referencia, StudyEntry, TopicalStudy } from "@/lib/firestore"
 import { Timestamp } from "firebase/firestore"
 import { BibleSelector } from "@/components/bible/bible-selector"
-import { BibleViewer, BibleViewerContent } from "@/components/bible/bible-viewer"
-import { exportDevocionalToPDF, exportTopicalStudyToPDF } from "@/lib/pdf-exporter";
-import { TopicalStudy, StudyEntry } from "@/lib/firestore";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { LandingPage } from "@/components/landing-page";
-import { LoginPage } from "@/components/login-page";
+import {
+  BibleViewer,
+  BibleViewerContent,
+} from "@/components/bible/bible-viewer"
+import {
+  exportDevocionalToPDF,
+  exportTopicalStudyToPDF,
+} from "@/lib/pdf-exporter"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+import { LandingPage } from "@/components/landing-page"
+import { LoginPage } from "@/components/login-page"
 
 interface AppContentProps {
   onLogout: () => void;
@@ -307,7 +312,6 @@ function AppContent({ onLogout }: AppContentProps) {
               className="bg-[#1a1a1a]/50 border-gray-700 hover:bg-[#2a2a2a]/50 backdrop-blur-sm"
             >
               <LogOut className="h-4 w-4 mr-2" />
-              Cerrar Sesión
             </Button>
           </div>
           
@@ -414,203 +418,212 @@ function AppContent({ onLogout }: AppContentProps) {
        <div className="min-h-screen bg-gradient-to-br from-[#0a0a0a] via-[#0f0f0f] to-[#0a0a0a] text-white">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 max-w-7xl">
            {/* Header del Dashboard */}
-            <div className="flex items-center justify-between mb-8">
-              <Button onClick={() => setCurrentView("home")} variant="outline" className="bg-[#1a1a1a]/50 border-gray-700 hover:bg-[#2a2a2a]/50"><Home className="h-4 w-4 mr-2"/>Volver al Inicio</Button>
-               <div className="flex gap-4">
-                  <Button onClick={() => setCurrentView("busqueda")} variant="outline" className="bg-[#1a1a1a]/50 border-gray-700 hover:bg-[#2a2a2a]/50"><Search className="h-4 w-4 mr-2"/>Buscar</Button>
-                  <Button onClick={createNewDevocional} className="bg-gradient-to-r from-blue-600 to-purple-600"><Plus className="h-4 w-4 mr-2"/>Nuevo Devocional</Button>
-               </div>
-            </div>
-            {/* Selector de Fecha mejorado */}
-          <GradientCard className="mb-8">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-3 text-white">
-                <div className="p-2 bg-blue-500/20 rounded-lg">
-                  <Calendar className="h-5 w-5 text-blue-400" />
-                </div>
-                Seleccionar Fecha
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-between">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => handleDateChange("prev")}
-                  className="bg-[#2a2a2a]/50 border-gray-700 hover:bg-[#3a3a3a]/50 backdrop-blur-sm"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-
-                <div className="text-center flex-1 mx-6">
-                  <Input
-                    type="date"
-                    value={selectedDate}
-                    onChange={(e) => setSelectedDate(e.target.value)}
-                    className="bg-[#2a2a2a]/50 border-gray-700 text-white text-center backdrop-blur-sm max-w-xs mx-auto"
-                  />
-                  <p className="text-sm text-gray-400 mt-2 capitalize font-medium">{formatDate(selectedDate)}</p>
-                </div>
-
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => handleDateChange("next")}
-                  className="bg-[#2a2a2a]/50 border-gray-700 hover:bg-[#3a3a3a]/50 backdrop-blur-sm"
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-8">
+              <Button
+                variant="outline"
+                onClick={() => setCurrentView("home")} className="bg-[#1a1a1a]/50 border-gray-700 hover:bg-[#2a2a2a]/50 backdrop-blur-sm w-full sm:w-auto"
+              >
+                <Home className="h-4 w-4 mr-2"/>
+                <span>{'Volver al Inicio'}</span>
+              </Button>
+              <div className="flex gap-4 w-full sm:w-auto">
+                  <Button onClick={() => setCurrentView("busqueda")} variant="outline" className="bg-[#1a1a1a]/50 border-gray-700 hover:bg-[#2a2a2a]/50 flex-1 sm:flex-none"><Search className="h-4 w-4 mr-2"/>Buscar</Button>
+                  <Button onClick={createNewDevocional} className="bg-gradient-to-r from-blue-600 to-purple-600 flex-1 sm:flex-none"><Plus className="h-4 w-4 mr-2"/>Nuevo Devocional</Button>
               </div>
-            </CardContent>
-          </GradientCard>
-
-          {/* Devocional del Día mejorado */}
-          <GradientCard gradient="blue">
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between text-white">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-blue-500/20 rounded-lg">
-                    <Sparkles className="h-5 w-5 text-blue-400" />
-                  </div>
-                  <span>Devocional del Día</span>
-                </div>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {devocionarios.find((d) => d.fecha === selectedDate) ? (
-                <div className="space-y-6">
-                  <div className="flex items-center justify-between">
-                    <Badge className="bg-green-500/20 text-green-400 border-green-500/30">
-                      <CheckCircle2 className="h-3 w-3 mr-1" />
-                      Completado
-                    </Badge>
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        const devocional = devocionarios.find((d) => d.fecha === selectedDate)
-                        if (devocional) {
-                          setCurrentDevocional(devocional)
-                          setCurrentView("devocional")
-                        }
-                      }}
-                      className="bg-[#2a2a2a]/50 border-gray-700 hover:bg-[#3a3a3a]/50 backdrop-blur-sm"
-                    >
-                      <Edit3 className="h-4 w-4 mr-2" />
-                      Ver Devocional
-                    </Button>
-                  </div>
-
-                  <div className="bg-[#1a1a1a]/50 rounded-xl p-6 backdrop-blur-sm">
-                    <div className="flex items-start gap-3 mb-4">
-                      <Quote className="h-5 w-5 text-blue-400 mt-1 flex-shrink-0" />
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <h3 className="font-semibold text-white text-lg">
-                            {devocionarios.find((d) => d.fecha === selectedDate)?.citaBiblica}
-                          </h3>
-                          {devocionarios.find((d) => d.fecha === selectedDate)?.citaBiblica && (
-                            <BibleViewer
-                              reference={devocionarios.find((d) => d.fecha === selectedDate)?.citaBiblica || ""}
-                              trigger={
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 p-1 h-auto"
-                                >
-                                  <Eye className="h-3 w-3" />
-                                </Button>
-                              }
-                            />
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    <p className="text-gray-300 leading-relaxed">
-                      {devocionarios.find((d) => d.fecha === selectedDate)?.aprendizajeGeneral}
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center py-12">
-                  <div className="p-4 bg-gray-500/10 rounded-full w-fit mx-auto mb-6">
-                    <Book className="h-12 w-12 text-gray-500" />
-                  </div>
-                  <h3 className="text-xl font-semibold text-white mb-2">No hay devocional para esta fecha</h3>
-                  <p className="text-gray-400 mb-6">Comienza tu reflexión diaria creando un nuevo devocional</p>
-                  <Button
-                    onClick={createNewDevocional}
-                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Crear Devocional
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </GradientCard>
-
-          {/* Historial Reciente mejorado */}
-          {devocionarios.length > 0 && (
-            <GradientCard className="mt-8">
+            </div>
+            
+            {/* Selector de Fecha */}
+            <GradientCard className="mb-8">
               <CardHeader>
                 <CardTitle className="flex items-center gap-3 text-white">
-                  <div className="p-2 bg-purple-500/20 rounded-lg">
-                    <Clock className="h-5 w-5 text-purple-400" />
+                  <div className="p-2 bg-blue-500/20 rounded-lg">
+                    <CalendarIcon className="h-5 w-5 text-blue-400" />
                   </div>
-                  Historial Reciente
+                  Seleccionar Fecha
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
-                  {devocionarios.slice(0, 5).map((devocional) => (
-                    <div
-                      key={devocional.id}
-                      className="group flex items-center justify-between p-4 bg-[#1a1a1a]/30 rounded-xl cursor-pointer hover:bg-[#2a2a2a]/50 transition-all duration-300 backdrop-blur-sm border border-gray-800/50 hover:border-gray-700/50"
-                      onClick={() => {
-                        setCurrentDevocional(devocional)
-                        setCurrentView("devocional")
-                      }}
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className="p-2 bg-blue-500/20 rounded-lg group-hover:bg-blue-500/30 transition-colors">
-                          <BookOpen className="h-4 w-4 text-blue-400" />
-                        </div>
-                        <div>
-                          <p className="font-medium text-white group-hover:text-blue-400 transition-colors">
-                            {devocional.citaBiblica}
-                          </p>
-                          <p className="text-sm text-gray-400 capitalize">{formatDate(devocional.fecha)}</p>
-                        </div>
-                      </div>
-                      <Badge
-                        variant={devocional.completado ? "secondary" : "outline"}
-                        className={
-                          devocional.completado
-                            ? "bg-green-500/20 text-green-400 border-green-500/30"
-                            : "border-gray-600 text-gray-400"
-                        }
-                      >
-                        {devocional.completado ? (
-                          <>
-                            <CheckCircle2 className="h-3 w-3 mr-1" />
-                            Completado
-                          </>
-                        ) : (
-                          <>
-                            <Circle className="h-3 w-3 mr-1" />
-                            Pendiente
-                          </>
-                        )}
-                      </Badge>
-                    </div>
-                  ))}
+                <div className="flex items-center justify-between">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => handleDateChange("prev")}
+                    className="bg-[#2a2a2a]/50 border-gray-700 hover:bg-[#3a3a3a]/50"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  
+                  <div className="flex flex-col items-center gap-2 flex-1">
+                    <Input
+                      type="date"
+                      value={selectedDate}
+                      onChange={(e) => setSelectedDate(e.target.value)}
+                      className="bg-[#2a2a2a]/50 border-gray-700 text-white text-center w-full max-w-[200px]"
+                    />
+                    <Button onClick={() => setSelectedDate(new Date().toISOString().split('T')[0])} variant="link" size="sm" className="text-gray-400 hover:text-white">
+                      Hoy: {formatDate(new Date().toISOString())}
+                    </Button>
+                  </div>
+
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => handleDateChange("next")}
+                    className="bg-[#2a2a2a]/50 border-gray-700 hover:bg-[#3a3a3a]/50"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
                 </div>
               </CardContent>
             </GradientCard>
-          )}
+
+            {/* Devocional del Día */}
+            <GradientCard gradient="blue" className="mb-8">
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between text-white">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-blue-500/20 rounded-lg">
+                      <Sparkles className="h-5 w-5 text-blue-400" />
+                    </div>
+                    <span>Devocional del Día</span>
+                  </div>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {devocionarios.find((d) => d.fecha === selectedDate) ? (
+                  <div className="space-y-6">
+                    <div className="flex items-center justify-between">
+                      <Badge className="bg-green-500/20 text-green-400 border-green-500/30">
+                        <CheckCircle2 className="h-3 w-3 mr-1" />
+                        Completado
+                      </Badge>
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          const devocional = devocionarios.find((d) => d.fecha === selectedDate)
+                          if (devocional) {
+                            setCurrentDevocional(devocional)
+                            setCurrentView("devocional")
+                          }
+                        }}
+                        className="bg-[#2a2a2a]/50 border-gray-700 hover:bg-[#3a3a3a]/50 backdrop-blur-sm"
+                      >
+                        <Edit3 className="h-4 w-4 mr-2" />
+                        Ver Devocional
+                      </Button>
+                    </div>
+
+                    <div className="bg-[#1a1a1a]/50 rounded-xl p-6 backdrop-blur-sm">
+                      <div className="flex items-start gap-3 mb-4">
+                        <Quote className="h-5 w-5 text-blue-400 mt-1 flex-shrink-0" />
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-semibold text-white text-lg">
+                              {devocionarios.find((d) => d.fecha === selectedDate)?.citaBiblica}
+                            </h3>
+                            {devocionarios.find((d) => d.fecha === selectedDate)?.citaBiblica && (
+                              <BibleViewer
+                                reference={devocionarios.find((d) => d.fecha === selectedDate)?.citaBiblica || ""}
+                                trigger={
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 p-1 h-auto"
+                                  >
+                                    <Eye className="h-3 w-3" />
+                                  </Button>
+                                }
+                              />
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <p className="text-gray-300 leading-relaxed">
+                        {devocionarios.find((d) => d.fecha === selectedDate)?.aprendizajeGeneral}
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <div className="p-4 bg-gray-500/10 rounded-full w-fit mx-auto mb-6">
+                      <Book className="h-12 w-12 text-gray-500" />
+                    </div>
+                    <h3 className="text-xl font-semibold text-white mb-2">No hay devocional para esta fecha</h3>
+                    <p className="text-gray-400 mb-6">Comienza tu reflexión diaria creando un nuevo devocional</p>
+                    <Button
+                      onClick={createNewDevocional}
+                      className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Crear Devocional
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </GradientCard>
+
+            {/* Historial Reciente */}
+            {devocionarios.length > 0 && (
+              <GradientCard className="mt-8">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-3 text-white">
+                    <div className="p-2 bg-purple-500/20 rounded-lg">
+                      <Clock className="h-5 w-5 text-purple-400" />
+                    </div>
+                    Historial Reciente
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {devocionarios.slice(0, 5).map((devocional) => (
+                      <div
+                        key={devocional.id}
+                        className="group flex items-center justify-between p-4 bg-[#1a1a1a]/30 rounded-xl cursor-pointer hover:bg-[#2a2a2a]/50 transition-all duration-300 backdrop-blur-sm border border-gray-800/50 hover:border-gray-700/50"
+                        onClick={() => {
+                          setCurrentDevocional(devocional)
+                          setCurrentView("devocional")
+                        }}
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className="p-2 bg-blue-500/20 rounded-lg group-hover:bg-blue-500/30 transition-colors">
+                            <BookOpen className="h-4 w-4 text-blue-400" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-white group-hover:text-blue-400 transition-colors">
+                              {devocional.citaBiblica}
+                            </p>
+                            <p className="text-sm text-gray-400 capitalize">{formatDate(devocional.fecha)}</p>
+                          </div>
+                        </div>
+                        <Badge
+                          variant={devocional.completado ? "secondary" : "outline"}
+                          className={
+                            devocional.completado
+                              ? "bg-green-500/20 text-green-400 border-green-500/30"
+                              : "border-gray-600 text-gray-400"
+                          }
+                        >
+                          {devocional.completado ? (
+                            <>
+                              <CheckCircle2 className="h-3 w-3 mr-1" />
+                              Completado
+                            </>
+                          ) : (
+                            <>
+                              <Circle className="h-3 w-3 mr-1" />
+                              Pendiente
+                            </>
+                          )}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </GradientCard>
+            )}
         </div>
       </div>
-    )
+    );
   }
 
   if (currentView === "devocional" && currentDevocional) {
@@ -1316,19 +1329,22 @@ function AppContent({ onLogout }: AppContentProps) {
       <div className="min-h-screen bg-gradient-to-br from-[#0a0a0a] via-[#0f0f0f] to-[#0a0a0a] text-white">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 max-w-5xl">
           {/* Header */}
-          <div className="flex items-center justify-between mb-8">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-8">
             <Button
               variant="outline"
               onClick={() => currentTopic ? setCurrentTopic(null) : setCurrentView("home")}
-              className="bg-[#1a1a1a]/50 border-gray-700 hover:bg-[#2a2a2a]/50 backdrop-blur-sm"
+              className="bg-[#1a1a1a]/50 border-gray-700 hover:bg-[#2a2a2a]/50 backdrop-blur-sm w-full sm:w-auto"
             >
-              <ChevronLeft className="h-4 w-4 mr-2" />
-              {currentTopic ? 'Volver a Temas' : 'Volver al Inicio'}
+              {currentTopic ? (<ChevronLeft className="h-4 w-4 mr-2" />) : (<Home className="h-4 w-4 mr-2"/>)}
+              <span>{currentTopic ? 'Volver a Temas' : 'Volver al Inicio'}</span>
             </Button>
-             {/* ... (resto del header sin cambios) ... */}
+             
+            {/* ... (código del título de la sección) */}
+
+            <div className="hidden sm:block w-32"></div> {/* Espaciador para escritorio */}
           </div>
           
-          {/* Contenido del Estudio por Temas */}
+          {/* Contenido */}
           {!currentTopic ? (
             // Vista de lista de temas
             <div className="space-y-6">
@@ -1394,33 +1410,25 @@ function AppContent({ onLogout }: AppContentProps) {
           ) : (
             // Vista de un tema específico
             <div className="space-y-8">
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-8">
-                <Button
-                  variant="outline"
-                  onClick={() => setCurrentTopic(null)}
-                  className="bg-[#1a1a1a]/50 border-gray-700 hover:bg-[#2a2a2a]/50 w-full sm:w-auto"
-                >
-                  <ChevronLeft className="h-4 w-4 mr-2" />
-                  Volver a Temas
-                </Button>
-                <h2 className="text-xl sm:text-3xl font-bold text-white text-center order-first sm:order-none">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-8">                
+                <h2 className="text-xl text-center sm:text-3xl font-bold text-white sm:text-center order-first sm:order-none flex-1">
                   {currentTopic.name}
                 </h2>
-                <div className="flex gap-2 w-full sm:w-auto">
+                <div className="flex gap-2 w-full sm:w-auto order-2">
                   <Button
                     onClick={() => exportTopicalStudyToPDF(currentTopic)}
                     variant="outline"
-                    className="bg-purple-500/20 text-purple-300 border-purple-500/30 hover:bg-purple-500/30"
+                    className="bg-purple-500/20 text-purple-300 border-purple-500/30 hover:bg-purple-500/30 flex-1 sm:flex-none"
                   >
-                    <Download className="h-4 w-4 mr-2" />
-                    Exportar
+                    <Download className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Exportar</span>
                   </Button>
                   <Button
                     onClick={() => handleAddStudyEntry(currentTopic.id)}
-                    className="bg-gradient-to-r from-blue-600 to-purple-600"
+                    className="bg-gradient-to-r from-blue-600 to-purple-600 flex-1 sm:flex-none"
                   >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Añadir Versículo
+                    <Plus className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Añadir Versículo</span>
                   </Button>
                 </div>
               </div>
@@ -1496,8 +1504,8 @@ function AppContent({ onLogout }: AppContentProps) {
               )}
             </div>
           )}
+        </div>
       </div>
-    </div>
     );
   }
 

@@ -213,7 +213,7 @@ function BibleSelectorForm({
       </div>
 
       {/* Selectores en fila */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
         {/* Capítulo */}
         <div>
           <Label className="text-gray-300 mb-2 block">Capítulo</Label>
@@ -312,21 +312,21 @@ function BibleSelectorForm({
       </div>
 
       {/* Botón y vista previa */}
-      <div className="flex flex-col sm:flex-row gap-4 items-center pt-4">
+      <div className="flex flex-col-reverse sm:flex-row gap-4 items-center pt-4">
           <div className="flex-1 w-full sm:w-auto">
-             <p className="text-gray-300 text-sm mb-1">Vista previa:</p>
-             <p className="text-white font-medium bg-[#2a2a2a]/30 rounded-lg p-2 border border-gray-700/50 text-center">
+             <p className="text-gray-300 text-sm mb-1 text-center sm:text-left">Vista previa:</p>
+             <div className="text-white font-medium bg-[#2a2a2a]/30 rounded-lg p-3 border border-gray-700/50 text-center text-base">
               {bibleService.formatReference(
                 selectedBook,
                 selectedChapter,
                 startVerse,
                 endVerse || undefined
               )}
-            </p>
+            </div>
           </div>
           <Button
             onClick={handleSelect}
-            className="w-full sm:w-auto bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+            className="w-full sm:w-auto bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 flex-shrink-0"
           >
             Seleccionar
           </Button>
