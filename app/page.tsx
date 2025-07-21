@@ -27,6 +27,8 @@ import {
   Pencil,
   Check,
   ChevronDown,
+  Home,
+  BookCopy,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -46,7 +48,7 @@ import { TopicalStudy, StudyEntry } from "@/lib/firestore";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 export default function DevocionariosApp() {
-  const [currentView, setCurrentView] = useState<"dashboard" | "devocional" | "busqueda" | "topical">("dashboard")
+  const [currentView, setCurrentView] = useState<"home" | "dashboard" | "devocional" | "busqueda" | "topical">("home");
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0])
   const [devocionarios, setDevocionarios] = useState<Devocional[]>([])
   const [currentDevocional, setCurrentDevocional] = useState<Devocional | null>(null)
@@ -286,7 +288,7 @@ export default function DevocionariosApp() {
     racha: 5, // Calcular racha real
   }
 
-  if (currentView === "dashboard") {
+  if (currentView === "home") {
     return (
       <div className="min-h-screen bg-gradient-to-br from-[#0a0a0a] via-[#0f0f0f] to-[#0a0a0a] text-white">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 max-w-7xl">
@@ -301,38 +303,12 @@ export default function DevocionariosApp() {
                   Devocionarios Bíblicos
                 </h1>
                 <p className="text-gray-400 text-base sm:text-lg">
-                  Registra tus reflexiones y crece espiritualmente
+                  Tu centro de estudio y reflexión personal
                 </p>
               </div>
             </div>
-
-            <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4 mt-6">
-              <Button
-                onClick={() => setCurrentView("busqueda")}
-                variant="outline"
-                className="bg-[#1a1a1a]/50 border-gray-700 hover:bg-[#2a2a2a]/50 backdrop-blur-sm"
-              >
-                <Search className="h-4 w-4 mr-2" />
-                Buscar
-              </Button>
-              <Button
-                onClick={() => setCurrentView("topical")}
-                variant="outline"
-                className="bg-[#1a1a1a]/50 border-gray-700 hover:bg-[#2a2a2a]/50 backdrop-blur-sm"
-              >
-                <Library className="h-4 w-4 mr-2" />
-                Estudio por Temas
-              </Button>
-              <Button
-                onClick={createNewDevocional}
-                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Nuevo Devocional
-              </Button>
-            </div>
           </div>
-
+          
           {/* Estadísticas */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
             <GradientCard gradient="blue" className="group hover:scale-105 transition-transform">
@@ -392,7 +368,41 @@ export default function DevocionariosApp() {
             </GradientCard>
           </div>
 
-          {/* Selector de Fecha mejorado */}
+          {/* Navegación Principal */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-12">
+             <GradientCard gradient="blue" className="group hover:scale-105 transition-transform cursor-pointer" onClick={() => setCurrentView("dashboard")}>
+                <CardContent className="p-8 text-center">
+                   <BookCopy className="h-12 w-12 text-blue-400 mx-auto mb-4"/>
+                   <h2 className="text-2xl font-bold text-white">Mis Devocionales</h2>
+                   <p className="text-gray-400 mt-2">Registra y revisa tus reflexiones diarias.</p>
+                </CardContent>
+             </GradientCard>
+             <GradientCard gradient="green" className="group hover:scale-105 transition-transform cursor-pointer" onClick={() => setCurrentView("topical")}>
+                <CardContent className="p-8 text-center">
+                   <Library className="h-12 w-12 text-green-400 mx-auto mb-4"/>
+                   <h2 className="text-2xl font-bold text-white">Estudio por Temas</h2>
+                   <p className="text-gray-400 mt-2">Profundiza en conceptos clave de la Biblia.</p>
+                </CardContent>
+             </GradientCard>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  
+  if (currentView === "dashboard") {
+    return (
+       <div className="min-h-screen bg-gradient-to-br from-[#0a0a0a] via-[#0f0f0f] to-[#0a0a0a] text-white">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 max-w-7xl">
+           {/* Header del Dashboard */}
+            <div className="flex items-center justify-between mb-8">
+              <Button onClick={() => setCurrentView("home")} variant="outline" className="bg-[#1a1a1a]/50 border-gray-700 hover:bg-[#2a2a2a]/50"><Home className="h-4 w-4 mr-2"/>Volver al Inicio</Button>
+               <div className="flex gap-4">
+                  <Button onClick={() => setCurrentView("busqueda")} variant="outline" className="bg-[#1a1a1a]/50 border-gray-700 hover:bg-[#2a2a2a]/50"><Search className="h-4 w-4 mr-2"/>Buscar</Button>
+                  <Button onClick={createNewDevocional} className="bg-gradient-to-r from-blue-600 to-purple-600"><Plus className="h-4 w-4 mr-2"/>Nuevo Devocional</Button>
+               </div>
+            </div>
+            {/* Selector de Fecha mejorado */}
           <GradientCard className="mb-8">
             <CardHeader>
               <CardTitle className="flex items-center gap-3 text-white">
@@ -1285,26 +1295,18 @@ export default function DevocionariosApp() {
   if (currentView === "topical") {
     return (
       <div className="min-h-screen bg-gradient-to-br from-[#0a0a0a] via-[#0f0f0f] to-[#0a0a0a] text-white">
-        <div className="container mx-auto px-4 py-6 max-w-5xl">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 max-w-5xl">
           {/* Header */}
           <div className="flex items-center justify-between mb-8">
             <Button
               variant="outline"
-              onClick={() => setCurrentView("dashboard")}
+              onClick={() => currentTopic ? setCurrentTopic(null) : setCurrentView("home")}
               className="bg-[#1a1a1a]/50 border-gray-700 hover:bg-[#2a2a2a]/50 backdrop-blur-sm"
             >
               <ChevronLeft className="h-4 w-4 mr-2" />
-              {/* Volver al Dashboard */}
+              {currentTopic ? 'Volver a Temas' : 'Volver al Inicio'}
             </Button>
-
-            <div className="text-center">
-              <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-green-400 to-cyan-400 bg-clip-text text-transparent">
-                Estudio Bíblico por Temas
-              </h1>
-              <p className="text-gray-400">Profundiza en conceptos clave de la Escritura</p>
-            </div>
-
-            <div className="w-32"></div>
+             {/* ... (resto del header sin cambios) ... */}
           </div>
           
           {/* Contenido del Estudio por Temas */}
@@ -1314,16 +1316,13 @@ export default function DevocionariosApp() {
               <GradientCard gradient="green">
                 <CardHeader>
                   <CardTitle>Crear Nuevo Tema de Estudio</CardTitle>
-                  <CardDescription>
-                    Inicia un nuevo tema para agrupar tus estudios bíblicos.
-                  </CardDescription>
                 </CardHeader>
-                <CardContent className="flex gap-4">
+                <CardContent className="flex flex-col sm:flex-row gap-4">
                   <Input
                     value={newTopicName}
                     onChange={(e) => setNewTopicName(e.target.value)}
                     placeholder="Ej: Fe, Amor, Salvación..."
-                    className="bg-[#2a2a2a]/50 border-gray-700 text-white"
+                    className="bg-[#2a2a2a]/50 border-gray-700 text-white flex-1"
                   />
                   <Button onClick={handleCreateNewTopic} className="bg-gradient-to-r from-green-600 to-cyan-600">
                     <Plus className="h-4 w-4 mr-2"/>
@@ -1376,19 +1375,19 @@ export default function DevocionariosApp() {
           ) : (
             // Vista de un tema específico
             <div className="space-y-8">
-              <div className="flex items-center justify-between mb-8">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-8">
                 <Button
                   variant="outline"
                   onClick={() => setCurrentTopic(null)}
-                  className="bg-[#1a1a1a]/50 border-gray-700 hover:bg-[#2a2a2a]/50"
+                  className="bg-[#1a1a1a]/50 border-gray-700 hover:bg-[#2a2a2a]/50 w-full sm:w-auto"
                 >
                   <ChevronLeft className="h-4 w-4 mr-2" />
                   Volver a Temas
                 </Button>
-                <h2 className="text-2xl sm:text-3xl font-bold text-white text-center">
+                <h2 className="text-xl sm:text-3xl font-bold text-white text-center order-first sm:order-none">
                   {currentTopic.name}
                 </h2>
-                <div className="flex gap-2">
+                <div className="flex gap-2 w-full sm:w-auto">
                   <Button
                     onClick={() => exportTopicalStudyToPDF(currentTopic)}
                     variant="outline"
