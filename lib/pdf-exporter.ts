@@ -1,6 +1,6 @@
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
-import type { Devocional } from "./firestore";
+import type { Devocional, TopicalStudy } from "./firestore";
 
 // Función para dar formato a la fecha
 const formatDate = (dateString: string) => {
@@ -118,4 +118,65 @@ export const exportDevocionalToPDF = async (devocional: Devocional) => {
 
   // 8. Descargar el PDF
   pdf.save(`Devocional-${devocional.fecha}-${devocional.citaBiblica}.pdf`);
+};
+
+// --- Nueva Función para Exportar Estudio por Tema a PDF ---
+export const exportTopicalStudyToPDF = async (topic: TopicalStudy) => {
+  // 1. Crear contenedor temporal
+  const pdfContainer = document.createElement("div");
+  pdfContainer.style.position = "absolute";
+  pdfContainer.style.left = "-9999px";
+  pdfContainer.style.width = "800px";
+  pdfContainer.style.padding = "20px";
+  pdfContainer.style.fontFamily = "Arial, sans-serif";
+  pdfContainer.style.color = "#333";
+  pdfContainer.style.backgroundColor = "#fff";
+
+  // 2. Construir el HTML del contenido del PDF
+  let contentHTML = `
+    <div style="border-bottom: 2px solid #ccc; padding-bottom: 10px; margin-bottom: 20px;">
+      <h1 style="font-size: 28px; margin: 0; color: #1a73e8;">Estudio Bíblico por Tema</h1>
+      <p style="font-size: 22px; margin: 5px 0 0; color: #333;">${
+        topic.name
+      }</p>
+    </div>
+  `;
+
+  // 3. Añadir entradas de estudio
+  if (topic.entries && topic.entries.length > 0) {
+    topic.entries.forEach((entry, index) => {
+      contentHTML += `
+        <div style="margin-bottom: 20px; padding-left: 15px; border-left: 3px solid #1a73e8;">
+          <h3 style="font-size: 20px; margin-bottom: 5px;">${
+            entry.reference
+          }</h3>
+          <p style="font-size: 16px; line-height: 1.6; font-style: italic;">${
+            entry.learning
+          }</p>
+        </div>
+      `;
+    });
+  } else {
+    contentHTML += '<p>Este tema aún no tiene entradas.</p>';
+  }
+
+  pdfContainer.innerHTML = contentHTML;
+  document.body.appendChild(pdfContainer);
+
+  // 4. Usar html2canvas y jspdf para crear y descargar el PDF
+  const canvas = await html2canvas(pdfContainer, { scale: 2, useCORS: true });
+  document.body.removeChild(pdfContainer);
+
+  const imgData = canvas.toDataURL("image/png");
+  const pdf = new jsPDF({
+    orientation: "portrait",
+    unit: "pt",
+    format: "a4",
+  });
+
+  const pdfWidth = pdf.internal.pageSize.getWidth();
+  const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+  pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+
+  pdf.save(`Estudio-${topic.name}.pdf`);
 }; 

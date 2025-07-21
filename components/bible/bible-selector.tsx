@@ -2,7 +2,7 @@
 
 import type React from "react";
 import { useState, useEffect } from "react";
-import { Book, Search, ChevronRight, Check } from "lucide-react";
+import { Book, Check, ChevronRight } from "lucide-react";
 
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
@@ -22,15 +22,6 @@ import {
   DrawerTitle,
   DrawerTrigger,
 } from "@/components/ui/drawer";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -155,7 +146,6 @@ function BibleSelectorForm({
   const [endVerse, setEndVerse] = useState<number | null>(null);
   const [books, setBooks] = useState<BibleBook[]>([]);
   const [loadingBooks, setLoadingBooks] = useState(true);
-  const [popoverOpen, setPopoverOpen] = useState(false);
 
   useEffect(() => {
     setLoadingBooks(true);
@@ -166,13 +156,6 @@ function BibleSelectorForm({
       })
       .catch(() => setLoadingBooks(false));
   }, []);
-
-  const normalizeText = (text: string) => {
-    return text
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .toLowerCase();
-  };
 
   const selectedBookData = books.find((book) => book.name === selectedBook);
   const maxChapters = selectedBookData?.chapters || 1;
@@ -193,64 +176,40 @@ function BibleSelectorForm({
     setOpen(false);
   };
 
-  const generateVerseOptions = (max: number) => {
-    return Array.from({ length: max }, (_, i) => i + 1);
-  };
+  const handleBookChange = (bookName: string) => {
+    setSelectedBook(bookName);
+    setSelectedChapter(1);
+    setStartVerse(1);
+    setEndVerse(null);
+  }
 
   return (
     <div className="space-y-6 p-4">
       {/* Selector de libro */}
       <div>
         <Label className="text-gray-300 mb-2 block">Libro</Label>
-        <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              role="combobox"
-              aria-expanded={popoverOpen}
-              className="w-full justify-between bg-[#2a2a2a]/50 border-gray-700 text-white hover:bg-[#2a2a2a]/50"
-            >
-              {selectedBook
-                ? books.find((book) => book.name === selectedBook)?.name
-                : "Seleccione un libro"}
-              <ChevronRight className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-[--radix-popover-trigger-width] p-0 bg-[#1a1a1a] border-gray-800 text-white">
-            <Command
-              filter={(value, search) => {
-                const normalizedValue = normalizeText(value);
-                const normalizedSearch = normalizeText(search);
-                if (normalizedValue.includes(normalizedSearch)) return 1;
-                return 0;
-              }}
-            >
-              <CommandInput placeholder="Buscar libro..." className="focus:ring-0 focus:ring-offset-0" />
-              <CommandList className="max-h-60">
-                <CommandEmpty>No se encontró el libro.</CommandEmpty>
-                  {books.map((book) => (
-                    <CommandItem
+        <Select value={selectedBook} onValueChange={handleBookChange}>
+          <SelectTrigger className="bg-[#2a2a2a]/50 border-gray-700 text-white">
+            <SelectValue placeholder="Seleccione un libro" />
+          </SelectTrigger>
+          <SelectContent className="bg-[#1a1a1a] border-gray-800 text-white max-h-60">
+             <ScrollArea className="h-60">
+                {loadingBooks ? (
+                  <div className="text-center text-gray-400 py-4">Cargando libros...</div>
+                ) : (
+                  books.map((book) => (
+                    <SelectItem
                       key={book.name}
                       value={book.name}
-                      onSelect={(currentValue) => {
-                        setSelectedBook(currentValue === selectedBook ? "" : currentValue);
-                        setPopoverOpen(false);
-                        // Reset chapter and verse when book changes
-                        setSelectedChapter(1);
-                        setStartVerse(1);
-                        setEndVerse(null);
-                      }}
+                      className="hover:bg-[#2a2a2a]"
                     >
-                      <Check
-                        className={`mr-2 h-4 w-4 ${selectedBook === book.name ? "opacity-100" : "opacity-0"}`}
-                      />
                       {book.name}
-                    </CommandItem>
-                  ))}
-              </CommandList>
-            </Command>
-          </PopoverContent>
-        </Popover>
+                    </SelectItem>
+                  ))
+                )}
+              </ScrollArea>
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Selectores en fila */}
@@ -350,29 +309,27 @@ function BibleSelectorForm({
             </SelectContent>
           </Select>
         </div>
+      </div>
 
-        {/* Botón de selección */}
-        <div className="flex items-end">
+      {/* Botón y vista previa */}
+      <div className="flex flex-col sm:flex-row gap-4 items-center pt-4">
+          <div className="flex-1 w-full sm:w-auto">
+             <p className="text-gray-300 text-sm mb-1">Vista previa:</p>
+             <p className="text-white font-medium bg-[#2a2a2a]/30 rounded-lg p-2 border border-gray-700/50 text-center">
+              {bibleService.formatReference(
+                selectedBook,
+                selectedChapter,
+                startVerse,
+                endVerse || undefined
+              )}
+            </p>
+          </div>
           <Button
             onClick={handleSelect}
-            className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+            className="w-full sm:w-auto bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
           >
             Seleccionar
           </Button>
-        </div>
-      </div>
-
-      {/* Vista previa */}
-      <div className="bg-[#2a2a2a]/30 rounded-lg p-4 border border-gray-700/50">
-        <Label className="text-gray-300 text-sm">Vista previa:</Label>
-        <p className="text-white font-medium mt-1">
-          {bibleService.formatReference(
-            selectedBook,
-            selectedChapter,
-            startVerse,
-            endVerse || undefined
-          )}
-        </p>
       </div>
     </div>
   );

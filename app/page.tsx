@@ -41,7 +41,7 @@ import type { Devocional, Versiculo, Referencia } from "@/lib/firestore"
 import { Timestamp } from "firebase/firestore"
 import { BibleSelector } from "@/components/bible/bible-selector"
 import { BibleViewer, BibleViewerContent } from "@/components/bible/bible-viewer"
-import { exportDevocionalToPDF } from "@/lib/pdf-exporter";
+import { exportDevocionalToPDF, exportTopicalStudyToPDF } from "@/lib/pdf-exporter";
 import { TopicalStudy, StudyEntry } from "@/lib/firestore";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
@@ -289,10 +289,10 @@ export default function DevocionariosApp() {
   if (currentView === "dashboard") {
     return (
       <div className="min-h-screen bg-gradient-to-br from-[#0a0a0a] via-[#0f0f0f] to-[#0a0a0a] text-white">
-        <div className="container mx-auto px-4 py-8 max-w-6xl">
-          {/* Header mejorado */}
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 max-w-7xl">
+          {/* Header */}
           <div className="text-center mb-12">
-            <div className="inline-flex items-center gap-3 mb-4">
+            <div className="inline-flex flex-col sm:flex-row items-center gap-4 mb-4">
               <div className="p-3 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl">
                 <BookOpen className="h-8 w-8 text-white" />
               </div>
@@ -300,11 +300,13 @@ export default function DevocionariosApp() {
                 <h1 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
                   Devocionarios Bíblicos
                 </h1>
-                <p className="text-gray-400 text-base sm:text-lg">Registra tus reflexiones y crece espiritualmente</p>
+                <p className="text-gray-400 text-base sm:text-lg">
+                  Registra tus reflexiones y crece espiritualmente
+                </p>
               </div>
             </div>
 
-            <div className="flex items-center justify-center gap-4 mt-6">
+            <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4 mt-6">
               <Button
                 onClick={() => setCurrentView("busqueda")}
                 variant="outline"
@@ -331,8 +333,8 @@ export default function DevocionariosApp() {
             </div>
           </div>
 
-          {/* Estadísticas mejoradas */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+          {/* Estadísticas */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
             <GradientCard gradient="blue" className="group hover:scale-105 transition-transform">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
@@ -587,38 +589,40 @@ export default function DevocionariosApp() {
       <div className="min-h-screen bg-gradient-to-br from-[#0a0a0a] via-[#0f0f0f] to-[#0a0a0a] text-white">
         <div className="container mx-auto px-4 py-6 max-w-5xl">
           {/* Header mejorado */}
-          <div className="flex items-center justify-between mb-8">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-8">
             <Button
               variant="outline"
               onClick={() => setCurrentView("dashboard")}
-              className="bg-[#1a1a1a]/50 border-gray-700 hover:bg-[#2a2a2a]/50 backdrop-blur-sm"
+              className="bg-[#1a1a1a]/50 border-gray-700 hover:bg-[#2a2a2a]/50 backdrop-blur-sm w-full sm:w-auto"
             >
               <ChevronLeft className="h-4 w-4 mr-2" />
               {/* Volver al Dashboard */}
             </Button>
 
-            <div className="text-center">
-              <h1 className="text-xl sm:text-2xl font-bold text-white capitalize mb-1">{formatDate(currentDevocional.fecha)}</h1>
+            <div className="text-center order-first sm:order-none">
+              <h1 className="text-xl sm:text-2xl font-bold text-white capitalize mb-1">
+                {formatDate(currentDevocional.fecha)}
+              </h1>
               <p className="text-gray-400">Devocional Diario</p>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 w-full sm:w-auto">
               <Button
                 onClick={() => exportDevocionalToPDF(currentDevocional)}
                 variant="outline"
                 disabled={saving}
-                className="bg-purple-500/20 text-purple-300 border-purple-500/30 hover:bg-purple-500/30"
+                className="flex-1 bg-purple-500/20 text-purple-300 border-purple-500/30 hover:bg-purple-500/30"
               >
                 <Download className="h-4 w-4 mr-2" />
                 Exportar
               </Button>
               <Button
                 onClick={() => {
-                  saveDevocional({ ...currentDevocional, completado: true })
-                  setCurrentView("dashboard")
+                  saveDevocional({ ...currentDevocional, completado: true });
+                  setCurrentView("dashboard");
                 }}
                 disabled={saving}
-                className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
+                className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
               >
                 {saving ? (
                   <>
@@ -1381,11 +1385,26 @@ export default function DevocionariosApp() {
                   <ChevronLeft className="h-4 w-4 mr-2" />
                   Volver a Temas
                 </Button>
-                <h2 className="text-2xl sm:text-3xl font-bold text-white text-center">{currentTopic.name}</h2>
-                <Button onClick={() => handleAddStudyEntry(currentTopic.id)} className="bg-gradient-to-r from-blue-600 to-purple-600">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Añadir Versículo
-                </Button>
+                <h2 className="text-2xl sm:text-3xl font-bold text-white text-center">
+                  {currentTopic.name}
+                </h2>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => exportTopicalStudyToPDF(currentTopic)}
+                    variant="outline"
+                    className="bg-purple-500/20 text-purple-300 border-purple-500/30 hover:bg-purple-500/30"
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Exportar
+                  </Button>
+                  <Button
+                    onClick={() => handleAddStudyEntry(currentTopic.id)}
+                    className="bg-gradient-to-r from-blue-600 to-purple-600"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Añadir Versículo
+                  </Button>
+                </div>
               </div>
 
               {currentTopic.entries.map((entry, index) => (
