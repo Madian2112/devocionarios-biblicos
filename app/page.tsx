@@ -1428,7 +1428,8 @@ function AppContent({ onLogout }: AppContentProps) {
                     className="bg-gradient-to-r from-blue-600 to-purple-600 flex-1 sm:flex-none"
                   >
                     <Plus className="h-4 w-4 sm:mr-2" />
-                    <span className="hidden sm:inline">Añadir Versículo</span>
+                    {/* <span className="hidden sm:inline">Añadir Versículo</span> */}
+                    Añadir Versículo
                   </Button>
                 </div>
               </div>

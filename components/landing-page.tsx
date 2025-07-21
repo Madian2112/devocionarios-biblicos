@@ -83,7 +83,7 @@ export function LandingPage({ onLoginClick }: LandingPageProps) {
             href="mailto:madian.reyes212006@gmail.com"
             className="text-blue-400 hover:text-blue-300 transition-colors"
           >
-            madian.reyes212006@gmail.com
+            correo.prueba@gmail.com
           </a>
         </div>
       </div>

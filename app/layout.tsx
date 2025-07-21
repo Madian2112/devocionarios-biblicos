@@ -6,9 +6,9 @@ import { ZoomControls } from "@/components/zoom-controls";
 import { Inter } from "next/font/google";
 
 export const metadata: Metadata = {
-  title: 'v0 App',
-  description: 'Created with v0',
-  generator: 'v0.dev',
+  title: 'Devocionarios Bíblicos',
+  description: 'Una herramienta para registrar y organizar tus devocionales bíblicos.',
+  generator: 'Next.js',
 }
 
 const inter = Inter({ subsets: ["latin"] });
