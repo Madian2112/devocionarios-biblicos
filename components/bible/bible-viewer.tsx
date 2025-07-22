@@ -41,23 +41,48 @@ interface ApiBibleVersion extends BibleVersion {
   version: string;
 }
 
+interface Verse {
+  verse: string;
+  number: number;
+  study?: string;
+  id: number;
+}
+
+interface ChapterData {
+  testament: string;
+  name: string;
+  num_chapters: number;
+  chapter: number;
+  vers: Verse[];
+}
+
 interface BibleViewerProps {
   reference: string;
   trigger?: React.ReactNode;
   defaultVersion?: string;
+  onClose?: (selectedVersion: string) => void;
 }
 
 export function BibleViewer({
   reference,
   trigger,
   defaultVersion = "rv1960",
+  onClose,
 }: BibleViewerProps) {
   const [open, setOpen] = useState(false);
   const isMobile = useIsMobile();
+  const [selectedVersion, setSelectedVersion] = useState(defaultVersion);
+
+  const handleOpenChange = (isOpen: boolean) => {
+    setOpen(isOpen);
+    if (!isOpen && onClose) {
+      onClose(selectedVersion);
+    }
+  };
 
   if (isMobile) {
     return (
-      <Drawer open={open} onOpenChange={setOpen}>
+      <Drawer open={open} onOpenChange={handleOpenChange}>
         <DrawerTrigger asChild>
           {trigger || (
             <Button
@@ -83,7 +108,8 @@ export function BibleViewer({
           <BibleViewerContent
             reference={reference}
             open={open}
-            defaultVersion={defaultVersion}
+            defaultVersion={selectedVersion}
+            onVersionChange={setSelectedVersion}
           />
         </DrawerContent>
       </Drawer>
@@ -91,7 +117,7 @@ export function BibleViewer({
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         {trigger || (
           <Button
@@ -118,7 +144,8 @@ export function BibleViewer({
         <BibleViewerContent
           reference={reference}
           open={open}
-          defaultVersion={defaultVersion}
+          defaultVersion={selectedVersion}
+          onVersionChange={setSelectedVersion}
         />
       </DialogContent>
     </Dialog>
@@ -129,18 +156,29 @@ interface BibleViewerContentProps {
   reference: string;
   open: boolean;
   defaultVersion?: string;
+  onVersionChange: (version: string) => void;
 }
 
 export function BibleViewerContent({
   reference,
   open,
   defaultVersion = "rv1960",
+  onVersionChange,
 }: BibleViewerContentProps) {
   const [versions, setVersions] = useState<ApiBibleVersion[]>([]);
   const [selectedVersion, setSelectedVersion] = useState(defaultVersion);
-  const [verseText, setVerseText] = useState<string | string[]>("");
+  const [verseData, setVerseData] = useState<ChapterData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setSelectedVersion(defaultVersion);
+  }, [defaultVersion]);
+
+  useEffect(() => {
+    onVersionChange(selectedVersion);
+  }, [selectedVersion, onVersionChange]);
+
 
   // Fetch dinámico de versiones
   useEffect(() => {
@@ -162,55 +200,66 @@ export function BibleViewerContent({
     return texto.replace(/[áéíóúÁÉÍÓÚ]/g, letra => tildes[letra]);
   };
 
-  // Parsear referencias como "Juan 3:16" o "Juan 3:16-18"
+  // Parsear referencias como "Juan 3:16" o "Juan 3:16-18" o "Génesis 1"
   const parseReference = (ref: string) => {
-    const match = ref.match(/^(.+?)\s+(\d+):(\d+)(?:-(\d+))?$/);
-    if (!match) return null;
-    const [, bookName, chapter, startVerse, endVerse] = match;
-    return {
-      book: eliminarTildes(bookName),
-      chapter: Number.parseInt(chapter),
-      startVerse: Number.parseInt(startVerse),
-      endVerse: endVerse ? Number.parseInt(endVerse) : null,
-    };
+    // Intenta hacer match con formato Libro Capitulo:Versiculo-Versiculo
+    let match = ref.match(/^(.+?)\s+(\d+):(\d+)(?:-(\d+))?$/);
+    if (match) {
+      const [, bookName, chapter, startVerse, endVerse] = match;
+      return {
+        book: eliminarTildes(bookName.trim()),
+        chapter: Number.parseInt(chapter),
+        startVerse: Number.parseInt(startVerse),
+        endVerse: endVerse ? Number.parseInt(endVerse) : null,
+      };
+    }
+    
+    // Intenta hacer match con formato Libro Capitulo
+    match = ref.match(/^(.+?)\s+(\d+)$/);
+    if (match) {
+        const [, bookName, chapter] = match;
+        return {
+            book: eliminarTildes(bookName.trim()),
+            chapter: Number.parseInt(chapter),
+            startVerse: null, // Indicador para capítulo completo
+            endVerse: null,
+        };
+    }
+
+    return null;
   };
 
-  // Fetch de versículo(s) usando la nueva API
-  const loadVerse = async () => {
+  // Fetch de capítulo(s) o versículo(s)
+  const loadContent = async () => {
     const parsed = parseReference(reference);
     if (!parsed) {
       setError("Formato de referencia inválido");
-      setVerseText("");
+      setVerseData(null);
       return;
     }
-    console.log("Asi me lleva el parsed: ", parsed);
+
     setLoading(true);
     setError(null);
+
     try {
-      if (parsed.endVerse && parsed.endVerse !== parsed.startVerse) {
-        // Rango de versículos
-        const verses: string[] = [];
-        for (let v = parsed.startVerse; v <= parsed.endVerse; v++) {
-          console.log("Asi me lleva el libro: ", parsed.book);
-          const res = await fetch(
-            `https://bible-api.deno.dev/api/read/${selectedVersion}/${parsed.book}/${parsed.chapter}/${v}`
-          );
-          const data = await res.json();
-          console.log("Asi es la data del versiculo que me trae: ", data);
-          verses.push(data.verse || "No encontrado");
-        }
-        setVerseText(verses);
-      } else {
-        // Un solo versículo
-        const res = await fetch(
-          `https://bible-api.deno.dev/api/read/${selectedVersion}/${parsed.book}/${parsed.chapter}/${parsed.startVerse}`
-        );
-        const data = await res.json();
-        setVerseText(data.verse || "No encontrado");
+      const apiUrl = `https://bible-api.deno.dev/api/read/${selectedVersion}/${parsed.book}/${parsed.chapter}`;
+      const res = await fetch(apiUrl);
+      if (!res.ok) {
+        throw new Error(`Error ${res.status}: No se pudo obtener la información.`);
       }
-    } catch {
-      setError("Error al cargar el versículo");
-      setVerseText("");
+      const data: ChapterData = await res.json();
+      
+      // Filtrar versículos si es necesario
+      if (parsed.startVerse) {
+        const endVerse = parsed.endVerse || parsed.startVerse;
+        data.vers = data.vers.filter(v => v.number >= parsed.startVerse! && v.number <= endVerse);
+      }
+      
+      setVerseData(data);
+
+    } catch(err) {
+      setError(err instanceof Error ? err.message : "Error al cargar el contenido de la Biblia.");
+      setVerseData(null);
     } finally {
       setLoading(false);
     }
@@ -218,22 +267,20 @@ export function BibleViewerContent({
 
   useEffect(() => {
     if (open) {
-      loadVerse();
+      loadContent();
     }
     // eslint-disable-next-line
   }, [open, selectedVersion, reference]);
 
   const copyToClipboard = () => {
-    const text = Array.isArray(verseText) ? verseText.join(" ") : verseText;
-    const fullText = `"${text}" - ${reference} (${selectedVersion})`;
-    navigator.clipboard
-      .writeText(fullText)
-      .then(() => {
-        toast.success("Versículo copiado al portapapeles");
-      })
-      .catch(() => {
-        toast.error("Error al copiar el versículo");
-      });
+    if (!verseData) return;
+
+    const textToCopy = verseData.vers.map(v => `${v.number}. ${v.verse}`).join("\n");
+    const fullReference = `${reference} (${selectedVersion.toUpperCase()})`;
+    
+    navigator.clipboard.writeText(`${fullReference}\n${textToCopy}`)
+      .then(() => toast.success("Contenido copiado al portapapeles"))
+      .catch(() => toast.error("Error al copiar"));
   };
 
   const openInBibleApp = () => {
@@ -283,7 +330,7 @@ export function BibleViewerContent({
         <Button
           variant="outline"
           size="sm"
-          onClick={loadVerse}
+          onClick={loadContent}
           disabled={loading}
           className="bg-[#2a2a2a]/50 border-gray-700 hover:bg-[#3a3a3a]/50"
         >
@@ -299,7 +346,7 @@ export function BibleViewerContent({
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <LoadingSpinner size="lg" />
-            <span className="ml-3 text-gray-400">Cargando versículo...</span>
+            <span className="ml-3 text-gray-400">Cargando...</span>
           </div>
         ) : error ? (
           <div className="text-center py-12">
@@ -307,37 +354,27 @@ export function BibleViewerContent({
             <Button
               variant="outline"
               size="sm"
-              onClick={loadVerse}
+              onClick={loadContent}
               className="bg-[#2a2a2a]/50 border-gray-700 hover:bg-[#3a3a3a]/50"
             >
               Reintentar
             </Button>
           </div>
-        ) : (
+        ) : verseData && verseData.vers.length > 0 ? (
           <div className="space-y-4">
             <ScrollArea className="h-60">
-              <div className="pr-4">
-                {Array.isArray(verseText) ? (
-                  // Múltiples versículos
-                  <div className="space-y-3">
-                    {verseText.map((verse, index) => (
-                      <div key={index} className="flex gap-3">
-                        <Badge
-                          variant="outline"
-                          className="border-blue-500/30 text-blue-400 shrink-0"
-                        >
-                          {(parseReference(reference)?.startVerse ?? 0) + index}
-                        </Badge>
-                        <p className="text-gray-100 leading-relaxed">{verse}</p>
-                      </div>
-                    ))}
+              <div className="pr-4 space-y-3">
+                {verseData.vers.map((verse) => (
+                  <div key={verse.id} className="flex gap-3 items-start">
+                    <Badge
+                      variant="outline"
+                      className="border-blue-500/30 text-blue-400 shrink-0 mt-1"
+                    >
+                      {verse.number}
+                    </Badge>
+                    <p className="text-gray-100 leading-relaxed">{verse.verse}</p>
                   </div>
-                ) : (
-                  // Un solo versículo
-                  <p className="text-gray-100 leading-relaxed text-lg">
-                    {verseText}
-                  </p>
-                )}
+                ))}
               </div>
             </ScrollArea>
 
@@ -346,7 +383,7 @@ export function BibleViewerContent({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30">
-                  {selectedVersion}
+                  {selectedVersion.toUpperCase()}
                 </Badge>
                 <span className="text-sm text-gray-400">{reference}</span>
               </div>
@@ -373,6 +410,10 @@ export function BibleViewerContent({
               </div>
             </div>
           </div>
+        ) : (
+           <div className="text-center py-12 text-gray-400">
+             No se encontró contenido para la referencia seleccionada.
+           </div>
         )}
       </div>
     </div>

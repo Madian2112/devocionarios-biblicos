@@ -2,7 +2,7 @@
 
 import type React from "react";
 import { useState, useEffect } from "react";
-import { Book, Check, ChevronRight } from "lucide-react";
+import { Book } from "lucide-react";
 
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
@@ -33,56 +33,44 @@ import {
 } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { bibleService, fetchBibleBooks, BibleBook } from "@/lib/bible-data";
+import { parseReference, normalizeText } from "@/lib/bible-utils";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Switch } from "@/components/ui/switch";
+
 
 interface BibleSelectorProps {
   onSelect: (reference: string) => void;
   trigger?: React.ReactNode;
-  defaultBook?: string;
-  defaultChapter?: number;
-  defaultVerse?: number;
+  currentReference?: string;
 }
 
 export function BibleSelector({
   onSelect,
   trigger,
-  defaultBook = "juan",
-  defaultChapter = 3,
-  defaultVerse = 16,
+  currentReference = "Juan 3:16",
 }: BibleSelectorProps) {
   const [open, setOpen] = useState(false);
   const isMobile = useIsMobile();
-
+  
+  const FormContent = (
+    <BibleSelectorForm
+      onSelect={onSelect}
+      setOpen={setOpen}
+      currentReference={currentReference}
+    />
+  );
+  
   if (isMobile) {
     return (
       <Drawer open={open} onOpenChange={setOpen}>
-        <DrawerTrigger asChild>
-          {trigger || (
-            <Button
-              variant="outline"
-              className="bg-[#1a1a1a]/50 border-gray-700 hover:bg-[#2a2a2a]/50"
-            >
-              <Book className="h-4 w-4 mr-2" />
-              Seleccionar Versículo
-            </Button>
-          )}
-        </DrawerTrigger>
+        <DrawerTrigger asChild>{trigger}</DrawerTrigger>
         <DrawerContent className="bg-[#1a1a1a] border-gray-800 text-white">
           <DrawerHeader className="text-left">
-            <DrawerTitle className="flex items-center gap-2">
-              <Book className="h-5 w-5 text-blue-400" />
-              Seleccionar Versículo Bíblico
-            </DrawerTitle>
-            <DrawerDescription className="text-gray-400">
-              Elige el libro, capítulo y versículo(s) que deseas agregar.
-            </DrawerDescription>
+            <DrawerTitle>Seleccionar Pasaje Bíblico</DrawerTitle>
+            <DrawerDescription>Elige el libro, capítulo y versículo(s).</DrawerDescription>
           </DrawerHeader>
-          <BibleSelectorForm
-            onSelect={onSelect}
-            setOpen={setOpen}
-            defaultBook={defaultBook}
-            defaultChapter={defaultChapter}
-            defaultVerse={defaultVerse}
-          />
+          {FormContent}
         </DrawerContent>
       </Drawer>
     );
@@ -90,105 +78,124 @@ export function BibleSelector({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {trigger || (
-          <Button
-            variant="outline"
-            className="bg-[#1a1a1a]/50 border-gray-700 hover:bg-[#2a2a2a]/50"
-          >
-            <Book className="h-4 w-4 mr-2" />
-            Seleccionar Versículo
-          </Button>
-        )}
-      </DialogTrigger>
+      <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent className="bg-[#1a1a1a] border-gray-800 text-white max-w-2xl">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Book className="h-5 w-5 text-blue-400" />
-            Seleccionar Versículo Bíblico
-          </DialogTitle>
-          <DialogDescription className="text-gray-400">
-            Elige el libro, capítulo y versículo(s) que deseas agregar
-          </DialogDescription>
+          <DialogTitle>Seleccionar Pasaje Bíblico</DialogTitle>
+          <DialogDescription>Elige el libro, capítulo y versículo(s).</DialogDescription>
         </DialogHeader>
-
-        <BibleSelectorForm
-          onSelect={onSelect}
-          setOpen={setOpen}
-          defaultBook={defaultBook}
-          defaultChapter={defaultChapter}
-          defaultVerse={defaultVerse}
-        />
+        {FormContent}
       </DialogContent>
     </Dialog>
   );
 }
 
+
 interface BibleSelectorFormProps {
   onSelect: (reference: string) => void;
   setOpen: (open: boolean) => void;
-  defaultBook?: string;
-  defaultChapter?: number;
-  defaultVerse?: number;
-  className?: string;
+  currentReference?: string;
 }
 
 function BibleSelectorForm({
   onSelect,
   setOpen,
-  defaultBook = "juan",
-  defaultChapter = 3,
-  defaultVerse = 16,
+  currentReference,
 }: BibleSelectorFormProps) {
-  const [selectedBook, setSelectedBook] = useState(defaultBook);
-  const [selectedChapter, setSelectedChapter] = useState(defaultChapter);
-  const [startVerse, setStartVerse] = useState(defaultVerse);
-  const [endVerse, setEndVerse] = useState<number | null>(null);
-  const [books, setBooks] = useState<BibleBook[]>([]);
-  const [loadingBooks, setLoadingBooks] = useState(true);
+    const [selectionType, setSelectionType] = useState<'verse' | 'chapter'>('verse');
+    const [selectedBook, setSelectedBook] = useState('Juan');
+    const [startChapter, setStartChapter] = useState(3);
+    const [endChapter, setEndChapter] = useState<number | null>(null); // Todavía necesario para parsear referencias existentes
+    const [startVerse, setStartVerse] = useState(16);
+    const [endVerse, setEndVerse] = useState<number | null>(null);
 
-  useEffect(() => {
-    setLoadingBooks(true);
-    fetchBibleBooks()
-      .then((data) => {
+    const [books, setBooks] = useState<BibleBook[]>([]);
+    const [loadingBooks, setLoadingBooks] = useState(true);
+
+    useEffect(() => {
+        const parsed = parseReference(currentReference || "");
+        if (parsed && books.length > 0) { // Asegurarse de que los libros estén cargados
+            const bookMatch = books.find(b => normalizeText(b.name) === normalizeText(parsed.book));
+            setSelectedBook(bookMatch ? bookMatch.name : parsed.book);
+            
+            setStartChapter(parsed.startChapter);
+
+            // AQUÍ ESTÁ LA LÓGICA CLAVE
+            if (parsed.startVerse) {
+                // Si la referencia tiene un versículo, mostramos el selector de versículos
+                setSelectionType('verse');
+                setStartVerse(parsed.startVerse);
+                setEndVerse(parsed.endVerse || null);
+                setEndChapter(null);
+            } else {
+                // Si no tiene versículo, es una referencia de capítulo
+                setSelectionType('chapter');
+                setEndChapter(parsed.endChapter || null);
+                // Reseteamos los valores de versículos para evitar inconsistencias
+                setStartVerse(1);
+                setEndVerse(null);
+            }
+        }
+    }, [currentReference, books]); // Depender de `books` es crucial
+
+    useEffect(() => {
+      setLoadingBooks(true);
+      fetchBibleBooks().then(data => {
         setBooks(data);
         setLoadingBooks(false);
-      })
-      .catch(() => setLoadingBooks(false));
-  }, []);
+      }).catch(() => setLoadingBooks(false));
+    }, []);
 
-  const selectedBookData = books.find((book) => book.name === selectedBook);
-  const maxChapters = selectedBookData?.chapters || 1;
+    const handleBookChange = (bookName: string) => {
+        setSelectedBook(bookName);
+        setStartChapter(1);
+        setEndChapter(null);
+        setStartVerse(1);
+        setEndVerse(null);
+    }
 
-  const maxVerses =
-    selectedBookData?.chapter_verses && selectedChapter
-      ? selectedBookData.chapter_verses[selectedChapter.toString()] || 1
-      : 1;
+    const selectedBookData = books.find(book => book.name === selectedBook);
+    const maxChapters = selectedBookData?.chapters || 1;
+    const maxVerses = selectedBookData?.chapter_verses && startChapter
+        ? selectedBookData.chapter_verses[startChapter.toString()] || 1
+        : 1;
 
-  const handleSelect = () => {
-    const reference = bibleService.formatReference(
-      selectedBook,
-      selectedChapter,
-      startVerse,
-      endVerse || undefined
-    );
-    onSelect(reference);
-    setOpen(false);
-  };
-
-  const handleBookChange = (bookName: string) => {
-    setSelectedBook(bookName);
-    setSelectedChapter(1);
-    setStartVerse(1);
-    setEndVerse(null);
-  }
+    const handleSelect = () => {
+        let reference = '';
+        if (selectionType === 'verse') {
+            reference = bibleService.formatReference(selectedBook, startChapter, startVerse, endVerse || undefined);
+        } else {
+            // Para selección de capítulo, solo usamos el capítulo inicial.
+            reference = `${selectedBook} ${startChapter}`;
+        }
+        onSelect(reference);
+        setOpen(false);
+    };
+    
+    const generatePreviewReference = () => {
+        if (selectionType === 'verse') {
+             return bibleService.formatReference(selectedBook, startChapter, startVerse, endVerse || undefined);
+        }
+        // Para capítulo, solo libro y capítulo inicial.
+        return `${selectedBook} ${startChapter}`;
+    }
 
   return (
     <div className="space-y-6 p-4">
+        {/* Switch para tipo de selección */}
+        <div className="flex items-center justify-center space-x-2">
+            <Label>Versículo</Label>
+            <Switch
+                checked={selectionType === 'chapter'}
+                onCheckedChange={(checked) => setSelectionType(checked ? 'chapter' : 'verse')}
+            />
+            <Label>Capítulo</Label>
+        </div>
+
       {/* Selector de libro */}
       <div>
         <Label className="text-gray-300 mb-2 block">Libro</Label>
-        <Select value={selectedBook} onValueChange={handleBookChange}>
+        <Select value={selectedBook} onValueChange={handleBookChange} disabled={loadingBooks}>
           <SelectTrigger className="bg-[#2a2a2a]/50 border-gray-700 text-white">
             <SelectValue placeholder="Seleccione un libro" />
           </SelectTrigger>
@@ -212,116 +219,72 @@ function BibleSelectorForm({
         </Select>
       </div>
 
-      {/* Selectores en fila */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-        {/* Capítulo */}
-        <div>
-          <Label className="text-gray-300 mb-2 block">Capítulo</Label>
-          <Select
-            value={selectedChapter.toString()}
-            onValueChange={(value) =>
-              setSelectedChapter(Number.parseInt(value))
-            }
-            disabled={!selectedBook}
-          >
-            <SelectTrigger className="bg-[#2a2a2a]/50 border-gray-700 text-white">
-              <SelectValue placeholder="Seleccione un capítulo" />
-            </SelectTrigger>
-            <SelectContent className="bg-[#1a1a1a] border-gray-800 text-white max-h-60">
-              <ScrollArea className="h-60">
-                {Array.from({ length: maxChapters }, (_, i) => i + 1).map(
-                  (chapter) => (
-                    <SelectItem
-                      key={chapter}
-                      value={chapter.toString()}
-                      className="hover:bg-[#2a2a2a]"
-                    >
-                      {chapter}
-                    </SelectItem>
-                  )
-                )}
-              </ScrollArea>
-            </SelectContent>
-          </Select>
+      {/* Selectores condicionales */}
+      {selectionType === 'verse' ? (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {/* Capítulo */}
+          <div>
+            <Label className="text-gray-300 mb-2 block">Capítulo</Label>
+            <Select value={startChapter.toString()} onValueChange={(v) => setStartChapter(parseInt(v))} disabled={!selectedBook}>
+              <SelectTrigger className="bg-[#2a2a2a]/50 border-gray-700 text-white">
+                <SelectValue placeholder="Seleccione un capítulo" />
+              </SelectTrigger>
+              <SelectContent className="bg-[#1a1a1a] border-gray-800 text-white max-h-60">
+                <ScrollArea className="h-60">{Array.from({ length: maxChapters }, (_, i) => i + 1).map(c => <SelectItem key={c} value={c.toString()} className="hover:bg-[#2a2a2a]">{c}</SelectItem>)}</ScrollArea>
+              </SelectContent>
+            </Select>
+          </div>
+          {/* Versículo Inicial */}
+          <div>
+            <Label className="text-gray-300 mb-2 block">Versículo</Label>
+            <Select value={startVerse.toString()} onValueChange={(v) => setStartVerse(parseInt(v))} disabled={!selectedBook}>
+               <SelectTrigger className="bg-[#2a2a2a]/50 border-gray-700 text-white">
+                 <SelectValue placeholder="Seleccione un versículo" />
+               </SelectTrigger>
+               <SelectContent className="bg-[#1a1a1a] border-gray-800 text-white max-h-60">
+                 <ScrollArea className="h-60">{Array.from({ length: maxVerses }, (_, i) => i + 1).map(v => <SelectItem key={v} value={v.toString()} className="hover:bg-[#2a2a2a]">{v}</SelectItem>)}</ScrollArea>
+               </SelectContent>
+            </Select>
+          </div>
+          {/* Versículo Final */}
+          <div>
+            <Label className="text-gray-300 mb-2 block">Hasta (opcional)</Label>
+            <Select value={endVerse?.toString() || 'none'} onValueChange={(v) => setEndVerse(v === 'none' ? null : parseInt(v))} disabled={!selectedBook}>
+              <SelectTrigger className="bg-[#2a2a2a]/50 border-gray-700 text-white">
+                <SelectValue placeholder="Seleccionar" />
+              </SelectTrigger>
+              <SelectContent className="bg-[#1a1a1a] border-gray-800 text-white max-h-60">
+                <ScrollArea className="h-60">
+                    <SelectItem value="none" className="hover:bg-[#2a2a2a]">Solo un versículo</SelectItem>
+                    {Array.from({ length: maxVerses }, (_, i) => i + 1).filter(v => v > startVerse).map(v => <SelectItem key={v} value={v.toString()} className="hover:bg-[#2a2a2a]">{v}</SelectItem>)}
+                </ScrollArea>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
-
-        {/* Versículo inicial */}
-        <div>
-          <Label className="text-gray-300 mb-2 block">Versículo</Label>
-          <Select
-            value={startVerse.toString()}
-            onValueChange={(value) => setStartVerse(Number.parseInt(value))}
-            disabled={!selectedBook}
-          >
-            <SelectTrigger className="bg-[#2a2a2a]/50 border-gray-700 text-white">
-              <SelectValue placeholder="Seleccione un versículo" />
-            </SelectTrigger>
-            <SelectContent className="bg-[#1a1a1a] border-gray-800 text-white max-h-60">
-              <ScrollArea className="h-60">
-                {Array.from({ length: maxVerses }, (_, i) => i + 1).map(
-                  (verse) => (
-                    <SelectItem
-                      key={verse}
-                      value={verse.toString()}
-                      className="hover:bg-[#2a2a2a]"
-                    >
-                      {verse}
-                    </SelectItem>
-                  )
-                )}
-              </ScrollArea>
-            </SelectContent>
-          </Select>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-1 gap-4">
+            {/* Capítulo Inicial */}
+            <div>
+              <Label className="text-gray-300 mb-2 block">Capítulo</Label>
+              <Select value={startChapter.toString()} onValueChange={(v) => setStartChapter(parseInt(v))} disabled={!selectedBook}>
+                <SelectTrigger className="bg-[#2a2a2a]/50 border-gray-700 text-white">
+                  <SelectValue placeholder="Seleccione un capítulo" />
+                </SelectTrigger>
+                <SelectContent className="bg-[#1a1a1a] border-gray-800 text-white max-h-60">
+                  <ScrollArea className="h-60">{Array.from({ length: maxChapters }, (_, i) => i + 1).map(c => <SelectItem key={c} value={c.toString()} className="hover:bg-[#2a2a2a]">{c}</SelectItem>)}</ScrollArea>
+                </SelectContent>
+              </Select>
+            </div>
         </div>
-
-        {/* Hasta versículo (opcional) */}
-        <div>
-          <Label className="text-gray-300 mb-2 block">
-            Hasta (opcional)
-          </Label>
-          <Select
-            value={endVerse ? endVerse.toString() : "none"}
-            onValueChange={(value) =>
-              setEndVerse(value === "none" ? null : Number.parseInt(value))
-            }
-            disabled={!selectedBook}
-          >
-            <SelectTrigger className="bg-[#2a2a2a]/50 border-gray-700 text-white">
-              <SelectValue placeholder="Seleccionar" />
-            </SelectTrigger>
-            <SelectContent className="bg-[#1a1a1a] border-gray-800 text-white max-h-60">
-              <ScrollArea className="h-60">
-                <SelectItem value="none" className="hover:bg-[#2a2a2a]">
-                  Solo un versículo
-                </SelectItem>
-                {Array.from({ length: maxVerses }, (_, i) => i + 1)
-                  .filter((verse) => verse > startVerse)
-                  .map((verse) => (
-                    <SelectItem
-                      key={verse}
-                      value={verse.toString()}
-                      className="hover:bg-[#2a2a2a]"
-                    >
-                      {verse}
-                    </SelectItem>
-                  ))}
-              </ScrollArea>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
+      )}
+      
       {/* Botón y vista previa */}
       <div className="flex flex-col-reverse sm:flex-row gap-4 items-center pt-4">
           <div className="flex-1 w-full sm:w-auto">
              <p className="text-gray-300 text-sm mb-1 text-center sm:text-left">Vista previa:</p>
              <div className="text-white font-medium bg-[#2a2a2a]/30 rounded-lg p-3 border border-gray-700/50 text-center text-base">
-              {bibleService.formatReference(
-                selectedBook,
-                selectedChapter,
-                startVerse,
-                endVerse || undefined
-              )}
+              {generatePreviewReference()}
             </div>
           </div>
           <Button

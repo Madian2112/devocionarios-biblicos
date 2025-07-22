@@ -54,6 +54,8 @@ import {
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { LandingPage } from "@/components/landing-page"
 import { LoginPage } from "@/components/login-page"
+import { fetchVerseText } from "@/lib/bible-api"
+
 
 interface AppContentProps {
   onLogout: () => void;
@@ -98,6 +100,7 @@ function AppContent({ onLogout }: AppContentProps) {
               "Porque de tal manera amó Dios al mundo, que ha dado a su Hijo unigénito, para que todo aquel que en él cree, no se pierda, mas tenga vida eterna.",
             aprendizaje:
               "El amor de Dios trasciende todo entendimiento humano y se manifiesta en el sacrificio de Cristo.",
+            versionTexto: "rv1960",
           },
         ],
         referencias: [
@@ -112,6 +115,7 @@ function AppContent({ onLogout }: AppContentProps) {
         completado: true,
         createdAt: Timestamp.now(),
         updatedAt: Timestamp.now(),
+        versionCitaBiblica: "rv1960",
       }
       setDevocionarios([ejemploDevocional])
     } catch (error) {
@@ -139,6 +143,7 @@ function AppContent({ onLogout }: AppContentProps) {
       id: Date.now().toString(),
       reference: "",
       learning: "",
+      versionTexto: "rv1960", // Versión por defecto
     };
     setTopicalStudies(topicalStudies.map(topic => 
       topic.id === topicId 
@@ -208,6 +213,7 @@ function AppContent({ onLogout }: AppContentProps) {
       completado: false,
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
+      versionCitaBiblica: "rv1960", // Versión por defecto
     }
     setCurrentDevocional(newDevocional)
     setCurrentView("devocional")
@@ -240,6 +246,7 @@ function AppContent({ onLogout }: AppContentProps) {
       referencia: "",
       texto: "",
       aprendizaje: "",
+      versionTexto: "rv1960", // Versión por defecto
     }
     setCurrentDevocional({
       ...currentDevocional,
@@ -524,6 +531,20 @@ function AppContent({ onLogout }: AppContentProps) {
                             {devocionarios.find((d) => d.fecha === selectedDate)?.citaBiblica && (
                               <BibleViewer
                                 reference={devocionarios.find((d) => d.fecha === selectedDate)?.citaBiblica || ""}
+                                onClose={async (selectedVersion) => {
+                                  const devocional = devocionarios.find((d) => d.fecha === selectedDate);
+                                  if (devocional) {
+                                      setSaving(true);
+                                      const verseText = await fetchVerseText(devocional.citaBiblica, selectedVersion);
+                                      const updatedDevocional = { ...devocional, textoDevocional: verseText };
+                                      // Actualizar el estado de devocionarios y el devocional actual si es el mismo
+                                      setDevocionarios(devocionarios.map(d => d.id === devocional.id ? updatedDevocional : d));
+                                      if (currentDevocional && currentDevocional.id === devocional.id) {
+                                          setCurrentDevocional(updatedDevocional);
+                                      }
+                                      setSaving(false);
+                                  }
+                                }}
                                 trigger={
                                   <Button
                                     variant="ghost"
@@ -694,7 +715,7 @@ function AppContent({ onLogout }: AppContentProps) {
             <CardContent className="space-y-6">
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-3">Cita Bíblica Principal</label>
-                <div className="flex gap-3">
+                <div className="flex gap-3 items-center">
                   <div className="flex-1">
                     <Input
                       value={currentDevocional.citaBiblica}
@@ -708,13 +729,22 @@ function AppContent({ onLogout }: AppContentProps) {
                       className="bg-[#2a2a2a]/50 border-gray-700 text-white backdrop-blur-sm focus:border-blue-500 transition-colors"
                     />
                   </div>
+                   <Badge variant="outline" className="border-gray-600 text-gray-400 shrink-0">
+                      {currentDevocional.versionCitaBiblica?.toUpperCase() || 'RV1960'}
+                   </Badge>
                   <BibleSelector
-                    onSelect={(reference) =>
+                    currentReference={currentDevocional.citaBiblica}
+                    onSelect={async (reference) => {
+                      setSaving(true);
+                      const verseText = await fetchVerseText(reference, 'rv1960');
                       setCurrentDevocional({
                         ...currentDevocional,
                         citaBiblica: reference,
-                      })
-                    }
+                        textoDevocional: verseText,
+                        versionCitaBiblica: 'rv1960',
+                      });
+                      setSaving(false);
+                    }}
                     trigger={
                       <Button
                         variant="outline"
@@ -728,6 +758,15 @@ function AppContent({ onLogout }: AppContentProps) {
                   {currentDevocional.citaBiblica && (
                     <BibleViewer
                       reference={currentDevocional.citaBiblica}
+                      defaultVersion={currentDevocional.versionCitaBiblica}
+                      onClose={async (selectedVersion) => {
+                        if (currentDevocional) { 
+                           setSaving(true);
+                           const verseText = await fetchVerseText(currentDevocional.citaBiblica, selectedVersion);
+                           setCurrentDevocional({ ...currentDevocional, textoDevocional: verseText, versionCitaBiblica: selectedVersion });
+                           setSaving(false);
+                        }
+                      }}
                       trigger={
                         <Button
                           variant="outline"
@@ -753,6 +792,7 @@ function AppContent({ onLogout }: AppContentProps) {
                   }
                   placeholder="Escribe o pega el contenido del devocional aquí..."
                   className="bg-[#2a2a2a]/50 border-gray-700 text-white min-h-[150px] backdrop-blur-sm focus:border-blue-500 transition-colors resize-none"
+                  disabled={saving}
                 />
               </div>
             </CardContent>
@@ -854,7 +894,7 @@ function AppContent({ onLogout }: AppContentProps) {
                     <CardContent className="space-y-6">
                       <div>
                         <label className="block text-sm font-medium text-gray-300 mb-3">Referencia Bíblica</label>
-                        <div className="flex gap-3">
+                        <div className="flex gap-3 items-center">
                           <div className="flex-1">
                             <Input
                               value={versiculo.referencia}
@@ -870,28 +910,45 @@ function AppContent({ onLogout }: AppContentProps) {
                               className="bg-[#2a2a2a]/50 border-gray-700 text-white backdrop-blur-sm focus:border-blue-500 transition-colors"
                             />
                           </div>
+                          <Badge variant="outline" className="border-gray-600 text-gray-400 shrink-0">
+                             {versiculo.versionTexto?.toUpperCase() || 'RV1960'}
+                          </Badge>
                           <BibleSelector
-                            onSelect={(reference) => {
-                              const updatedVersiculos = [...currentDevocional.versiculos]
-                              updatedVersiculos[index] = { ...versiculo, referencia: reference }
-                              setCurrentDevocional({
-                                ...currentDevocional,
-                                versiculos: updatedVersiculos,
-                              })
-                            }}
-                            trigger={
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="bg-[#2a2a2a]/50 border-gray-700 hover:bg-[#3a3a3a]/50 shrink-0"
-                              >
-                                <Book className="h-4 w-4" />
-                              </Button>
-                            }
-                          />
+                                  onSelect={async (reference) => {
+                                    const updatedVersiculos = [...currentDevocional.versiculos];
+                                    const verseText = await fetchVerseText(reference, 'rv1960');
+                                    updatedVersiculos[index] = { ...versiculo, referencia: reference, texto: verseText, versionTexto: 'rv1960' };
+                                    setCurrentDevocional({
+                                      ...currentDevocional,
+                                      versiculos: updatedVersiculos,
+                                    });
+                                  }}
+                                  currentReference={versiculo.referencia}
+                                  trigger={
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="bg-[#2a2a2a]/50 border-gray-700 hover:bg-[#3a3a3a]/50 shrink-0"
+                                    >
+                                      <Book className="h-4 w-4" />
+                                    </Button>
+                                  }
+                                />
                           {versiculo.referencia && (
                             <BibleViewer
                               reference={versiculo.referencia}
+                              defaultVersion={versiculo.versionTexto}
+                              onClose={async (selectedVersion) => {
+                                 setSaving(true);
+                                 const updatedVersiculos = [...currentDevocional.versiculos];
+                                 const verseText = await fetchVerseText(versiculo.referencia, selectedVersion);
+                                 updatedVersiculos[index] = { ...versiculo, texto: verseText, versionTexto: selectedVersion };
+                                 setCurrentDevocional({
+                                   ...currentDevocional,
+                                   versiculos: updatedVersiculos,
+                                 });
+                                 setSaving(false);
+                              }}
                               trigger={
                                 <Button
                                   variant="outline"
@@ -1449,6 +1506,13 @@ function AppContent({ onLogout }: AppContentProps) {
                               <div className="ml-2 flex-shrink-0">
                                   <BibleViewer
                                       reference={entry.reference}
+                                      defaultVersion={entry.versionTexto}
+                                      onClose={async (selectedVersion) => {
+                                        setSaving(true);
+                                        const verseText = await fetchVerseText(entry.reference, selectedVersion);
+                                        handleUpdateStudyEntry(currentTopic.id, {...entry, learning: verseText, versionTexto: selectedVersion})
+                                        setSaving(false);
+                                      }}
                                       trigger={
                                           <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-400 hover:text-blue-300">
                                               <Eye className="h-4 w-4" />
@@ -1462,7 +1526,7 @@ function AppContent({ onLogout }: AppContentProps) {
                         <CardContent className="pt-4 space-y-6 border-t border-blue-500/20">
                           <div>
                               <label className="block text-sm font-medium text-gray-300 mb-3">Referencia(s) Bíblica(s)</label>
-                              <div className="flex gap-3">
+                              <div className="flex flex-col sm:flex-row gap-3">
                                 <div className="flex-1">
                                   <Input
                                     value={entry.reference}
@@ -1471,8 +1535,25 @@ function AppContent({ onLogout }: AppContentProps) {
                                     className="bg-[#2a2a2a]/50 border-gray-700 text-white"
                                   />
                                 </div>
-                                <BibleSelector onSelect={(ref) => handleUpdateStudyEntry(currentTopic.id, {...entry, reference: ref})} />
-                                <Button
+                                <Badge variant="outline" className="border-gray-600 text-gray-400 shrink-0">
+                                  {entry.versionTexto?.toUpperCase() || 'RV1960'}
+                                </Badge>
+                                <BibleSelector
+                                  onSelect={async (ref) => {
+                                      setSaving(true);
+                                      const verseText = await fetchVerseText(ref, 'rv1960');
+                                      handleUpdateStudyEntry(currentTopic.id, {...entry, reference: ref, learning: verseText, versionTexto: 'rv1960'})
+                                      setSaving(false);
+                                  }}
+                                  currentReference={entry.reference}
+                                  trigger={
+                                    <Button variant="outline" className="bg-[#2a2a2a]/50 border-gray-700 hover:bg-[#3a3a3a]/50 shrink-0">
+                                      <Book className="h-4 w-4 mr-2" />
+                                      Seleccionar
+                                    </Button>
+                                  }
+                                />
+                                 <Button
                                     variant="outline"
                                     size="icon"
                                     onClick={() => handleRemoveStudyEntry(currentTopic.id, entry.id)}
@@ -1491,6 +1572,7 @@ function AppContent({ onLogout }: AppContentProps) {
                                 onChange={(e) => handleUpdateStudyEntry(currentTopic.id, {...entry, learning: e.target.value})}
                                 placeholder="Escribe aquí tus reflexiones sobre este pasaje..."
                                 className="bg-[#2a2a2a]/50 border-gray-700 text-white min-h-[150px]"
+                                disabled={saving}
                               />
                             </div>
                         </CardContent>

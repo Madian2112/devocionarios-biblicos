@@ -16,6 +16,7 @@ export interface StudyEntry {
   id: string;
   reference: string;
   learning: string;
+  versionTexto?: string;
 }
 
 export interface TopicalStudy {
@@ -29,6 +30,7 @@ export interface Versiculo {
   referencia: string
   texto: string
   aprendizaje: string
+  versionTexto?: string
 }
 
 export interface Referencia {
@@ -50,6 +52,7 @@ export interface Devocional {
   completado: boolean
   createdAt: Timestamp
   updatedAt: Timestamp
+  versionCitaBiblica?: string
 }
 
 const COLLECTION_NAME = "devocionarios"
