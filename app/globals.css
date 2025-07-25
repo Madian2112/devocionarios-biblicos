@@ -2,6 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
+#nprogress .bar {
+  background: linear-gradient(90deg, #3B82F6, #8B5CF6) !important;
+  height: 3px !important;
+}
+
+#nprogress .peg {
+  box-shadow: 0 0 10px #8B5CF6, 0 0 5px #8B5CF6 !important;
+}
+
 @layer base {
   :root {
     --background: 10 10% 4%;

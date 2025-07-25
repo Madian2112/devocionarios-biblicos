@@ -201,17 +201,17 @@ export function BibleViewerContent({
   };
 
   // Parsear referencias como "Juan 3:16" o "Juan 3:16-18" o "Génesis 1"
-  const parseReference = (ref: string) => {
+const parseReference = (ref: string) => {
     // Intenta hacer match con formato Libro Capitulo:Versiculo-Versiculo
     let match = ref.match(/^(.+?)\s+(\d+):(\d+)(?:-(\d+))?$/);
     if (match) {
-      const [, bookName, chapter, startVerse, endVerse] = match;
-      return {
+  const [, bookName, chapter, startVerse, endVerse] = match;
+  return {
         book: eliminarTildes(bookName.trim()),
-        chapter: Number.parseInt(chapter),
+    chapter: Number.parseInt(chapter),
         startVerse: Number.parseInt(startVerse),
-        endVerse: endVerse ? Number.parseInt(endVerse) : null,
-      };
+    endVerse: endVerse ? Number.parseInt(endVerse) : null,
+  };
     }
     
     // Intenta hacer match con formato Libro Capitulo
@@ -227,7 +227,7 @@ export function BibleViewerContent({
     }
 
     return null;
-  };
+};
 
   // Fetch de capítulo(s) o versículo(s)
   const loadContent = async () => {
@@ -241,12 +241,12 @@ export function BibleViewerContent({
     setLoading(true);
     setError(null);
 
-    try {
+    try { 
       const apiUrl = `https://bible-api.deno.dev/api/read/${selectedVersion}/${parsed.book}/${parsed.chapter}`;
       const res = await fetch(apiUrl);
       if (!res.ok) {
         throw new Error(`Error ${res.status}: No se pudo obtener la información.`);
-      }
+        }
       const data: ChapterData = await res.json();
       
       // Filtrar versículos si es necesario
@@ -366,12 +366,12 @@ export function BibleViewerContent({
               <div className="pr-4 space-y-3">
                 {verseData.vers.map((verse) => (
                   <div key={verse.id} className="flex gap-3 items-start">
-                    <Badge
-                      variant="outline"
+                        <Badge
+                          variant="outline"
                       className="border-blue-500/30 text-blue-400 shrink-0 mt-1"
-                    >
+                        >
                       {verse.number}
-                    </Badge>
+                        </Badge>
                     <p className="text-gray-100 leading-relaxed">{verse.verse}</p>
                   </div>
                 ))}
@@ -413,7 +413,7 @@ export function BibleViewerContent({
         ) : (
            <div className="text-center py-12 text-gray-400">
              No se encontró contenido para la referencia seleccionada.
-           </div>
+          </div>
         )}
       </div>
     </div>

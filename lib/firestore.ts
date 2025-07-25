@@ -55,12 +55,14 @@ export interface Devocional {
   versionCitaBiblica?: string
 }
 
-const COLLECTION_NAME = "devocionarios"
+const DEVOCIONALES_COLLECTION = "devocionarios"
+const TOPICS_COLLECTION = "topical_studies"
+
 
 export const firestoreService = {
-  // Crear o actualizar devocional
+  // --- DEVOCIONALES ---
   async saveDevocional(devocional: Omit<Devocional, "createdAt" | "updatedAt">) {
-    const docRef = doc(db, COLLECTION_NAME, devocional.id)
+    const docRef = doc(db, DEVOCIONALES_COLLECTION, devocional.id)
     const now = Timestamp.now()
 
     const docSnap = await getDoc(docRef)
@@ -74,9 +76,8 @@ export const firestoreService = {
     return data
   },
 
-  // Obtener todos los devocionarios
   async getDevocionarios(): Promise<Devocional[]> {
-    const q = query(collection(db, COLLECTION_NAME), orderBy("fecha", "desc"))
+    const q = query(collection(db, DEVOCIONALES_COLLECTION), orderBy("fecha", "desc"))
     const querySnapshot = await getDocs(q)
     return querySnapshot.docs.map(
       (doc) =>
@@ -87,9 +88,8 @@ export const firestoreService = {
     )
   },
 
-  // Obtener devocional por fecha
   async getDevocionalByDate(fecha: string): Promise<Devocional | null> {
-    const q = query(collection(db, COLLECTION_NAME), where("fecha", "==", fecha))
+    const q = query(collection(db, DEVOCIONALES_COLLECTION), where("fecha", "==", fecha))
     const querySnapshot = await getDocs(q)
     if (querySnapshot.empty) return null
 
@@ -97,8 +97,24 @@ export const firestoreService = {
     return { id: doc.id, ...doc.data() } as Devocional
   },
 
-  // Eliminar devocional
   async deleteDevocional(id: string) {
-    await deleteDoc(doc(db, COLLECTION_NAME, id))
+    await deleteDoc(doc(db, DEVOCIONALES_COLLECTION, id))
+  },
+
+  // --- ESTUDIOS POR TEMAS ---
+  async saveTopicalStudy(topic: TopicalStudy) {
+    const docRef = doc(db, TOPICS_COLLECTION, topic.id);
+    await setDoc(docRef, topic, { merge: true });
+    return topic;
+  },
+
+  async getTopicalStudies(): Promise<TopicalStudy[]> {
+    const q = query(collection(db, TOPICS_COLLECTION), orderBy("name", "asc"));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as TopicalStudy);
+  },
+
+  async deleteTopicalStudy(id: string) {
+    await deleteDoc(doc(db, TOPICS_COLLECTION, id));
   },
 }
