@@ -10,6 +10,8 @@ import {
   Book,
   Link as LinkIcon,
   LogOut,
+  LogOutIcon,
+  LogInIcon,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -33,16 +35,17 @@ export default function HomePage() {
     <div className="min-h-screen bg-gradient-to-br from-[#0a0a0a] via-[#0f0f0f] to-[#0a0a0a] text-white">
       <div className="relative container mx-auto px-4 sm:px-6 lg:px-8 py-8 max-w-7xl">
         
-        <div className="absolute top-8 right-4 sm:right-6 lg:right-8 z-10">
+        <div className="absolute top-8 left-4 sm:left-6 lg:left-8 z-10">
           <Button
             variant="outline"
             onClick={handleLogout}
             className="bg-[#1a1a1a]/50 border-gray-700 hover:bg-[#2a2a2a]/50 backdrop-blur-sm"
           >
-            <LogOut className="h-4 w-4 mr-2" />
+        <LogOutIcon className="h-4 w-4 mr-2 rotate-180" />
             Salir
           </Button>
         </div>
+
         
         {/* Header */}
         <div className="text-center mb-12">

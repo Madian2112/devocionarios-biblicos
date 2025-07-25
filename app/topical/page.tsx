@@ -70,19 +70,25 @@ export default function TopicalStudiesPage() {
     <div className="min-h-screen bg-gradient-to-br from-[#0a0a0a] via-[#0f0f0f] to-[#0a0a0a] text-white">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 max-w-5xl">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-8">
-            <Link href="/">
-                <Button
-                variant="outline"
-                className="bg-[#1a1a1a]/50 border-gray-700 hover:bg-[#2a2a2a]/50 backdrop-blur-sm w-full sm:w-auto"
-                >
-                <Home className="h-4 w-4 mr-2"/>
-                <span>Volver al Inicio</span>
-                </Button>
-            </Link>
-            <h1 className="text-2xl font-bold text-white text-center">Estudio por Temas</h1>
-            <div className="w-40"></div>
-        </div>
+<div className="flex flex-wrap items-center justify-center gap-4 mb-8 text-center sm:justify-between">
+  <div className="w-full sm:w-auto flex justify-center sm:justify-start">
+    <Link href="/home">
+      <Button
+        variant="outline"
+        className="bg-[#1a1a1a]/50 border-gray-700 hover:bg-[#2a2a2a]/50 backdrop-blur-sm w-full sm:w-auto justify-start"
+      >
+        <Home className="h-4 " />
+      </Button>
+    </Link>
+    <h1 className="text-2xl font-bold text-white w-full sm:w-auto">Estudio por Temas</h1>
+  </div>
+
+
+  <div className="w-40 hidden sm:block"></div>
+</div>
+
+
+
         
         {/* Contenido */}
         <div className="space-y-6">

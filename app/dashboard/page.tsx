@@ -25,6 +25,7 @@ import { GradientCard } from "@/components/ui/gradient-card"
 import type { Devocional } from "@/lib/firestore"
 import { Timestamp } from "firebase/firestore"
 import { BibleViewer } from "@/components/bible/bible-viewer"
+import { useZoom } from "@/components/zoom-provider"
 
 // Datos de ejemplo para que la página funcione de forma aislada
 const getSampleDevocionals = (): Devocional[] => [
@@ -47,6 +48,7 @@ const getSampleDevocionals = (): Devocional[] => [
 export default function DashboardPage() {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0])
   const [devocionarios, setDevocionarios] = useState<Devocional[]>([]);
+  const { zoom } = useZoom()
   
   useEffect(() => {
     setDevocionarios(getSampleDevocionals());
@@ -77,25 +79,30 @@ export default function DashboardPage() {
      <div className="min-h-screen bg-gradient-to-br from-[#0a0a0a] via-[#0f0f0f] to-[#0a0a0a] text-white">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 max-w-7xl">
          {/* Header del Dashboard */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-8">
-            <Link href="/">
-                <Button
-                    variant="outline"
-                    className="bg-[#1a1a1a]/50 border-gray-700 hover:bg-[#2a2a2a]/50 backdrop-blur-sm w-full sm:w-auto"
-                >
-                    <Home className="h-4 w-4 mr-2"/>
-                    <span>{'Volver al Inicio'}</span>
+        <div className="flex flex-col gap-4 mb-8">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+                {/* Botón Home */}
+                <Link href="/home" className="order-first">
+                <Button variant="outline" className="bg-[#1a1a1a]/50 border-gray-700 hover:bg-[#2a2a2a]/50 backdrop-blur-sm">
+                    <Home className="h-4 w-4"/>
                 </Button>
-            </Link>
-            <div className="flex gap-4 w-full sm:w-auto">
-                <Link href="/search">
-                    <Button variant="outline" className="bg-[#1a1a1a]/50 border-gray-700 hover:bg-[#2a2a2a]/50 flex-1 sm:flex-none"><Search className="h-4 w-4 mr-2"/>Buscar</Button>
                 </Link>
-                <Link href="/devocional/new">
-                    <Button className="bg-gradient-to-r from-blue-600 to-purple-600 flex-1 sm:flex-none"><Plus className="h-4 w-4 mr-2"/>Nuevo Devocional</Button>
-                </Link>
+
+                {/* Botones derecha */}
+                <div className="flex gap-4">
+                    <Link href="/search">
+                        <Button variant="outline" className="bg-[#1a1a1a]/50 border-gray-700 hover:bg-[#2a2a2a]/50">
+                        <Search className="h-4 w-4 mr-2"/> Buscar
+                        </Button>
+                    </Link>
+                    <Link href="/devocional/new">
+                        <Button className="bg-gradient-to-r from-blue-600 to-purple-600">
+                        <Plus className="h-4 w-4 mr-2"/> Nuevo Devocional
+                        </Button>
+                    </Link>
+                </div>
             </div>
-          </div>
+        </div>
           
           {/* Selector de Fecha */}
           <GradientCard className="mb-8">
