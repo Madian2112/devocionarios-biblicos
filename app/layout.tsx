@@ -68,10 +68,7 @@ export default function RootLayout({
       <link rel="icon" href="/favicon.ico" sizes="any" />
       <link rel="icon" href="/icons/icon-32x32.png" type="image/png" sizes="32x32" />
       <link rel="manifest" href="/manifest.json" />
-
-      {/* Color de tema para navegadores */}
-      <meta name="theme-color" content="#1E40AF" media="(prefers-color-scheme: light)" />
-      <meta name="theme-color" content="#0F172A" media="(prefers-color-scheme: dark)" />
+      
     </head>
       <body className={`${inter.className} antialiased`}>
         <ThemeProvider
