@@ -1,9 +1,13 @@
+'use client'
+
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { Suspense } from "react";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import ProgressBar from "@/components/progress-bar";
+import { ZoomProvider } from "@/components/zoom-provider";
+import { ZoomControls } from "@/components/zoom-controls";
 
 // Optimización de fuentes
 const inter = Inter({ 
@@ -19,7 +23,7 @@ export const metadata: Metadata = {
   description: "Tu espacio personal para la reflexión y el estudio profundo de la Biblia. Registra devocionales, organiza estudios temáticos y conecta con la Palabra de Dios.",
   metadataBase: new URL("https://devocionales-biblicos.netlify.app/"), 
   openGraph: {
-    title: "Devocionales Bíblicos - Tiempo con Dios",
+    title: "Devocionales Bíblicos",
     description: "Explora devocionales diarios y estudios bíblicos para tu crecimiento espiritual.",
     type: "website",
     url: "https://devocionales-biblicos.netlify.app/",
@@ -76,10 +80,13 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <Suspense>
-            <ProgressBar />
-            {children}
-          </Suspense>
+          <ZoomProvider>
+            <Suspense>
+              <ProgressBar />
+              {children}
+            </Suspense>
+            <ZoomControls />
+          </ZoomProvider>
         </ThemeProvider>
       </body>
     </html>
