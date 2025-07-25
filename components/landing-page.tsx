@@ -27,7 +27,7 @@ export function LandingPage({ onLoginClick }: LandingPageProps) {
       {/* Enhanced Head Section */}
       <head>
         <title>Devocionales Bíblicos - App Cristiana para Devocionales Diarios</title>
-        <meta name="description" content="Plataforma cristiana gratuita para registrar devocionales diarios, organizar estudios bíblicos por temas y profundizar en la Palabra de Dios. Herramienta digital para tu crecimiento espiritual." />
+        <meta name="description" content="Registra devocionales diarios y organiza estudios bíblicos por tema. Herramienta cristiana para tu crecimiento espiritual." />
         <meta name="keywords" content="devocionales cristianos, estudio bíblico, diario espiritual, aplicación cristiana, biblia, meditación cristiana, crecimiento espiritual, estudio por temas bíblicos" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="theme-color" content="#0a0a0a" />

@@ -17,7 +17,7 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   manifest: "/manifest.json",
-  title: "Devocionales Bíblicos - Reflexiones Diarias y Estudios Cristianos",
+  title: "Devocionales Bíblicos",
   description: "Tu espacio personal para la reflexión y el estudio profundo de la Biblia. Registra devocionales, organiza estudios temáticos y conecta con la Palabra de Dios.",
   metadataBase: new URL("https://devocionales-biblicos.netlify.app/"), 
   openGraph: {
@@ -42,7 +42,7 @@ export const metadata: Metadata = {
     images: ["/og-image.jpg"],
   },
   alternates: {
-    canonical: "https://devocionales-biblicos.netlify.app/", 
+    canonical: "https://devocionales-biblicos-rv.netlify.app/", 
   },
 };
 
