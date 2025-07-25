@@ -1,10 +1,12 @@
 import { useState } from 'react';
+import Head from 'next/head';
 import { Button } from "@/components/ui/button";
 import { BookOpen, Feather, Lock, Mail, Heart, Layers, Code, Search, Menu, ChevronsRight, Star, Users, Clock } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '@/components/ui/sheet';
 
 interface LandingPageProps {
   onLoginClick: () => void;
+  onSignupClick?: () => void;
 }
 
 const NavLink = ({ href, children }: { href: string; children: React.ReactNode }) => (
@@ -13,7 +15,7 @@ const NavLink = ({ href, children }: { href: string; children: React.ReactNode }
   </a>
 );
 
-export function LandingPage({ onLoginClick }: LandingPageProps) {
+export function LandingPage({ onLoginClick, onSignupClick }: LandingPageProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const NavLinkMobile = ({ href, children }: { href: string; children: React.ReactNode }) => (
@@ -25,29 +27,29 @@ export function LandingPage({ onLoginClick }: LandingPageProps) {
   return (
     <>
       {/* Enhanced Head Section */}
-      <head>
-        <title>Devocionales Bíblicos - App Cristiana para Devocionales Diarios</title>
+      <Head>
+        <title>Devocionales Bíblicos con Notas</title>
         <meta name="description" content="Registra devocionales diarios y organiza estudios bíblicos por tema. Herramienta cristiana para tu crecimiento espiritual." />
         <meta name="keywords" content="devocionales cristianos, estudio bíblico, diario espiritual, aplicación cristiana, biblia, meditación cristiana, crecimiento espiritual, estudio por temas bíblicos" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="theme-color" content="#0a0a0a" />
-        <meta name="author" content="Devocionales Bíblicos" />
+        <meta name="author" content="Devocionales Bíblicos con Notas" />
         <meta name="robots" content="index, follow" />
         <meta name="language" content="es" />
         <link rel="canonical" href="https://devocionales-biblicos-rv.netlify.app/" />
 
         {/* Open Graph Meta Tags */}
-        <meta property="og:title" content="Devocionales Bíblicos - Tu Diario Espiritual Digital" />
+        <meta property="og:title" content="Devocionales Bíblicos con Notas - Tu Diario Espiritual Digital" />
         <meta property="og:description" content="Registra tus devocionales diarios, organiza estudios bíblicos por temas y crece espiritualmente con nuestra plataforma cristiana gratuita." />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://tudominio.com" />
         <meta property="og:image" content="https://tudominio.com/og-image.jpg" />
-        <meta property="og:site_name" content="Devocionales Bíblicos" />
+        <meta property="og:site_name" content="Devocionales Bíblicos con Notas" />
         <meta property="og:locale" content="es_ES" />
 
         {/* Twitter Card Meta Tags */}
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="Devocionales Bíblicos - Diario Espiritual Digital" />
+        <meta name="twitter:title" content="Devocionales Bíblicos con Notas - Diario Espiritual Digital" />
         <meta name="twitter:description" content="Plataforma cristiana para devocionales diarios y estudios bíblicos organizados por temas." />
         <meta name="twitter:image" content="https://tudominio.com/twitter-image.jpg" />
 
@@ -60,14 +62,14 @@ export function LandingPage({ onLoginClick }: LandingPageProps) {
         <link rel="icon" href="/icon.svg" type="image/svg+xml" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         <link rel="manifest" href="/manifest.webmanifest" />
-      </head>
+      </Head>
 
       {/* Enhanced Schema Markup */}
       <script type="application/ld+json">
         {JSON.stringify({
           "@context": "https://schema.org",
           "@type": "WebApplication",
-          "name": "Devocionales Bíblicos",
+          "name": "Devocionales Bíblicos con Notas",
           "alternateName": "Diario Espiritual Digital",
           "description": "Plataforma cristiana gratuita para registro de devocionales diarios, estudios bíblicos organizados por temas y crecimiento espiritual personal",
           "url": "https://devocionales-biblicos-rv.netlify.app/",
@@ -76,7 +78,7 @@ export function LandingPage({ onLoginClick }: LandingPageProps) {
           "inLanguage": "es",
           "creator": {
             "@type": "Organization",
-            "name": "Devocionales Bíblicos",
+            "name": "Devocionales Bíblicos con Notas",
             "email": "devocionales.biblicos.rv@gmail.com"
           },
           "offers": {
@@ -104,7 +106,7 @@ export function LandingPage({ onLoginClick }: LandingPageProps) {
           <div className="container mx-auto px-6 py-3 flex justify-between items-center">
             <div className="flex items-center gap-3">
               <h1 className="text-lg sm:text-xl font-bold leading-tight text-center">
-                <span className="hidden sm:inline">Devocionales Bíblicos</span>
+                <span className="hidden sm:inline">Devocionales Bíblicos con Notas</span>
                 <span className="sm:hidden">Devocionales<br/>Bíblicos</span>
               </h1>
             </div>
@@ -351,25 +353,73 @@ export function LandingPage({ onLoginClick }: LandingPageProps) {
 
           {/* Sección de Contacto Mejorada */}
           <section id="contact" className="py-20 bg-[#111111]/50">
-            <div className="container mx-auto px-6 text-center max-w-4xl">
+            <div className="container mx-auto px-6 text-center max-w-6xl">
               <div className="flex justify-center">
-                <Mail className="h-12 w-12 text-purple-400 mb-6" aria-hidden="true" />
+                <BookOpen className="h-12 w-12 text-blue-400 mb-6" aria-hidden="true" />
               </div>
               <h2 className="text-3xl sm:text-4xl font-bold text-white mb-6">¿Listo para Transformar tu Vida Espiritual?</h2>
-              <p className="text-gray-300 text-lg mb-8 max-w-3xl mx-auto">
-                El acceso a nuestra plataforma es completamente gratuito y se gestiona de forma personal para mantener un espacio seguro, privado y enfocado en tu crecimiento espiritual. Si deseas obtener tu usuario y contraseña personalizados, contáctanos hoy mismo.
+              <p className="text-gray-300 text-lg mb-12 max-w-3xl mx-auto">
+                El acceso a nuestra plataforma es completamente gratuito. Tenemos dos formas fáciles para que comiences tu crecimiento espiritual hoy mismo.
               </p>
-              <div className="bg-gray-900/50 p-8 rounded-xl border border-gray-800 max-w-2xl mx-auto">
-                <h3 className="text-xl font-bold text-white mb-4">Contáctanos para obtener acceso gratuito:</h3>
-                <a
-                  href="mailto:devocionales.biblicos.rv@gmail.com?subject=Solicitud de acceso a Devocionales Bíblicos&body=Hola, me interesa obtener acceso gratuito a la plataforma de Devocionales Bíblicos para comenzar mi crecimiento espiritual."
-                  className="inline-block bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-medium py-4 px-8 rounded-lg transition-colors text-lg"
-                  aria-label="Enviar correo para solicitar acceso gratuito"
-                >
-                  devocionales.biblicos.rv@gmail.com
-                </a>
-                <p className="text-gray-400 mt-4 text-sm">
-                  Respuesta garantizada en menos de 24 horas
+
+              {/* Dos opciones lado a lado */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-5xl mx-auto">
+                
+                {/* Opción 1: Registrarse Directamente */}
+                <div className="bg-gradient-to-br from-blue-900/50 to-indigo-900/50 p-8 rounded-xl border border-blue-500/30 hover:border-blue-400/50 transition-colors">
+                  <div className="flex justify-center mb-4">
+                    <Lock className="h-10 w-10 text-blue-400" aria-hidden="true" />
+                  </div>
+                  <h3 className="text-2xl font-bold text-white mb-4">⚡ Acceso Inmediato</h3>
+                  <p className="text-gray-300 mb-6 text-base">
+                    Crea tu cuenta ahora mismo y comienza tu devocional inmediatamente. Proceso rápido y sin esperas.
+                  </p>
+                  <Button
+                    onClick={onSignupClick || onLoginClick}
+                    size="lg"
+                    className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg text-lg h-12 mb-4"
+                    aria-label="Ir a página de registro para crear cuenta"
+                  >
+                    Registrarme Ahora
+                  </Button>
+                  <div className="flex items-center justify-center gap-2 text-green-400 text-sm">
+                    <span className="w-2 h-2 bg-green-400 rounded-full"></span>
+                    <span>Disponible las 24 horas</span>
+                  </div>
+                </div>
+
+                {/* Opción 2: Contactar por Correo */}
+                <div className="bg-gradient-to-br from-slate-900/50 to-gray-900/50 p-8 rounded-xl border border-slate-500/30 hover:border-slate-400/50 transition-colors">
+                  <div className="flex justify-center mb-4">
+                    <Mail className="h-10 w-10 text-slate-400" aria-hidden="true" />
+                  </div>
+                  <h3 className="text-2xl font-bold text-white mb-4">📧 Atención Personalizada</h3>
+                  <p className="text-gray-300 mb-6 text-base">
+                    ¿Prefieres que te ayudemos personalmente? Escríbenos y te guiaremos paso a paso en tu registro.
+                  </p>
+                  <a
+                    href="mailto:devocionales.biblicos.rv@gmail.com?subject=Solicitud de acceso a Devocionales Bíblicos con Notas&body=Hola, me interesa obtener acceso gratuito a la plataforma de Devocionales Bíblicos con Notas para comenzar mi crecimiento espiritual."
+                    className="inline-block w-full bg-gradient-to-r from-slate-600 to-gray-600 hover:from-slate-700 hover:to-gray-700 text-white font-medium py-3 px-6 rounded-lg transition-colors text-lg mb-2"
+                    aria-label="Enviar correo para solicitar acceso personalizado"
+                  >
+                    Escribir Correo
+                  </a>
+                  <p className="text-gray-300 text-sm mb-4">
+                    📧 devocionales.biblicos.rv@gmail.com
+                  </p>
+                  <div className="flex items-center justify-center gap-2 text-slate-400 text-sm">
+                    <Clock className="h-4 w-4" />
+                    <span>Respuesta en menos de 24 horas</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Mensaje adicional */}
+              <div className="mt-12 bg-gray-900/30 p-6 rounded-xl border border-gray-700 max-w-3xl mx-auto">
+                <p className="text-gray-300 text-base">
+                  <strong className="text-white">¿Dudas sobre cuál elegir?</strong><br/>
+                  Ambas opciones son completamente gratuitas y te dan acceso total a la plataforma. 
+                  Si quieres comenzar ya, regístrate directamente. Si prefieres ayuda personalizada, escríbenos.
                 </p>
               </div>
             </div>
@@ -394,7 +444,7 @@ export function LandingPage({ onLoginClick }: LandingPageProps) {
                   <span className="bg-yellow-500/20 text-yellow-300 px-3 py-1 rounded-full text-sm">Next.js</span>
                 </div>
                 <a
-                  href="mailto:devocionales.biblicos.rv@gmail.com?subject=Contribución como desarrollador - Devocionales Bíblicos&body=Hola, soy desarrollador y me interesa contribuir al proyecto de Devocionales Bíblicos. Mi experiencia incluye..."
+                  href="mailto:devocionales.biblicos.rv@gmail.com?subject=Contribución como desarrollador - Devocionales Bíblicos con Notas&body=Hola, soy desarrollador y me interesa contribuir al proyecto de Devocionales Bíblicos con Notas. Mi experiencia incluye..."
                   className="inline-block bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white font-medium py-4 px-8 rounded-lg transition-colors text-lg"
                   aria-label="Contactar para contribuir como desarrollador"
                 >
@@ -409,7 +459,7 @@ export function LandingPage({ onLoginClick }: LandingPageProps) {
           <div className="container mx-auto px-6 py-12">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
               <div>
-                <h3 className="text-white font-bold text-lg mb-4">Devocionales Bíblicos</h3>
+                <h3 className="text-white font-bold text-lg mb-4">Devocionales Bíblicos con Notas</h3>
                 <p className="text-gray-400 text-sm">
                   Tu plataforma digital gratuita para crecimiento espiritual y estudio bíblico organizado.
                 </p>
@@ -434,7 +484,7 @@ export function LandingPage({ onLoginClick }: LandingPageProps) {
             </div>
             <div className="border-t border-gray-800 pt-8">
               <p className="text-center text-gray-400 text-sm">
-                &copy; {new Date().getFullYear()} Devocionales Bíblicos. Todos los derechos reservados. 
+                &copy; {new Date().getFullYear()} Devocionales Bíblicos con Notas. Todos los derechos reservados. 
                 <span className="block mt-2 text-xs">
                   Plataforma cristiana gratuita para devocionales diarios y estudios bíblicos temáticos
                 </span>

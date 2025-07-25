@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
+import { format } from "date-fns"
+import { es } from "date-fns/locale"
 import {
   Book,
   Search,
@@ -23,40 +25,56 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { GradientCard } from "@/components/ui/gradient-card"
 import type { Devocional } from "@/lib/firestore"
-import { Timestamp } from "firebase/firestore"
+import { useAuthContext } from "@/context/auth-context"
+// 🚀 Usar el servicio con cache móvil automático
+import { cachedFirestoreService } from "@/lib/firestore-cached"
 import { BibleViewer } from "@/components/bible/bible-viewer"
-import { useZoom } from "@/components/zoom-provider"
-import { useAuth } from "@/hooks/use-auth"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
+import withAuth from "@/components/auth/with-auth"
 
-// Datos de ejemplo para que la página funcione de forma aislada
-const getSampleDevocionals = (): Devocional[] => [
-    {
-        id: "1",
-        fecha: new Date().toISOString().split("T")[0],
-        citaBiblica: "Juan 3:16",
-        textoDevocional: "...",
-        aprendizajeGeneral: "El amor de Dios es incondicional y eterno.",
-        versiculos: [],
-        referencias: [],
-        tags: ["Fe", "Gracia", "Amor"],
-        completado: true,
-        createdAt: Timestamp.now(),
-        updatedAt: Timestamp.now(),
-        versionCitaBiblica: "rv1960",
-      }
-];
-
-export default function DashboardPage() {
+function DashboardPage() {
+  const { user } = useAuthContext();
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0])
-  const [devocionarios, setDevocionarios] = useState<Devocional[]>([]);
-  const { zoom } = useZoom()
-  const isAuthenticated = useAuth()
-  
+  const [devocionales, setDevocionales] = useState<Devocional[]>([])
+  const [loading, setLoading] = useState(true);
+  const [devocionalDelDia, setDevocionalDelDia] = useState<Devocional | null>(null);
+
+  // 🚀 Efecto para cargar devocionales con cache automático
   useEffect(() => {
-    setDevocionarios(getSampleDevocionals());
-  }, []);
-  
+    const fetchDevocionales = async () => {
+      if (user) {
+        setLoading(true);
+        try {
+          const userDevocionarios = await cachedFirestoreService.getDevocionarios(user.uid);
+          setDevocionales(userDevocionarios);
+        } catch (error) {
+          console.error("Error al cargar devocionales:", error);
+        } finally {
+          setLoading(false);
+        }
+      } else {
+        setLoading(false);
+      }
+    };
+    fetchDevocionales();
+  }, [user]);
+
+  // 🚀 Efecto para cargar devocional del día con cache móvil
+  useEffect(() => {
+    const fetchDevocionalDelDia = async () => {
+      if (user && selectedDate) {
+        try {
+          const devocional = await cachedFirestoreService.getDevocionalByDate(user.uid, selectedDate);
+          setDevocionalDelDia(devocional);
+        } catch (error) {
+          console.error("Error al cargar devocional del día:", error);
+          setDevocionalDelDia(null);
+        }
+      }
+    };
+    fetchDevocionalDelDia();
+  }, [user, selectedDate]);
+
   const handleDateChange = (direction: "prev" | "next") => {
     const currentDate = new Date(selectedDate)
     if (direction === "prev") {
@@ -68,19 +86,23 @@ export default function DashboardPage() {
   }
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("es-ES", {
+    const date = new Date(dateString);
+    // Asegurarse de que la fecha se interpreta en UTC para evitar problemas de zona horaria
+    const utcDate = new Date(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+    return utcDate.toLocaleDateString("es-ES", {
       weekday: "long",
       year: "numeric",
       month: "long",
       day: "numeric",
+      timeZone: 'UTC'
     })
   }
-
-  if (isAuthenticated === null) {
-    return <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#0a0a0a] to-[#0f0f0f]"><LoadingSpinner /></div>
-  }
   
-  const devocionalDelDia = devocionarios.find((d) => d.fecha === selectedDate);
+  // const devocionalDelDia = devocionales.find((d) => d.fecha === selectedDate); // This line is no longer needed
+
+  if (loading) {
+    return <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#0a0a0a] to-[#0f0f0f]"><LoadingSpinner size="lg" /></div>
+  }
 
   return (
      <div className="min-h-screen bg-gradient-to-br from-[#0a0a0a] via-[#0f0f0f] to-[#0a0a0a] text-white">
@@ -102,7 +124,8 @@ export default function DashboardPage() {
                         <Search className="h-4 w-4 mr-2"/> Buscar
                         </Button>
                     </Link>
-                    <Link href="/devocional/new">
+                    {/* El enlace ahora lleva a la fecha seleccionada */}
+                    <Link href={`/devocional/${selectedDate}`}>
                         <Button className="bg-gradient-to-r from-blue-600 to-purple-600">
                         <Plus className="h-4 w-4 mr-2"/> Nuevo Devocional
                         </Button>
@@ -172,9 +195,9 @@ export default function DashboardPage() {
               {devocionalDelDia ? (
                 <div className="space-y-6">
                   <div className="flex items-center justify-between">
-                    <Badge className="bg-green-500/20 text-green-400 border-green-500/30">
-                      <CheckCircle2 className="h-3 w-3 mr-1" />
-                      Completado
+                    <Badge className={devocionalDelDia.completado ? "bg-green-500/20 text-green-400 border-green-500/30" : "bg-yellow-500/20 text-yellow-400 border-yellow-500/30"}>
+                      {devocionalDelDia.completado ? <CheckCircle2 className="h-3 w-3 mr-1" /> : <Circle className="h-3 w-3 mr-1" />}
+                      {devocionalDelDia.completado ? "Completado" : "Pendiente"}
                     </Badge>
                     <Link href={`/devocional/${devocionalDelDia.id}`}>
                         <Button
@@ -223,7 +246,7 @@ export default function DashboardPage() {
                   </div>
                   <h3 className="text-xl font-semibold text-white mb-2">No hay devocional para esta fecha</h3>
                   <p className="text-gray-400 mb-6">Comienza tu reflexión diaria creando un nuevo devocional</p>
-                  <Link href="/devocional/new">
+                  <Link href={`/devocional/${selectedDate}`}>
                     <Button
                         className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
                     >
@@ -237,7 +260,7 @@ export default function DashboardPage() {
           </GradientCard>
 
           {/* Historial Reciente */}
-          {devocionarios.length > 0 && (
+          {devocionales.length > 0 && (
             <GradientCard className="mt-8">
               <CardHeader>
                 <CardTitle className="flex items-center gap-3 text-white">
@@ -249,7 +272,7 @@ export default function DashboardPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {devocionarios.slice(0, 5).map((devocional) => (
+                  {devocionales.slice(0, 5).map((devocional) => (
                     <Link href={`/devocional/${devocional.id}`} key={devocional.id}>
                         <div
                             className="group flex items-center justify-between p-4 bg-[#1a1a1a]/30 rounded-xl cursor-pointer hover:bg-[#2a2a2a]/50 transition-all duration-300 backdrop-blur-sm border border-gray-800/50 hover:border-gray-700/50"
@@ -296,3 +319,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+export default withAuth(DashboardPage);

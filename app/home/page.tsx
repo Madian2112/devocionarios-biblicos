@@ -15,15 +15,65 @@ import {
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { GradientCard } from "@/components/ui/gradient-card"
+import { useAuthContext } from "@/context/auth-context"
+import { useState, useEffect } from "react"
+import { LoadingSpinner } from "@/components/ui/loading-spinner"
 
-export default function HomePage() {
+function HomePage() {
   const router = useRouter();
+  const { user, loading, signOut } = useAuthContext();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
+  // 🛡️ Protección manual: redirigir al login si no hay usuario (pero NO durante logout)
+  useEffect(() => {
+    // COMPLETAMENTE deshabilitado durante logout para evitar interceptación
+    if (!loading && !user && !isLoggingOut) {
+      // Solo redirigir al login si NO estamos en proceso de logout
+      const isLogoutInProgress = sessionStorage.getItem('logout-in-progress');
+      if (!isLogoutInProgress) {
+        router.replace('/login');
+      }
+    }
+  }, [user, loading, router, isLoggingOut]);
+
+  // 🧹 Limpiar sessionStorage al desmontar componente
+  useEffect(() => {
+    return () => {
+      sessionStorage.removeItem('logout-in-progress');
+    };
+  }, []);
+
+  // 🚀 Logout con Firebase y redirección al landing page
   const handleLogout = () => {
-    // Limpiar estado de autenticación
-    localStorage.removeItem('isAuthenticated');
-    router.push('/');
+    // 🔥 LOGOUT SÚPER AGRESIVO - Redirección inmediata
+    
+    // Marcar que el logout está en progreso
+    sessionStorage.setItem('logout-in-progress', 'true');
+    
+    // REDIRECCIÓN INMEDIATA - No esperamos a nada
+    window.location.href = '/';
+    
+    // Firebase logout en background (no bloqueante)
+    signOut().catch(() => {
+      // Si falla, no importa - ya estamos en el landing page
+    }).finally(() => {
+      sessionStorage.removeItem('logout-in-progress');
+    });
   };
+
+  // Mostrar loading mientras verifica autenticación
+  if (loading) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-gradient-to-br from-[#0a0a0a] to-[#0f0f0f]">
+        <LoadingSpinner size="lg" />
+      </div>
+    );
+  }
+
+  // Si no hay usuario y no está en proceso de logout, no mostrar nada (se redirigirá)
+  if (!user && !isLoggingOut) {
+    return null;
+  }
 
   const stats = {
     completados: 5, 
@@ -42,8 +92,7 @@ export default function HomePage() {
             onClick={handleLogout}
             className="bg-[#1a1a1a]/50 border-gray-700 hover:bg-[#2a2a2a]/50 backdrop-blur-sm"
           >
-        <LogOutIcon className="h-4 w-4 mr-2 rotate-180" />
-            
+            <LogOutIcon className="h-4 w-4 mr-2 rotate-180" />
           </Button>
         </div>
 
@@ -149,3 +198,5 @@ export default function HomePage() {
     </div>
   );
 }
+
+export default HomePage;

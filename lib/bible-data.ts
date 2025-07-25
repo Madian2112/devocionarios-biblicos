@@ -67,14 +67,12 @@ export async function fetchBibleBooks(): Promise<BibleBook[]> {
   try {
     const cachedBooks = localStorage.getItem(BIBLE_BOOKS_CACHE_KEY);
     if (cachedBooks) {
-      console.log("Cargando libros desde caché.");
       return JSON.parse(cachedBooks);
     }
   } catch (error) {
     console.warn("No se pudo acceder a localStorage para cargar libros.");
   }
   
-  console.log("Cache de libros no encontrada, peticionando a la API.");
   const res = await fetch(
     "https://api.biblesupersearch.com/api/books?language=es"
   );
@@ -92,7 +90,6 @@ export async function fetchBibleBooks(): Promise<BibleBook[]> {
   
   try {
     localStorage.setItem(BIBLE_BOOKS_CACHE_KEY, JSON.stringify(result));
-    console.log("Libros guardados en caché.");
   } catch (error) {
     console.error("Error al guardar los libros en localStorage:", error);
   }

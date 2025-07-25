@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import {
@@ -15,44 +15,104 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { GradientCard } from "@/components/ui/gradient-card"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import type { TopicalStudy } from "@/lib/firestore"
-import { useAuth } from "@/hooks/use-auth"
+import { useAuthContext } from "@/context/auth-context"
+import { firestoreService } from "@/lib/firestore"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
+import withAuth from "@/components/auth/with-auth"
+import { Timestamp } from "firebase/firestore"
+// 🚀 Usar el hook optimizado con cache
+import { useTopicalStudies } from "@/hooks/use-firestore"
+import { useToast } from "@/hooks/use-toast"
 
-// Datos de ejemplo
-const getSampleTopicalStudies = (): TopicalStudy[] => [
-    { id: '1', name: 'Fe', entries: [{ id: 'e1', reference: 'Hebreos 11:1', learning: 'La fe es la certeza...', versionTexto: 'rv1960' }] },
-    { id: '2', name: 'Amor', entries: [] },
-    { id: '3', name: 'Salvación', entries: [] },
-];
-
-export default function TopicalStudiesPage() {
+function TopicalStudiesPage() {
   const router = useRouter();
-  const [topicalStudies, setTopicalStudies] = useState<TopicalStudy[]>([]);
+  const { user } = useAuthContext();
+  const { toast } = useToast();
   const [newTopicName, setNewTopicName] = useState("");
   const [editingTopicId, setEditingTopicId] = useState<string | null>(null);
   const [editingTopicName, setEditingTopicName] = useState("");
-  const isAuthenticated = useAuth()
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [topicToDelete, setTopicToDelete] = useState<{ id: string; name: string } | null>(null);
 
-  useEffect(() => {
-    // Cargar datos de ejemplo
-    setTopicalStudies(getSampleTopicalStudies());
-  }, []);
+  // 🚀 Usar hook optimizado con cache y mejor manejo de estados
+  const { studies: topicalStudies, loading, error, invalidateCache } = useTopicalStudies();
 
-  const handleCreateNewTopic = () => {
-    if (!newTopicName.trim()) return;
-    const newTopic: TopicalStudy = {
-      id: Date.now().toString(),
+  const handleCreateNewTopic = async () => {
+    if (!newTopicName.trim() || !user) return;
+
+    const newTopic: Omit<TopicalStudy, 'id' | 'userId' | 'createdAt' | 'updatedAt'> = {
       name: newTopicName,
       entries: [],
     };
-    setTopicalStudies([...topicalStudies, newTopic]);
+    
+    // Optimistically create a temporary ID for redirection
+    const tempId = Date.now().toString();
+    const newStudyForState: TopicalStudy = {
+        ...newTopic,
+        id: tempId,
+        userId: user.uid,
+        createdAt: Timestamp.now(),
+        updatedAt: Timestamp.now(),
+    }
+    
+    // setTopicalStudies(prev => [...prev, newStudyForState]); // This line is removed as studies is now directly available
     setNewTopicName("");
-    router.push(`/topical/${newTopic.id}`); // Navegar al nuevo tema
+
+    try {
+        const savedStudy = await firestoreService.saveTopicalStudy(user.uid, newStudyForState);
+        // Replace the temporary object with the real one and redirect
+        invalidateCache(); // Invalidate cache to refetch with the new data
+        router.push(`/topical/${savedStudy.id}`);
+    } catch (error) {
+        console.error("Error creating new topic:", error);
+        // Rollback optimistic update
+        // setTopicalStudies(prev => prev.filter(s => s.id !== tempId)); // This line is removed
+    }
   };
 
-  const handleDeleteTopic = (topicId: string) => {
-    setTopicalStudies(topicalStudies.filter(topic => topic.id !== topicId));
+  const handleDeleteTopic = (topic: TopicalStudy) => {
+    setTopicToDelete({ id: topic.id, name: topic.name });
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDeleteTopic = async () => {
+    if (!topicToDelete) return;
+    
+    try {
+        await firestoreService.deleteTopicalStudy(topicToDelete.id);
+        invalidateCache(); // Invalidate cache to refetch without the deleted topic
+        
+        // 🔔 Notificación de éxito
+        toast({
+          title: "✅ Estudio eliminado",
+          description: `"${topicToDelete.name}" ha sido eliminado correctamente.`,
+          duration: 3000,
+        });
+    } catch (error) {
+        console.error("Error deleting topic:", error);
+        
+        // 🔔 Notificación de error
+        toast({
+          title: "❌ Error al eliminar",
+          description: "No se pudo eliminar el estudio temático. Inténtalo de nuevo.",
+          variant: "destructive",
+          duration: 5000,
+        });
+    } finally {
+        setDeleteDialogOpen(false);
+        setTopicToDelete(null);
+    }
   };
 
   const handleStartEditingTopic = (topic: TopicalStudy) => {
@@ -60,42 +120,52 @@ export default function TopicalStudiesPage() {
     setEditingTopicName(topic.name);
   };
 
-  const handleUpdateTopicName = (topicId: string) => {
-    if (!editingTopicName.trim()) return;
-    setTopicalStudies(topicalStudies.map(topic =>
-      topic.id === topicId ? { ...topic, name: editingTopicName } : topic
-    ));
+  const handleUpdateTopicName = async (topicId: string) => {
+    if (!editingTopicName.trim() || !user) return;
+    
+    // const originalStudies = [...topicalStudies]; // This line is removed
+    const studyToUpdate = topicalStudies.find(s => s.id === topicId);
+    if (!studyToUpdate) return;
+
+    const updatedStudy = { ...studyToUpdate, name: editingTopicName, updatedAt: Timestamp.now() };
+
+    // Optimistic update
+    // setTopicalStudies(prev => prev.map(s => s.id === topicId ? updatedStudy : s)); // This line is removed
     setEditingTopicId(null);
     setEditingTopicName("");
+
+    try {
+        const { userId, ...studyData } = updatedStudy;
+        await firestoreService.saveTopicalStudy(user.uid, studyData);
+        invalidateCache(); // Invalidate cache to refetch with the updated data
+    } catch(error) {
+        console.error("Error updating topic name:", error);
+        // setTopicalStudies(originalStudies); // Rollback // This line is removed
+    }
   };
 
-  if (isAuthenticated === null) {
-    return <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#0a0a0a] to-[#0f0f0f]"><LoadingSpinner /></div>
+  if (loading) {
+    return <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#0a0a0a] to-[#0f0f0f]"><LoadingSpinner size="lg"/></div>
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#0a0a0a] via-[#0f0f0f] to-[#0a0a0a] text-white">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 max-w-5xl">
         {/* Header */}
-<div className="flex flex-wrap items-center justify-center gap-4 mb-8 text-center sm:justify-between">
-  <div className="w-full sm:w-auto flex justify-center sm:justify-start">
-    <Link href="/home">
-      <Button
-        variant="outline"
-        className="bg-[#1a1a1a]/50 border-gray-700 hover:bg-[#2a2a2a]/50 backdrop-blur-sm w-full sm:w-auto justify-start"
-      >
-        <Home className="h-4 " />
-      </Button>
-    </Link>
-    <h1 className="text-2xl font-bold w-full sm:w-auto ml-5 mt-2 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">Estudio por Temas</h1>
-  </div>
-
-
-  <div className="w-40 hidden sm:block"></div>
-</div>
-
-
-
+        <div className="flex flex-wrap items-center justify-center gap-4 mb-8 text-center sm:justify-between">
+            <div className="w-full sm:w-auto flex justify-center sm:justify-start">
+                <Link href="/dashboard">
+                <Button
+                    variant="outline"
+                    className="bg-[#1a1a1a]/50 border-gray-700 hover:bg-[#2a2a2a]/50 backdrop-blur-sm w-full sm:w-auto justify-start"
+                >
+                    <Home className="h-4 " />
+                </Button>
+                </Link>
+                <h1 className="text-2xl font-bold w-full sm:w-auto ml-5 mt-2 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">Estudio por Temas</h1>
+            </div>
+            <div className="w-40 hidden sm:block"></div>
+        </div>
         
         {/* Contenido */}
         <div className="space-y-6">
@@ -107,6 +177,7 @@ export default function TopicalStudiesPage() {
                 <Input
                 value={newTopicName}
                 onChange={(e) => setNewTopicName(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleCreateNewTopic()}
                 placeholder="Ej: Fe, Amor, Salvación..."
                 className="bg-[#2a2a2a]/50 border-gray-700 text-white flex-1"
                 />
@@ -147,7 +218,7 @@ export default function TopicalStudiesPage() {
                         <Pencil className="h-3 w-3" />
                         Editar
                     </Button>
-                    <Button variant="ghost" size="sm" onClick={() => handleDeleteTopic(topic.id)} className="w-full justify-center gap-2 text-red-400 hover:text-red-300">
+                    <Button variant="ghost" size="sm" onClick={() => handleDeleteTopic(topic)} className="w-full justify-center gap-2 text-red-400 hover:text-red-300">
                         <Trash2 className="h-3 w-3" />
                         Eliminar
                     </Button>
@@ -162,6 +233,32 @@ export default function TopicalStudiesPage() {
             )}
         </div>
       </div>
+
+      {/* ⚠️ Dialog de confirmación para eliminar */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent className="bg-gray-900 border-gray-800">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white">¿Eliminar estudio temático?</AlertDialogTitle>
+            <AlertDialogDescription className="text-gray-400">
+              Esta acción no se puede deshacer. Se eliminará permanentemente el estudio 
+              <strong className="text-white"> "{topicToDelete?.name}"</strong> y todos sus contenidos.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-gray-800 border-gray-700 text-white hover:bg-gray-700">
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDeleteTopic}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              Eliminar permanentemente
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
-} 
+}
+
+export default withAuth(TopicalStudiesPage); 

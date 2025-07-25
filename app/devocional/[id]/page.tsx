@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useParams, useRouter } from "next/navigation"
+import { useRouter } from "next/navigation"
 import Link from "next/link"
 
 // Importaciones de íconos y componentes UI
@@ -30,77 +30,96 @@ import { BibleSelector } from "@/components/bible/bible-selector"
 import { BibleViewer } from "@/components/bible/bible-viewer"
 import { exportDevocionalToPDF } from "@/lib/pdf-exporter"
 import type { Devocional, Versiculo, Referencia } from "@/lib/firestore"
+import { firestoreService } from "@/lib/firestore";
+import { useAuthContext } from "@/context/auth-context"
 import { Timestamp } from "firebase/firestore"
 import { fetchVerseText } from "@/lib/bible-api"
+import withAuth from "@/components/auth/with-auth"
+import { useToast } from "@/hooks/use-toast"
 
-// Datos de ejemplo
-const getSampleDevocional = (id: string): Devocional | null => {
-    if (id === 'new') return null;
-    return {
-        id: id,
-        fecha: new Date().toISOString().split("T")[0],
-        citaBiblica: "Juan 3:16",
-        textoDevocional: "Porque de tal manera amó Dios al mundo...",
-        aprendizajeGeneral: "El amor de Dios es incondicional.",
-        versiculos: [],
-        referencias: [],
-        tags: ["Fe", "Amor"],
-        completado: true,
-        createdAt: Timestamp.now(),
-        updatedAt: Timestamp.now(),
-        versionCitaBiblica: "rv1960",
-    };
-};
 
-const createNewDevocional = (): Devocional => ({
-    id: Date.now().toString(),
-    fecha: new Date().toISOString().split("T")[0],
-    citaBiblica: "",
-    textoDevocional: "",
-    aprendizajeGeneral: "",
-    versiculos: [],
-    referencias: [],
-    tags: [],
-    completado: false,
-    createdAt: Timestamp.now(),
-    updatedAt: Timestamp.now(),
-    versionCitaBiblica: "rv1960",
-});
-
-export default function DevocionalPage() {
+function DevocionalPage({ params }: { params: { id: string } }) {
   const router = useRouter();
-  const params = useParams();
-  const { id } = params;
+  const { user } = useAuthContext();
+  const { toast } = useToast();
+  const { id: fecha } = params; // El id de la ruta es la fecha
 
-  const [currentDevocional, setCurrentDevocional] = useState<Devocional | null>(null);
+  const [devocional, setDevocional] = useState<Devocional | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (id) {
-        const devocionalId = Array.isArray(id) ? id[0] : id;
-        if (devocionalId === 'new') {
-            setCurrentDevocional(createNewDevocional());
+    async function fetchOrCreateDevocional() {
+      if (user && fecha) {
+        setLoading(true);
+        const existingDevocional = await firestoreService.getDevocionalByDate(user.uid, fecha);
+        if (existingDevocional) {
+          setDevocional(existingDevocional);
         } else {
-            // Aquí iría la lógica para cargar desde la BD
-            setCurrentDevocional(getSampleDevocional(devocionalId));
+          // Si no existe, creamos uno nuevo en el estado local
+          const newDevocional: Devocional = {
+            id: fecha,
+            userId: user.uid,
+            fecha: fecha,
+            citaBiblica: "",
+            textoDevocional: "",
+            aprendizajeGeneral: "",
+            versiculos: [],
+            referencias: [],
+            tags: [],
+            completado: false,
+            createdAt: Timestamp.now(),
+            updatedAt: Timestamp.now(),
+            versionCitaBiblica: "rv1960",
+          };
+          setDevocional(newDevocional);
         }
         setLoading(false);
+      }
     }
-  }, [id]);
+    fetchOrCreateDevocional();
+  }, [user, fecha]);
+
+  const handleDevocionalChange = (field: keyof Devocional, value: any) => {
+    if (devocional) {
+        setDevocional(prev => prev ? { ...prev, [field]: value, updatedAt: Timestamp.now() } : null);
+    }
+  };
   
-  const handleSave = () => {
+  const handleSave = async () => {
+    if (!user || !devocional) return;
     setSaving(true);
-    // Lógica para guardar...
-    console.log("Guardando devocional:", currentDevocional);
-    setTimeout(() => {
-        setSaving(false);
-        router.push("/dashboard"); // Redirigir al dashboard después de guardar
-    }, 1000);
+    try {
+      // El 'userId' ya está en el objeto devocional, pero el servicio espera que se pase por separado.
+      // Creamos una copia sin el userId para pasarla como segundo argumento.
+      const { userId, ...devocionalData } = devocional;
+      await firestoreService.saveDevocional(user.uid, devocionalData);
+      
+      // 🔔 Notificación de éxito
+      toast({
+        title: "✅ Devocional guardado",
+        description: "Tu reflexión espiritual ha sido guardada correctamente.",
+        duration: 3000,
+      });
+      
+      router.push("/dashboard");
+    } catch (error) {
+      console.error("Error guardando el devocional:", error);
+      
+      // 🔔 Notificación de error
+      toast({
+        title: "❌ Error al guardar",
+        description: "No se pudo guardar el devocional. Inténtalo de nuevo.",
+        variant: "destructive",
+        duration: 5000,
+      });
+    } finally {
+      setSaving(false);
+    }
   }
 
   const addVersiculo = () => {
-    if (!currentDevocional) return
+    if (!devocional) return
     const newVersiculo: Versiculo = {
       id: Date.now().toString(),
       referencia: "",
@@ -108,57 +127,65 @@ export default function DevocionalPage() {
       aprendizaje: "",
       versionTexto: "rv1960",
     }
-    setCurrentDevocional({
-      ...currentDevocional,
-      versiculos: [...currentDevocional.versiculos, newVersiculo],
-    })
+    handleDevocionalChange('versiculos', [...devocional.versiculos, newVersiculo]);
   }
 
   const removeVersiculo = (versiculoId: string) => {
-    if (!currentDevocional) return
-    setCurrentDevocional({
-      ...currentDevocional,
-      versiculos: currentDevocional.versiculos.filter((v) => v.id !== versiculoId),
-    })
+    if (!devocional) return
+    handleDevocionalChange('versiculos', devocional.versiculos.filter((v) => v.id !== versiculoId));
+  }
+  
+  const handleVersiculoChange = (index: number, field: keyof Versiculo, value: any) => {
+    if (!devocional) return;
+    const updatedVersiculos = [...devocional.versiculos];
+    updatedVersiculos[index] = { ...updatedVersiculos[index], [field]: value };
+    handleDevocionalChange('versiculos', updatedVersiculos);
   }
 
   const addReferencia = () => {
-    if (!currentDevocional) return
+    if (!devocional) return
     const newReferencia: Referencia = {
       id: Date.now().toString(),
       url: "",
       descripcion: "",
     }
-    setCurrentDevocional({
-      ...currentDevocional,
-      referencias: [...currentDevocional.referencias, newReferencia],
-    })
+    handleDevocionalChange('referencias', [...devocional.referencias, newReferencia]);
   }
 
   const removeReferencia = (referenciaId: string) => {
-    if (!currentDevocional) return
-    setCurrentDevocional({
-      ...currentDevocional,
-      referencias: currentDevocional.referencias.filter((r) => r.id !== referenciaId),
-    })
+    if (!devocional) return
+    handleDevocionalChange('referencias', devocional.referencias.filter((r) => r.id !== referenciaId));
+  }
+
+  const handleReferenciaChange = (index: number, field: keyof Referencia, value: any) => {
+    if (!devocional) return;
+    const updatedReferencias = [...devocional.referencias];
+    updatedReferencias[index] = { ...updatedReferencias[index], [field]: value };
+    handleDevocionalChange('referencias', updatedReferencias);
+  }
+
+  const handleTagsChange = (newTags: string[]) => {
+    handleDevocionalChange('tags', newTags);
   }
   
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("es-ES", {
+    const date = new Date(dateString);
+    const utcDate = new Date(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+    return utcDate.toLocaleDateString("es-ES", {
       weekday: "long",
       year: "numeric",
       month: "long",
       day: "numeric",
+      timeZone: 'UTC'
     })
   }
 
-
   if (loading) {
-      return <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#0a0a0a] to-[#0f0f0f]"><LoadingSpinner /></div>
+      return <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#0a0a0a] to-[#0f0f0f]"><LoadingSpinner size="lg" /></div>
   }
   
-  if (!currentDevocional) {
-      return <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#0a0a0a] to-[#0f0f0f] text-white">Devocional no encontrado. <Link href="/dashboard" className="ml-2 underline">Volver</Link></div>
+  if (!devocional) {
+      return <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#0a0a0a] to-[#0f0f0f] text-white">Cargando devocional... <Link href="/dashboard" className="ml-2 underline">Volver</Link></div>
   }
 
   return (
@@ -178,14 +205,14 @@ export default function DevocionalPage() {
 
           <div className="text-center order-first sm:order-none">
             <h1 className="text-xl sm:text-2xl font-bold text-white capitalize mb-1">
-              {formatDate(currentDevocional.fecha)}
+              {formatDate(devocional.fecha)}
             </h1>
             <p className="text-gray-400">Devocional Diario</p>
           </div>
 
           <div className="flex items-center gap-3 w-full sm:w-auto">
             <Button
-              onClick={() => exportDevocionalToPDF(currentDevocional)}
+              onClick={() => exportDevocionalToPDF(devocional)}
               variant="outline"
               disabled={saving}
               className="flex-1 bg-purple-500/20 text-purple-300 border-purple-500/30 hover:bg-purple-500/30"
@@ -229,31 +256,21 @@ export default function DevocionalPage() {
               <div className="flex gap-3 items-center">
                 <div className="flex-1">
                   <Input
-                    value={currentDevocional.citaBiblica}
-                    onChange={(e) =>
-                      setCurrentDevocional({
-                        ...currentDevocional,
-                        citaBiblica: e.target.value,
-                      })
-                    }
+                    value={devocional.citaBiblica}
+                    onChange={(e) => handleDevocionalChange('citaBiblica', e.target.value)}
                     placeholder="Ej: Juan 3:16"
                     className="bg-[#2a2a2a]/50 border-gray-700 text-white backdrop-blur-sm focus:border-blue-500 transition-colors"
                   />
                 </div>
                  <Badge variant="outline" className="border-gray-600 text-gray-400 shrink-0">
-                    {currentDevocional.versionCitaBiblica?.toUpperCase() || 'RV1960'}
+                    {devocional.versionCitaBiblica?.toUpperCase() || 'RV1960'}
                  </Badge>
                 <BibleSelector
-                  currentReference={currentDevocional.citaBiblica}
+                  currentReference={devocional.citaBiblica}
                   onSelect={async (reference) => {
                     setSaving(true);
                     const verseText = await fetchVerseText(reference, 'rv1960');
-                    setCurrentDevocional({
-                      ...currentDevocional,
-                      citaBiblica: reference,
-                      textoDevocional: verseText,
-                      versionCitaBiblica: 'rv1960',
-                    });
+                    setDevocional(prev => prev ? { ...prev, citaBiblica: reference, textoDevocional: verseText, versionCitaBiblica: 'rv1960' } : null);
                     setSaving(false);
                   }}
                   trigger={
@@ -266,15 +283,16 @@ export default function DevocionalPage() {
                     </Button>
                   }
                 />
-                {currentDevocional.citaBiblica && (
+                {devocional.citaBiblica && (
                   <BibleViewer
-                    reference={currentDevocional.citaBiblica}
-                    defaultVersion={currentDevocional.versionCitaBiblica}
+                    reference={devocional.citaBiblica}
+                    defaultVersion={devocional.versionCitaBiblica}
                     onClose={async (selectedVersion) => {
-                      if (currentDevocional) { 
+                      if (devocional) { 
                          setSaving(true);
-                         const verseText = await fetchVerseText(currentDevocional.citaBiblica, selectedVersion);
-                         setCurrentDevocional({ ...currentDevocional, textoDevocional: verseText, versionCitaBiblica: selectedVersion });
+                         const verseText = await fetchVerseText(devocional.citaBiblica, selectedVersion);
+                         handleDevocionalChange('textoDevocional', verseText);
+                         handleDevocionalChange('versionCitaBiblica', selectedVersion);
                          setSaving(false);
                       }
                     }}
@@ -294,13 +312,8 @@ export default function DevocionalPage() {
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-3">Texto del Devocional</label>
               <Textarea
-                value={currentDevocional.textoDevocional}
-                onChange={(e) =>
-                  setCurrentDevocional({
-                    ...currentDevocional,
-                    textoDevocional: e.target.value,
-                  })
-                }
+                value={devocional.textoDevocional}
+                onChange={(e) => handleDevocionalChange('textoDevocional', e.target.value)}
                 placeholder="Escribe o pega el contenido del devocional aquí..."
                 className="bg-[#2a2a2a]/50 border-gray-700 text-white min-h-[150px] backdrop-blur-sm focus:border-blue-500 transition-colors resize-none"
                 disabled={saving}
@@ -350,13 +363,8 @@ export default function DevocionalPage() {
                 </CardHeader>
                 <CardContent>
                   <Textarea
-                    value={currentDevocional.aprendizajeGeneral}
-                    onChange={(e) =>
-                      setCurrentDevocional({
-                        ...currentDevocional,
-                        aprendizajeGeneral: e.target.value,
-                      })
-                    }
+                    value={devocional.aprendizajeGeneral}
+                    onChange={(e) => handleDevocionalChange('aprendizajeGeneral', e.target.value)}
                     placeholder="¿Qué aprendiste hoy? ¿Cómo puedes aplicar este mensaje en tu vida diaria? ¿Qué cambios quieres hacer?"
                     className="bg-[#2a2a2a]/50 border-gray-700 text-white min-h-[200px] backdrop-blur-sm focus:border-purple-500 transition-colors resize-none"
                   />
@@ -382,7 +390,7 @@ export default function DevocionalPage() {
                   </Button>
                 </div>
 
-                {currentDevocional.versiculos.map((versiculo, index) => (
+                {devocional.versiculos.map((versiculo, index) => (
                   <GradientCard key={versiculo.id} gradient="blue" className="group">
                     <CardHeader>
                       <div className="flex items-center justify-between">
@@ -409,14 +417,7 @@ export default function DevocionalPage() {
                           <div className="flex-1">
                             <Input
                               value={versiculo.referencia}
-                              onChange={(e) => {
-                                const updatedVersiculos = [...currentDevocional.versiculos]
-                                updatedVersiculos[index] = { ...versiculo, referencia: e.target.value }
-                                setCurrentDevocional({
-                                  ...currentDevocional,
-                                  versiculos: updatedVersiculos,
-                                })
-                              }}
+                              onChange={(e) => handleVersiculoChange(index, 'referencia', e.target.value)}
                               placeholder="Ej: Salmos 23:1"
                               className="bg-[#2a2a2a]/50 border-gray-700 text-white backdrop-blur-sm focus:border-blue-500 transition-colors"
                             />
@@ -426,13 +427,10 @@ export default function DevocionalPage() {
                           </Badge>
                           <BibleSelector
                                   onSelect={async (reference) => {
-                                    const updatedVersiculos = [...currentDevocional.versiculos];
                                     const verseText = await fetchVerseText(reference, 'rv1960');
-                                    updatedVersiculos[index] = { ...versiculo, referencia: reference, texto: verseText, versionTexto: 'rv1960' };
-                                    setCurrentDevocional({
-                                      ...currentDevocional,
-                                      versiculos: updatedVersiculos,
-                                    });
+                                    handleVersiculoChange(index, 'referencia', reference);
+                                    handleVersiculoChange(index, 'texto', verseText);
+                                    handleVersiculoChange(index, 'versionTexto', 'rv1960');
                                   }}
                                   currentReference={versiculo.referencia}
                                   trigger={
@@ -451,13 +449,9 @@ export default function DevocionalPage() {
                               defaultVersion={versiculo.versionTexto}
                               onClose={async (selectedVersion) => {
                                  setSaving(true);
-                                 const updatedVersiculos = [...currentDevocional.versiculos];
                                  const verseText = await fetchVerseText(versiculo.referencia, selectedVersion);
-                                 updatedVersiculos[index] = { ...versiculo, texto: verseText, versionTexto: selectedVersion };
-                                 setCurrentDevocional({
-                                   ...currentDevocional,
-                                   versiculos: updatedVersiculos,
-                                 });
+                                 handleVersiculoChange(index, 'texto', verseText);
+                                 handleVersiculoChange(index, 'versionTexto', selectedVersion);
                                  setSaving(false);
                               }}
                               trigger={
@@ -477,14 +471,7 @@ export default function DevocionalPage() {
                         <label className="block text-sm font-medium text-gray-300 mb-3">Texto del Versículo</label>
                         <Textarea
                           value={versiculo.texto}
-                          onChange={(e) => {
-                            const updatedVersiculos = [...currentDevocional.versiculos]
-                            updatedVersiculos[index] = { ...versiculo, texto: e.target.value }
-                            setCurrentDevocional({
-                              ...currentDevocional,
-                              versiculos: updatedVersiculos,
-                            })
-                          }}
+                          onChange={(e) => handleVersiculoChange(index, 'texto', e.target.value)}
                           placeholder="Texto completo del versículo..."
                           className="bg-[#2a2a2a]/50 border-gray-700 text-white backdrop-blur-sm focus:border-blue-500 transition-colors resize-none"
                         />
@@ -495,14 +482,7 @@ export default function DevocionalPage() {
                         </label>
                         <Textarea
                           value={versiculo.aprendizaje}
-                          onChange={(e) => {
-                            const updatedVersiculos = [...currentDevocional.versiculos]
-                            updatedVersiculos[index] = { ...versiculo, aprendizaje: e.target.value }
-                            setCurrentDevocional({
-                              ...currentDevocional,
-                              versiculos: updatedVersiculos,
-                            })
-                          }}
+                          onChange={(e) => handleVersiculoChange(index, 'aprendizaje', e.target.value)}
                           placeholder="¿Qué te enseña este versículo específicamente? ¿Cómo se relaciona con tu vida?"
                           className="bg-[#2a2a2a]/50 border-gray-700 text-white backdrop-blur-sm focus:border-blue-500 transition-colors resize-none"
                         />
@@ -511,7 +491,7 @@ export default function DevocionalPage() {
                   </GradientCard>
                 ))}
 
-                {currentDevocional.versiculos.length === 0 && (
+                {devocional.versiculos.length === 0 && (
                   <GradientCard>
                     <CardContent className="text-center py-16">
                       <div className="p-4 bg-blue-500/10 rounded-full w-fit mx-auto mb-6">
@@ -550,7 +530,7 @@ export default function DevocionalPage() {
                   </Button>
                 </div>
 
-                {currentDevocional.referencias.map((referencia, index) => (
+                {devocional.referencias.map((referencia, index) => (
                   <GradientCard key={referencia.id} gradient="green" className="group">
                     <CardHeader>
                       <div className="flex items-center justify-between">
@@ -588,14 +568,7 @@ export default function DevocionalPage() {
                         <label className="block text-sm font-medium text-gray-300 mb-3">URL del Enlace</label>
                         <Input
                           value={referencia.url}
-                          onChange={(e) => {
-                            const updatedReferencias = [...currentDevocional.referencias]
-                            updatedReferencias[index] = { ...referencia, url: e.target.value }
-                            setCurrentDevocional({
-                              ...currentDevocional,
-                              referencias: updatedReferencias,
-                            })
-                          }}
+                          onChange={(e) => handleReferenciaChange(index, 'url', e.target.value)}
                           placeholder="https://ejemplo.com/estudio-biblico"
                           className="bg-[#2a2a2a]/50 border-gray-700 text-white backdrop-blur-sm focus:border-green-500 transition-colors"
                         />
@@ -604,14 +577,7 @@ export default function DevocionalPage() {
                         <label className="block text-sm font-medium text-gray-300 mb-3">Descripción</label>
                         <Textarea
                           value={referencia.descripcion}
-                          onChange={(e) => {
-                            const updatedReferencias = [...currentDevocional.referencias]
-                            updatedReferencias[index] = { ...referencia, descripcion: e.target.value }
-                            setCurrentDevocional({
-                              ...currentDevocional,
-                              referencias: updatedReferencias,
-                            })
-                          }}
+                          onChange={(e) => handleReferenciaChange(index, 'descripcion', e.target.value)}
                           placeholder="¿Qué información útil encontraste en este enlace? ¿Cómo complementa tu estudio?"
                           className="bg-[#2a2a2a]/50 border-gray-700 text-white backdrop-blur-sm focus:border-green-500 transition-colors resize-none"
                         />
@@ -620,7 +586,7 @@ export default function DevocionalPage() {
                   </GradientCard>
                 ))}
 
-                {currentDevocional.referencias.length === 0 && (
+                {devocional.referencias.length === 0 && (
                   <GradientCard>
                     <CardContent className="text-center py-16">
                       <div className="p-4 bg-green-500/10 rounded-full w-fit mx-auto mb-6">
@@ -659,15 +625,12 @@ export default function DevocionalPage() {
             </CardHeader>
             <CardContent>
               <div className="flex flex-wrap gap-2 mb-4">
-                {currentDevocional.tags?.map((tag) => (
+                {devocional.tags?.map((tag) => (
                   <Badge key={tag} variant="secondary" className="bg-yellow-500/20 text-yellow-300 border-yellow-500/30 text-sm">
                     {tag}
                     <button
                       onClick={() => {
-                        setCurrentDevocional({
-                          ...currentDevocional,
-                          tags: currentDevocional.tags?.filter((t) => t !== tag),
-                        });
+                        handleTagsChange(devocional.tags?.filter((t) => t !== tag) || []);
                       }}
                       className="ml-2 text-yellow-400 hover:text-white"
                     >
@@ -682,11 +645,8 @@ export default function DevocionalPage() {
                   if (e.key === 'Enter') {
                     e.preventDefault();
                     const newTag = e.currentTarget.value.trim();
-                    if (newTag && !currentDevocional.tags?.includes(newTag)) {
-                      setCurrentDevocional({
-                        ...currentDevocional,
-                        tags: [...(currentDevocional.tags || []), newTag],
-                      });
+                    if (newTag && !devocional.tags?.includes(newTag)) {
+                      handleTagsChange([...(devocional.tags || []), newTag]);
                       e.currentTarget.value = "";
                     }
                   }
@@ -698,4 +658,6 @@ export default function DevocionalPage() {
       </div>
     </div>
   )
-} 
+}
+
+export default withAuth(DevocionalPage); 

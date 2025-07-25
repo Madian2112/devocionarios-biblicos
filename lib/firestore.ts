@@ -9,112 +9,147 @@ import {
   where,
   orderBy,
   Timestamp,
-} from "firebase/firestore"
-import { db } from "./firebase"
+} from "firebase/firestore";
+import { db } from "./firebase";
 
-export interface StudyEntry {
-  id: string;
-  reference: string;
-  learning: string;
-  versionTexto?: string;
-}
-
-export interface TopicalStudy {
-  id: string;
-  name: string;
-  entries: StudyEntry[];
-}
+// --- Sub-colecciones y tipos anidados ---
 
 export interface Versiculo {
-  id: string
-  referencia: string
-  texto: string
-  aprendizaje: string
-  versionTexto?: string
+  id: string; // ID único para el versículo dentro del devocional
+  referencia: string; // Ej: "Juan 3:16"
+  texto?: string; // El texto se obtiene de la API, se usa en el estado local pero no se guarda necesariamente
+  aprendizaje: string; // Notas personales sobre este versículo
+  versionTexto?: string; // Ej: "rv1960"
 }
 
 export interface Referencia {
-  id: string
-  url: string
-  descripcion: string
-  versiculoId?: string
+  id: string; // ID único para la referencia
+  url: string; // Enlace a un recurso externo
+  descripcion: string; // Breve descripción del enlace
+  versiculoId?: string; // Opcional, si está ligado a un versículo específico
 }
+
+export interface StudyEntry {
+  id: string; // ID único para la entrada
+  referencia: string; // Cita bíblica, ej: "Romanos 12:1-2"
+  learning: string; // Lo que aprendiste de esta cita
+  versionTexto?: string; // Versión de la biblia usada
+}
+
+// --- Colecciones Principales ---
 
 export interface Devocional {
-  id: string
-  fecha: string
-  citaBiblica: string
-  textoDevocional: string
-  aprendizajeGeneral: string
-  versiculos: Versiculo[]
-  referencias: Referencia[]
-  tags?: string[]
-  completado: boolean
-  createdAt: Timestamp
-  updatedAt: Timestamp
-  versionCitaBiblica?: string
+  id: string; // ID único del documento (ej: YYYY-MM-DD)
+  userId: string; // ID del usuario al que pertenece este devocional
+  fecha: string; // Formato YYYY-MM-DD para facilitar queries
+  citaBiblica: string; // Cita principal del devocional
+  versionCitaBiblica?: string;
+  textoDevocional: string; // El cuerpo principal de la reflexión
+  aprendizajeGeneral: string; // Conclusión o aplicación principal
+  versiculos: Versiculo[]; // Array de versículos específicos analizados
+  referencias: Referencia[]; // Array de enlaces o recursos externos
+  tags?: string[]; // Etiquetas para búsqueda
+  completado: boolean;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
 }
 
-const DEVOCIONALES_COLLECTION = "devocionarios"
-const TOPICS_COLLECTION = "topical_studies"
+export interface TopicalStudy {
+  id: string; // ID único del estudio
+  userId: string; // ID del usuario al que pertenece
+  name: string; // Nombre del tema (ej: "El Perdón", "La Fe")
+  entries: StudyEntry[]; // Array de citas y aprendizajes sobre el tema
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
 
+const DEVOCIONALES_COLLECTION = "devocionales";
+const TOPICS_COLLECTION = "estudios_topicos";
 
 export const firestoreService = {
   // --- DEVOCIONALES ---
-  async saveDevocional(devocional: Omit<Devocional, "createdAt" | "updatedAt">) {
-    const docRef = doc(db, DEVOCIONALES_COLLECTION, devocional.id)
-    const now = Timestamp.now()
+  async saveDevocional(userId: string, devocional: Omit<Devocional, "createdAt" | "updatedAt" | "userId">) {
+    const docRef = doc(db, DEVOCIONALES_COLLECTION, devocional.id);
+    const now = Timestamp.now();
 
-    const docSnap = await getDoc(docRef)
-    const data = {
+    const docSnap = await getDoc(docRef);
+    const data: Devocional = {
       ...devocional,
+      userId,
       updatedAt: now,
-      ...(docSnap.exists() ? {} : { createdAt: now }),
-    }
+      createdAt: docSnap.exists() ? docSnap.data().createdAt : now,
+    };
 
-    await setDoc(docRef, data, { merge: true })
-    return data
+    await setDoc(docRef, data, { merge: true });
+    return data;
   },
 
-  async getDevocionarios(): Promise<Devocional[]> {
-    const q = query(collection(db, DEVOCIONALES_COLLECTION), orderBy("fecha", "desc"))
-    const querySnapshot = await getDocs(q)
-    return querySnapshot.docs.map(
-      (doc) =>
-        ({
-          id: doc.id,
-          ...doc.data(),
-        }) as Devocional,
-    )
+  async getDevocionarios(userId: string): Promise<Devocional[]> {
+    const q = query(
+      collection(db, DEVOCIONALES_COLLECTION),
+      where("userId", "==", userId),
+      orderBy("fecha", "desc"), // ✅ Restaurado - ahora con índice compuesto
+    );
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as Devocional);
   },
 
-  async getDevocionalByDate(fecha: string): Promise<Devocional | null> {
-    const q = query(collection(db, DEVOCIONALES_COLLECTION), where("fecha", "==", fecha))
-    const querySnapshot = await getDocs(q)
-    if (querySnapshot.empty) return null
+  async getDevocionalByDate(userId: string, fecha: string): Promise<Devocional | null> {
+    const q = query(
+      collection(db, DEVOCIONALES_COLLECTION),
+      where("userId", "==", userId),
+      where("fecha", "==", fecha),
+    );
+    const querySnapshot = await getDocs(q);
+    if (querySnapshot.empty) return null;
 
-    const doc = querySnapshot.docs[0]
-    return { id: doc.id, ...doc.data() } as Devocional
+    const doc = querySnapshot.docs[0];
+    return { id: doc.id, ...doc.data() } as Devocional;
   },
 
   async deleteDevocional(id: string) {
-    await deleteDoc(doc(db, DEVOCIONALES_COLLECTION, id))
+    await deleteDoc(doc(db, DEVOCIONALES_COLLECTION, id));
   },
 
   // --- ESTUDIOS POR TEMAS ---
-  async saveTopicalStudy(topic: TopicalStudy) {
+  async saveTopicalStudy(userId: string, topic: Omit<TopicalStudy, "createdAt" | "updatedAt" | "userId">) {
     const docRef = doc(db, TOPICS_COLLECTION, topic.id);
-    await setDoc(docRef, topic, { merge: true });
-    return topic;
+    const now = Timestamp.now();
+
+    const docSnap = await getDoc(docRef);
+    const data: TopicalStudy = {
+      ...topic,
+      userId,
+      updatedAt: now,
+      createdAt: docSnap.exists() ? docSnap.data().createdAt : now,
+    };
+    
+    await setDoc(docRef, data, { merge: true });
+    return data;
   },
 
-  async getTopicalStudies(): Promise<TopicalStudy[]> {
-    const q = query(collection(db, TOPICS_COLLECTION), orderBy("name", "asc"));
+  async getTopicalStudies(userId: string): Promise<TopicalStudy[]> {
+    const q = query(
+      collection(db, TOPICS_COLLECTION),
+      where("userId", "==", userId),
+      orderBy("name", "asc"), // ✅ Restaurado - ahora con índice compuesto
+    );
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as TopicalStudy);
+  },
+
+  async getTopicalStudyById(userId: string, id: string): Promise<TopicalStudy | null> {
+    const docRef = doc(db, TOPICS_COLLECTION, id);
+    const docSnap = await getDoc(docRef);
+
+    if (!docSnap.exists() || docSnap.data().userId !== userId) {
+      return null;
+    }
+
+    return { id: docSnap.id, ...docSnap.data() } as TopicalStudy;
   },
 
   async deleteTopicalStudy(id: string) {
     await deleteDoc(doc(db, TOPICS_COLLECTION, id));
   },
-}
+};
