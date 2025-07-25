@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import { Suspense } from "react";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import ProgressBar from "@/components/progress-bar";
@@ -76,7 +77,9 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <ProgressBar />
-          {children}
+          <Suspense>
+            {children}
+          </Suspense>
         </ThemeProvider>
       </body>
     </html>
