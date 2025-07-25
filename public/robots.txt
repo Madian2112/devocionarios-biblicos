@@ -3,4 +3,4 @@ Disallow: /admin/
 Disallow: /login/
 Allow: /
 
-Sitemap: https://devocionales-biblicos-rv.netlify.app
+Sitemap: https://devocionales-biblicos-rv.netlify.app/.sitemap.xml
