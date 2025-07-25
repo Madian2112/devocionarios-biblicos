@@ -76,8 +76,8 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <ProgressBar />
           <Suspense>
+            <ProgressBar />
             {children}
           </Suspense>
         </ThemeProvider>
