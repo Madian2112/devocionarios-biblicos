@@ -11,7 +11,6 @@ import {
   Link as LinkIcon,
   LogOut,
   LogOutIcon,
-  LogInIcon,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -21,6 +20,8 @@ export default function HomePage() {
   const router = useRouter();
 
   const handleLogout = () => {
+    // Limpiar estado de autenticación
+    localStorage.removeItem('isAuthenticated');
     router.push('/');
   };
 
@@ -42,7 +43,7 @@ export default function HomePage() {
             className="bg-[#1a1a1a]/50 border-gray-700 hover:bg-[#2a2a2a]/50 backdrop-blur-sm"
           >
         <LogOutIcon className="h-4 w-4 mr-2 rotate-180" />
-            Salir
+            
           </Button>
         </div>
 

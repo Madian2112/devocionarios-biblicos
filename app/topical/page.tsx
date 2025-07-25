@@ -16,6 +16,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { GradientCard } from "@/components/ui/gradient-card"
 import type { TopicalStudy } from "@/lib/firestore"
+import { useAuth } from "@/hooks/use-auth"
+import { LoadingSpinner } from "@/components/ui/loading-spinner"
 
 // Datos de ejemplo
 const getSampleTopicalStudies = (): TopicalStudy[] => [
@@ -30,6 +32,7 @@ export default function TopicalStudiesPage() {
   const [newTopicName, setNewTopicName] = useState("");
   const [editingTopicId, setEditingTopicId] = useState<string | null>(null);
   const [editingTopicName, setEditingTopicName] = useState("");
+  const isAuthenticated = useAuth()
 
   useEffect(() => {
     // Cargar datos de ejemplo
@@ -66,6 +69,10 @@ export default function TopicalStudiesPage() {
     setEditingTopicName("");
   };
 
+  if (isAuthenticated === null) {
+    return <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#0a0a0a] to-[#0f0f0f]"><LoadingSpinner /></div>
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#0a0a0a] via-[#0f0f0f] to-[#0a0a0a] text-white">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 max-w-5xl">
@@ -80,7 +87,7 @@ export default function TopicalStudiesPage() {
         <Home className="h-4 " />
       </Button>
     </Link>
-    <h1 className="text-2xl font-bold text-white w-full sm:w-auto">Estudio por Temas</h1>
+    <h1 className="text-2xl font-bold w-full sm:w-auto ml-5 mt-2 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">Estudio por Temas</h1>
   </div>
 
 
@@ -92,7 +99,7 @@ export default function TopicalStudiesPage() {
         
         {/* Contenido */}
         <div className="space-y-6">
-            <GradientCard gradient="green">
+            <GradientCard gradient="blue">
             <CardHeader>
                 <CardTitle>Crear Nuevo Tema de Estudio</CardTitle>
             </CardHeader>
@@ -103,7 +110,7 @@ export default function TopicalStudiesPage() {
                 placeholder="Ej: Fe, Amor, Salvación..."
                 className="bg-[#2a2a2a]/50 border-gray-700 text-white flex-1"
                 />
-                <Button onClick={handleCreateNewTopic} className="bg-gradient-to-r from-green-600 to-cyan-600">
+                <Button onClick={handleCreateNewTopic} className="bg-gradient-to-r from-blue-600 to-purple-600">
                 <Plus className="h-4 w-4 mr-2"/>
                 Crear Tema
                 </Button>
@@ -113,7 +120,7 @@ export default function TopicalStudiesPage() {
             <h2 className="text-2xl font-bold text-white pt-8">Temas Existentes</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {topicalStudies.map(topic => (
-                <GradientCard key={topic.id} className="group flex flex-col justify-between">
+                <GradientCard key={topic.id} className="group flex flex-col justify-between" gradient="blue">
                     <Link href={`/topical/${topic.id}`} className="block h-full">
                         <CardContent className="p-6 cursor-pointer flex-1">
                             {editingTopicId === topic.id ? (

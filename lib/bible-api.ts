@@ -1,4 +1,5 @@
 import { parseReference } from './bible-utils';
+import NProgress from './nprogress';
 
 interface Verse {
   verse: string;
@@ -21,6 +22,7 @@ export async function fetchVerseText(reference: string, version: string = 'rv196
     return "Referencia inválida.";
   }
 
+  NProgress.start(); // Inicia la barra de progreso
   try {
     const apiUrl = `https://bible-api.deno.dev/api/read/${version}/${parsed.book}/${parsed.startChapter}`;
     const res = await fetch(apiUrl);
@@ -44,5 +46,7 @@ export async function fetchVerseText(reference: string, version: string = 'rv196
   } catch (error) {
     console.error("Error fetching verse text:", error);
     return "No se pudo cargar el texto.";
+  } finally {
+    NProgress.done(); // Detiene la barra de progreso
   }
 } 

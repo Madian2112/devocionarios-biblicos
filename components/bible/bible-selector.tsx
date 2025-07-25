@@ -32,7 +32,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { bibleService, fetchBibleBooks, BibleBook } from "@/lib/bible-data";
+import { bibleService, fetchBibleBooks, BibleBook, getBibleVersions, BibleVersion } from "@/lib/bible-data";
 import { parseReference, normalizeText } from "@/lib/bible-utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -110,41 +110,54 @@ function BibleSelectorForm({
     const [endVerse, setEndVerse] = useState<number | null>(null);
 
     const [books, setBooks] = useState<BibleBook[]>([]);
+    const [versions, setVersions] = useState<BibleVersion[]>([]);
     const [loadingBooks, setLoadingBooks] = useState(true);
 
+    // Efecto #1: Rápido y síncrono para actualizar la UI principal (el Switch)
     useEffect(() => {
         const parsed = parseReference(currentReference || "");
-        if (parsed && books.length > 0) { // Asegurarse de que los libros estén cargados
-            const bookMatch = books.find(b => normalizeText(b.name) === normalizeText(parsed.book));
-            setSelectedBook(bookMatch ? bookMatch.name : parsed.book);
-            
-            setStartChapter(parsed.startChapter);
-
-            // AQUÍ ESTÁ LA LÓGICA CLAVE
+        if (parsed) {
+            // Esto es instantáneo, por lo que el switch se actualiza de inmediato
             if (parsed.startVerse) {
-                // Si la referencia tiene un versículo, mostramos el selector de versículos
                 setSelectionType('verse');
                 setStartVerse(parsed.startVerse);
                 setEndVerse(parsed.endVerse || null);
-                setEndChapter(null);
             } else {
-                // Si no tiene versículo, es una referencia de capítulo
                 setSelectionType('chapter');
-                setEndChapter(parsed.endChapter || null);
-                // Reseteamos los valores de versículos para evitar inconsistencias
-                setStartVerse(1);
+                setStartVerse(1); // Resetear para consistencia
                 setEndVerse(null);
             }
+            setSelectedBook(parsed.book);
+            setStartChapter(parsed.startChapter);
+            setEndChapter(parsed.endChapter || null);
         }
-    }, [currentReference, books]); // Depender de `books` es crucial
+    }, [currentReference]);
 
+
+    // Efecto #2: Carga asíncrona de los libros y síncrona de versiones
     useEffect(() => {
       setLoadingBooks(true);
       fetchBibleBooks().then(data => {
         setBooks(data);
         setLoadingBooks(false);
       }).catch(() => setLoadingBooks(false));
+
+      // Las versiones se cargan desde la caché o el valor por defecto, es síncrono
+      setVersions(getBibleVersions());
     }, []);
+
+    // Efecto #3: Enriquecimiento de datos (opcional, pero buena práctica)
+    // Este efecto asegura que el nombre del libro en el estado coincida con el de la lista
+    // para evitar problemas con mayúsculas/minúsculas o normalización.
+    useEffect(() => {
+      if (books.length > 0 && selectedBook) {
+        const bookMatch = books.find(b => normalizeText(b.name) === normalizeText(selectedBook));
+        if (bookMatch && bookMatch.name !== selectedBook) {
+          setSelectedBook(bookMatch.name);
+        }
+      }
+    }, [books, selectedBook]);
+
 
     const handleBookChange = (bookName: string) => {
         setSelectedBook(bookName);

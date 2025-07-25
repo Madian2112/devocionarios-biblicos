@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { GradientCard } from "@/components/ui/gradient-card";
 import { Lock, LogIn, User, AlertCircle } from "lucide-react";
+import NProgress from "@/lib/nprogress";
 
 interface LoginPageProps {
   onLoginSuccess: () => void;
@@ -16,12 +17,19 @@ export function LoginPage({ onLoginSuccess, onBackClick }: LoginPageProps) {
   const [error, setError] = useState("");
 
   const handleLogin = () => {
-    setError(""); // Clear previous errors
-    if (username === "admin" && password === "admin") {
-      onLoginSuccess();
-    } else {
-      setError("Credenciales incorrectas. Inténtalo de nuevo.");
-    }
+    setError("");
+    NProgress.start();
+
+    // Simulamos una pequeña demora para que la barra de progreso sea visible
+    setTimeout(() => {
+      if (username === "admin" && password === "admin") {
+        onLoginSuccess();
+        // NProgress.done() se llamará automáticamente cuando la nueva página cargue
+      } else {
+        setError("Credenciales incorrectas. Inténtalo de nuevo.");
+        NProgress.done(); // Detenemos la barra si hay un error
+      }
+    }, 500); // 500ms de retraso
   };
 
   return (

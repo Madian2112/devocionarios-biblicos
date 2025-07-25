@@ -22,8 +22,11 @@ export interface BibleVersion {
   abbreviation: string;
 }
 
+const BIBLE_BOOKS_CACHE_KEY = 'bible-books-data';
+const BIBLE_VERSIONS_CACHE_KEY = 'bible-versions-data';
+
 // Versiones soportadas por la API
-export const BIBLE_VERSIONS: BibleVersion[] = [
+const SUPPORTED_BIBLE_VERSIONS: BibleVersion[] = [
   { id: "rv_1909", name: "Reina Valera 1909", abbreviation: "RV1909" },
   { id: "rv_1858", name: "Reina Valera 1858 NT", abbreviation: "RV1858" },
   { id: "rvg", name: "Reina Valera Gómez", abbreviation: "RVG" },
@@ -39,23 +42,61 @@ export const BIBLE_VERSIONS: BibleVersion[] = [
   },
 ];
 
-// Obtener libros de la Biblia en español
+// Obtener versiones de la Biblia (con caché)
+export function getBibleVersions(): BibleVersion[] {
+  try {
+    const cachedVersions = localStorage.getItem(BIBLE_VERSIONS_CACHE_KEY);
+    if (cachedVersions) {
+      return JSON.parse(cachedVersions);
+    }
+  } catch (error) {
+    console.warn("No se pudo acceder a localStorage. Usando datos por defecto.");
+  }
+  
+  // Si no está en caché o hay error, guardar la lista por defecto y retornarla
+  try {
+    localStorage.setItem(BIBLE_VERSIONS_CACHE_KEY, JSON.stringify(SUPPORTED_BIBLE_VERSIONS));
+  } catch (error) {
+    console.warn("No se pudo guardar las versiones en localStorage.");
+  }
+  return SUPPORTED_BIBLE_VERSIONS;
+}
+
+// Obtener libros de la Biblia en español (con caché)
 export async function fetchBibleBooks(): Promise<BibleBook[]> {
+  try {
+    const cachedBooks = localStorage.getItem(BIBLE_BOOKS_CACHE_KEY);
+    if (cachedBooks) {
+      console.log("Cargando libros desde caché.");
+      return JSON.parse(cachedBooks);
+    }
+  } catch (error) {
+    console.warn("No se pudo acceder a localStorage para cargar libros.");
+  }
+  
+  console.log("Cache de libros no encontrada, peticionando a la API.");
   const res = await fetch(
     "https://api.biblesupersearch.com/api/books?language=es"
   );
   if (!res.ok)
     throw new Error("No se pudieron obtener los libros de la Biblia");
   const data = await res.json();
-  console.log("Respuesta completa de fetchBibleBooks:", data);
-  var result = data.results.map((book: any) => ({
+  
+  const result = data.results.map((book: any) => ({
     id: book.id,
     name: book.name,
     shortname: book.shortname,
-    chapters: book.chapters, // ✅ Agregado
-    chapter_verses: book.chapter_verses, // ✅ Agregado
+    chapters: book.chapters,
+    chapter_verses: book.chapter_verses,
   }));
-  console.log("Libros obtenidos:", result);
+  
+  try {
+    localStorage.setItem(BIBLE_BOOKS_CACHE_KEY, JSON.stringify(result));
+    console.log("Libros guardados en caché.");
+  } catch (error) {
+    console.error("Error al guardar los libros en localStorage:", error);
+  }
+  
   return result;
 }
 

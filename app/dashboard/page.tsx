@@ -26,6 +26,8 @@ import type { Devocional } from "@/lib/firestore"
 import { Timestamp } from "firebase/firestore"
 import { BibleViewer } from "@/components/bible/bible-viewer"
 import { useZoom } from "@/components/zoom-provider"
+import { useAuth } from "@/hooks/use-auth"
+import { LoadingSpinner } from "@/components/ui/loading-spinner"
 
 // Datos de ejemplo para que la página funcione de forma aislada
 const getSampleDevocionals = (): Devocional[] => [
@@ -49,6 +51,7 @@ export default function DashboardPage() {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0])
   const [devocionarios, setDevocionarios] = useState<Devocional[]>([]);
   const { zoom } = useZoom()
+  const isAuthenticated = useAuth()
   
   useEffect(() => {
     setDevocionarios(getSampleDevocionals());
@@ -71,6 +74,10 @@ export default function DashboardPage() {
       month: "long",
       day: "numeric",
     })
+  }
+
+  if (isAuthenticated === null) {
+    return <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#0a0a0a] to-[#0f0f0f]"><LoadingSpinner /></div>
   }
   
   const devocionalDelDia = devocionarios.find((d) => d.fecha === selectedDate);

@@ -25,6 +25,7 @@ import { BibleSelector } from "@/components/bible/bible-selector"
 import { exportTopicalStudyToPDF } from "@/lib/pdf-exporter"
 import type { TopicalStudy, StudyEntry } from "@/lib/firestore"
 import { fetchVerseText } from "@/lib/bible-api"
+import { useAuth } from "@/hooks/use-auth"
 
 // Datos de ejemplo
 const getSampleTopicalStudy = (id: string): TopicalStudy | null => ({
@@ -38,6 +39,7 @@ export default function TopicalStudyPage() {
   const router = useRouter();
   const params = useParams();
   const { id } = params;
+  const isAuthenticated = useAuth()
 
   const [currentTopic, setCurrentTopic] = useState<TopicalStudy | null>(null);
   const [loading, setLoading] = useState(true);
@@ -73,6 +75,10 @@ export default function TopicalStudyPage() {
     });
   }
   
+  if (isAuthenticated === null) {
+    return <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#0a0a0a] to-[#0f0f0f]"><LoadingSpinner /></div>
+  }
+
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#0a0a0a] to-[#0f0f0f]"><LoadingSpinner /></div>
   }
@@ -95,14 +101,14 @@ export default function TopicalStudyPage() {
                 <span>Volver a Temas</span>
             </Button>
           </Link>
-          <h2 className="text-xl text-center sm:text-3xl font-bold text-white sm:text-center order-first sm:order-none flex-1">
+          <h2 className="text-xl text-center sm:text-3xl font-bold sm:text-center order-first sm:order-none flex-1 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
             {currentTopic.name}
           </h2>
           <div className="flex gap-2 w-full sm:w-auto order-2">
             <Button
               onClick={() => exportTopicalStudyToPDF(currentTopic)}
               variant="outline"
-              className="bg-purple-500/20 text-purple-300 border-purple-500/30 hover:bg-purple-500/30 flex-1 sm:flex-none"
+              className="bg-blue-500/20 text-blue-300 border-blue-500/30 hover:bg-blue-500/30 flex-1 sm:flex-none"
             >
               <Download className="h-4 w-4 sm:mr-2" />
               <span className="hidden sm:inline">Exportar</span>
@@ -165,11 +171,9 @@ export default function TopicalStudyPage() {
                             {entry.versionTexto?.toUpperCase() || 'RV1960'}
                           </Badge>
                           <BibleSelector
-                            onSelect={async (ref) => {
-                                setSaving(true);
-                                const verseText = await fetchVerseText(ref, 'rv1960');
-                                handleUpdateStudyEntry({...entry, reference: ref, learning: verseText, versionTexto: 'rv1960'})
-                                setSaving(false);
+                            onSelect={(ref) => {
+                                // Ya no se autocompleta el aprendizaje
+                                handleUpdateStudyEntry({...entry, reference: ref, versionTexto: 'rv1960'})
                             }}
                             currentReference={entry.reference}
                             trigger={

@@ -7,6 +7,8 @@ export default function LoginPage() {
     const router = useRouter();
 
     const handleLoginSuccess = () => {
+        // Guardar estado de autenticación
+        localStorage.setItem('isAuthenticated', 'true');
         router.push('/home');
     }
 

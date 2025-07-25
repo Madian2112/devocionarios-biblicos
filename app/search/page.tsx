@@ -23,6 +23,7 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import type { Devocional } from "@/lib/firestore"
 import { Timestamp } from "firebase/firestore"
 import { BibleViewer } from "@/components/bible/bible-viewer"
+import { useAuth } from "@/hooks/use-auth"
 
 // Datos de ejemplo para que la página funcione de forma aislada
 const getSampleDevocionals = (): Devocional[] => [
@@ -66,6 +67,7 @@ export default function SearchPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [loading, setLoading] = useState(false)
   const [devocionarios, setDevocionarios] = useState<Devocional[]>([]);
+  const isAuthenticated = useAuth()
   
   useEffect(() => {
     setLoading(true);
@@ -91,6 +93,10 @@ export default function SearchPage() {
       month: "long",
       day: "numeric",
     })
+  }
+
+  if (isAuthenticated === null) {
+    return <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#0a0a0a] to-[#0f0f0f]"><LoadingSpinner /></div>
   }
 
   return (
