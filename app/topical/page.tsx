@@ -48,8 +48,35 @@ function TopicalStudiesPage() {
   // 🚀 Usar hook optimizado con cache y mejor manejo de estados
   const { studies: topicalStudies, loading, error, invalidateCache } = useTopicalStudies();
 
+  
+
   const handleCreateNewTopic = async () => {
-    if (!newTopicName.trim() || !user) return;
+    if (!newTopicName.trim()) {
+      toast({
+        title: "⚠️ Nombre requerido",
+        description: "Por favor, ingresa un nombre para el tema.",
+        variant: "destructive",
+        duration: 3000,
+      });
+      return;
+    }
+    
+    if (!user) {
+      toast({
+        title: "❌ Error de autenticación",
+        description: "No estás autenticado. Inicia sesión nuevamente.",
+        variant: "destructive",
+        duration: 5000,
+      });
+      return;
+    }
+
+    // 🔄 Mostrar notificación de inicio
+    toast({
+      title: "🔄 Creando tema...",
+      description: `Guardando "${newTopicName}"`,
+      duration: 2000,
+    });
 
     const newTopic: Omit<TopicalStudy, 'id' | 'userId' | 'createdAt' | 'updatedAt'> = {
       name: newTopicName,
@@ -66,18 +93,56 @@ function TopicalStudiesPage() {
         updatedAt: Timestamp.now(),
     }
     
-    // setTopicalStudies(prev => [...prev, newStudyForState]); // This line is removed as studies is now directly available
     setNewTopicName("");
 
     try {
-        const savedStudy = await firestoreService.saveTopicalStudy(user.uid, newStudyForState);
+        console.log("🔍 Intentando guardar tema:", newStudyForState);
+        console.log("🔍 Usuario ID:", user.uid);
+        console.log("🔍 Usuario completo:", user);
+        console.log("🔍 ¿Usuario autenticado?", !!user?.uid);
+        
+        // 🔧 FIX: Remover userId del objeto antes de enviarlo (la función lo agrega automáticamente)
+        const { userId, ...topicDataWithoutUserId } = newStudyForState;
+        console.log("🔍 Datos sin userId:", topicDataWithoutUserId);
+        console.log("🔍 Datos finales que se enviarán a Firebase:", {
+          userId: user.uid,
+          ...topicDataWithoutUserId
+        });
+        
+        // 🧪 TEST: Verificar si es operación CREATE o UPDATE
+        console.log("🔍 ID del documento:", topicDataWithoutUserId.id);
+        console.log("🔍 Esta es una operación CREATE (documento nuevo)");
+        
+        const savedStudy = await firestoreService.saveTopicalStudy(user.uid, topicDataWithoutUserId);
+        
+        
+        console.log("✅ Tema guardado exitosamente:", savedStudy);
+        
+        // 🔔 Notificación de éxito
+        toast({
+          title: "✅ Tema creado",
+          description: `"${newTopic.name}" ha sido creado exitosamente.`,
+          duration: 3000,
+        });
+        
         // Replace the temporary object with the real one and redirect
         invalidateCache(); // Invalidate cache to refetch with the new data
         router.push(`/topical/${savedStudy.id}`);
-    } catch (error) {
-        console.error("Error creating new topic:", error);
-        // Rollback optimistic update
-        // setTopicalStudies(prev => prev.filter(s => s.id !== tempId)); // This line is removed
+    } catch (error: any) {
+        console.error("❌ Error creando tema:", error);
+        console.error("❌ Detalles del error:", {
+          message: error?.message,
+          code: error?.code,
+          stack: error?.stack
+        });
+        
+        // 🔔 Notificación de error específica
+        toast({
+          title: "❌ Error al crear tema",
+          description: `No se pudo crear "${newTopic.name}". ${error?.message || 'Error desconocido'}`,
+          variant: "destructive",
+          duration: 5000,
+        });
     }
   };
 
@@ -154,7 +219,7 @@ function TopicalStudiesPage() {
         {/* Header */}
         <div className="flex flex-wrap items-center justify-center gap-4 mb-8 text-center sm:justify-between">
             <div className="w-full sm:w-auto flex justify-center sm:justify-start">
-                <Link href="/dashboard">
+                <Link href="/home">
                 <Button
                     variant="outline"
                     className="bg-[#1a1a1a]/50 border-gray-700 hover:bg-[#2a2a2a]/50 backdrop-blur-sm w-full sm:w-auto justify-start"

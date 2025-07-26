@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, use, useCallback, useRef } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import {
@@ -11,7 +11,6 @@ import {
   Eye,
   Trash2,
   Book,
-  Save,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { CardContent } from "@/components/ui/card"
@@ -33,16 +32,18 @@ import withAuth from "@/components/auth/with-auth"
 import { useToast } from "@/hooks/use-toast"
 
 
-function TopicalStudyPage({ params }: { params: { id: string } }) {
+function TopicalStudyPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const { user } = useAuthContext();
   const { toast } = useToast();
-  const { id } = params;
+  const { id } = use(params);
   const isNew = id === 'new';
 
   const [study, setStudy] = useState<TopicalStudy | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const hasChangesRef = useRef(false);
   
   useEffect(() => {
     async function fetchOrCreateStudy() {
@@ -69,6 +70,7 @@ function TopicalStudyPage({ params }: { params: { id: string } }) {
 
   const handleStudyChange = (field: keyof TopicalStudy, value: any) => {
     setStudy(prev => prev ? { ...prev, [field]: value, updatedAt: Timestamp.now() } : null);
+    triggerAutoSave(); // 🔄 Activar auto-guardado
   };
 
   const handleAddStudyEntry = () => {
@@ -119,6 +121,72 @@ function TopicalStudyPage({ params }: { params: { id: string } }) {
         setSaving(false);
     }
   }
+
+  // 🔄 AUTO-GUARDADO: Función para guardar automáticamente
+  const autoSave = useCallback(async () => {
+    if (!study || !user || !hasChangesRef.current || saving) return;
+    
+    try {
+      setSaving(true);
+      const { userId, ...studyData } = study;
+      await firestoreService.saveTopicalStudy(user.uid, studyData);
+      
+      hasChangesRef.current = false;
+      
+      // 🔔 Notificación sutil de auto-guardado
+      toast({
+        title: "💾 Guardado automático",
+        description: "Tus cambios se guardaron automáticamente",
+        duration: 2000,
+      });
+      
+    } catch (error: any) {
+      console.error("❌ Error en auto-guardado:", error);
+      // No mostrar toast de error para auto-guardado, solo log
+    } finally {
+      setSaving(false);
+    }
+  }, [study, user, saving, toast]);
+
+  // 🔄 AUTO-GUARDADO: Función con debounce
+  const triggerAutoSave = useCallback(() => {
+    hasChangesRef.current = true;
+    
+    // Limpiar timeout anterior
+    if (autoSaveTimeoutRef.current) {
+      clearTimeout(autoSaveTimeoutRef.current);
+    }
+    
+    // Nuevo timeout de 3 segundos
+    autoSaveTimeoutRef.current = setTimeout(() => {
+      autoSave();
+    }, 3000);
+  }, [autoSave]);
+
+  // 🔄 AUTO-GUARDADO: Guardar al salir de la página
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (hasChangesRef.current && study && user) {
+        // Guardado síncrono al salir
+        const { userId, ...studyData } = study;
+        firestoreService.saveTopicalStudy(user.uid, studyData);
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    // Cleanup: guardar al desmontar componente
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      if (hasChangesRef.current && study && user) {
+        const { userId, ...studyData } = study;
+        firestoreService.saveTopicalStudy(user.uid, studyData);
+      }
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+      }
+    };
+  }, [study, user]);
   
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#0a0a0a] to-[#0f0f0f]"><LoadingSpinner size="lg" /></div>
@@ -155,14 +223,13 @@ function TopicalStudyPage({ params }: { params: { id: string } }) {
             )}
           </div>
           <div className="flex gap-2 w-full sm:w-auto order-last">
-            <Button
-                onClick={handleSave}
-                disabled={saving}
-                className="bg-gradient-to-r from-green-600 to-emerald-600 flex-1 sm:flex-none"
-            >
-                {saving ? <LoadingSpinner size="sm" className="mr-2"/> : <Save className="h-4 w-4 sm:mr-2" />}
-                <span className="hidden sm:inline">Guardar</span>
-            </Button>
+            {/* 💾 Indicador de estado en header */}
+            {saving && (
+              <div className="flex items-center gap-2 text-blue-400 text-sm bg-blue-900/20 px-3 py-2 rounded-lg border border-blue-500/30">
+                <LoadingSpinner size="sm" />
+                <span className="hidden sm:inline">Auto-guardando...</span>
+              </div>
+            )}
             <Button
               onClick={() => exportTopicalStudyToPDF(study)}
               variant="outline"
@@ -182,7 +249,16 @@ function TopicalStudyPage({ params }: { params: { id: string } }) {
         </div>
 
         {study.entries.map((entry) => (
-          <Collapsible key={entry.id} className="group mb-4">
+          <Collapsible 
+            key={entry.id} 
+            className="group mb-4"
+            onOpenChange={(isOpen) => {
+              // 🔄 AUTO-GUARDADO: Guardar cuando se colapsa (isOpen = false)
+              if (!isOpen) {
+                triggerAutoSave();
+              }
+            }}
+          >
             <GradientCard gradient="blue" >
                 <div className="flex w-full items-center p-4">
                     <CollapsibleTrigger className="flex flex-1 text-left min-w-0 items-center justify-between">
@@ -272,6 +348,28 @@ function TopicalStudyPage({ params }: { params: { id: string } }) {
               <p>Este tema no tiene entradas. ¡Añade la primera!</p>
             </div>
         )}
+
+        {/* 💾 INDICADOR DE AUTO-GUARDADO */}
+        <div className="flex justify-center mt-8">
+          {saving && (
+            <div className="flex items-center gap-2 text-blue-400 text-sm">
+              <LoadingSpinner size="sm" />
+              <span>Guardando automáticamente...</span>
+            </div>
+          )}
+          {!saving && hasChangesRef.current && (
+            <div className="flex items-center gap-2 text-yellow-400 text-sm">
+              <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></div>
+              <span>Cambios pendientes...</span>
+            </div>
+          )}
+          {!saving && !hasChangesRef.current && study && (
+            <div className="flex items-center gap-2 text-green-400 text-sm">
+              <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+              <span>Todo guardado ✓</span>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

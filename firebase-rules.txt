@@ -1,0 +1,24 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Función helper para verificar autenticación
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    // Reglas para devocionales - permitir todo si está autenticado
+    match /devocionales/{document} {
+      allow read, write: if isSignedIn();
+    }
+    
+    // Reglas para estudios temáticos - permitir todo si está autenticado
+    match /estudios_topicos/{document} {
+      allow read, write: if isSignedIn();
+    }
+    
+    // Negar todo lo demás por defecto
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+} 

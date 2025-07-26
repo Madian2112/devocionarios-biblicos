@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, use } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 
@@ -36,13 +36,14 @@ import { Timestamp } from "firebase/firestore"
 import { fetchVerseText } from "@/lib/bible-api"
 import withAuth from "@/components/auth/with-auth"
 import { useToast } from "@/hooks/use-toast"
+import { notificationService } from "@/lib/notification-service"
 
 
-function DevocionalPage({ params }: { params: { id: string } }) {
+function DevocionalPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const { user } = useAuthContext();
   const { toast } = useToast();
-  const { id: fecha } = params; // El id de la ruta es la fecha
+  const { id: fecha } = use(params); // El id de la ruta es la fecha
 
   const [devocional, setDevocional] = useState<Devocional | null>(null);
   const [loading, setLoading] = useState(true);
@@ -85,7 +86,8 @@ function DevocionalPage({ params }: { params: { id: string } }) {
         setDevocional(prev => prev ? { ...prev, [field]: value, updatedAt: Timestamp.now() } : null);
     }
   };
-  
+
+  // 💾 FUNCIÓN DE GUARDADO PRINCIPAL
   const handleSave = async () => {
     if (!user || !devocional) return;
     setSaving(true);
@@ -116,7 +118,9 @@ function DevocionalPage({ params }: { params: { id: string } }) {
     } finally {
       setSaving(false);
     }
-  }
+  };
+
+
 
   const addVersiculo = () => {
     if (!devocional) return
@@ -655,6 +659,28 @@ function DevocionalPage({ params }: { params: { id: string } }) {
               />
             </CardContent>
           </GradientCard>
+
+          {/* 💾 BOTÓN DE GUARDADO */}
+          <div className="flex justify-center mt-8">
+            {/* 💾 BOTÓN PRINCIPAL DE GUARDADO */}
+            <Button 
+              onClick={handleSave} 
+              disabled={saving || !devocional}
+              size="lg" 
+              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg px-8"
+            >
+              {saving ? (
+                <>
+                  <LoadingSpinner size="sm" className="mr-2" /> 
+                  Guardando...
+                </>
+              ) : (
+                <>
+                  💾 Guardar Devocional
+                </>
+              )}
+            </Button>
+          </div>
       </div>
     </div>
   )

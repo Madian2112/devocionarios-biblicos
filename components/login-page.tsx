@@ -14,6 +14,8 @@ import {
 } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { EmailService } from "@/lib/email-service";
+import { notificationService } from "@/lib/notification-service";
 
 interface LoginPageProps {
   defaultMode?: 'login' | 'signup';
@@ -34,11 +36,49 @@ export function LoginPage({ defaultMode = 'login' }: LoginPageProps = {}) {
     setLoading(true);
 
     try {
+      let userCredential;
+      
       if (isSignUp) {
-        await createUserWithEmailAndPassword(auth, email, password);
+        // 🎉 Crear nuevo usuario
+        userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        
+        // 📧 Enviar email de bienvenida (no bloquear el flujo)
+        EmailService.sendWelcomeEmail({
+          userName: email.split('@')[0], // Usar nombre del email como fallback
+          userEmail: email,
+        }).then(success => {
+          if (success) {
+            console.log('✅ Email de bienvenida enviado exitosamente');
+          } else {
+            console.log('⚠️ No se pudo enviar el email de bienvenida');
+          }
+        }).catch(error => {
+          console.error('❌ Error enviando email de bienvenida:', error);
+        });
+
+        // 🔔 Inicializar servicio de notificaciones para nuevo usuario
+        if (userCredential.user) {
+          notificationService.initialize(userCredential.user.uid).then(initialized => {
+            if (initialized) {
+              console.log('✅ Servicio de notificaciones inicializado');
+            }
+          }).catch(error => {
+            console.error('❌ Error inicializando notificaciones:', error);
+          });
+        }
+        
       } else {
-        await signInWithEmailAndPassword(auth, email, password);
+        // 🔑 Iniciar sesión usuario existente
+        userCredential = await signInWithEmailAndPassword(auth, email, password);
+        
+        // 🔔 Inicializar notificaciones para usuario existente
+        if (userCredential.user) {
+          notificationService.initialize(userCredential.user.uid).catch(error => {
+            console.error('❌ Error inicializando notificaciones:', error);
+          });
+        }
       }
+      
       router.push('/home');
     } catch (err: any) {
       const error = err;
@@ -75,14 +115,38 @@ export function LoginPage({ defaultMode = 'login' }: LoginPageProps = {}) {
     setLoading(true);
 
     try {
-      await sendPasswordResetEmail(auth, email);
-      setSuccess("¡Correo enviado! Revisa tu bandeja de entrada (y la carpeta de spam).");
+      console.log("🔑 Enviando correo de restablecimiento a:", email);
+      
+      await sendPasswordResetEmail(auth, email, {
+        url: window.location.origin + '/login', // URL de retorno después del reset
+        handleCodeInApp: false
+      });
+      
+      console.log("✅ Correo enviado exitosamente");
+      setSuccess("¡Correo enviado! Revisa tu bandeja de entrada (y la carpeta de spam). El correo puede tardar unos minutos en llegar.");
     } catch (err: any) {
       const error = err;
-      if (error.code === 'auth/user-not-found') {
-        setError("No se encontró ninguna cuenta con ese correo electrónico.");
-      } else {
-        setError("Ocurrió un error al enviar el correo. Inténtalo de nuevo.");
+      console.error("❌ Error enviando correo de reset:", error);
+      
+      switch (error.code) {
+        case 'auth/user-not-found':
+          setError("No se encontró ninguna cuenta con ese correo electrónico.");
+          break;
+        case 'auth/invalid-email':
+          setError("El formato del correo electrónico no es válido.");
+          break;
+        case 'auth/missing-android-pkg-name':
+        case 'auth/missing-continue-uri':
+        case 'auth/missing-ios-bundle-id':
+        case 'auth/invalid-continue-uri':
+          setError("Error de configuración. Contacta al administrador.");
+          break;
+        case 'auth/unauthorized-continue-uri':
+          setError("Dominio no autorizado para restablecimiento de contraseña.");
+          break;
+        default:
+          setError(`Error: ${error.message}. Si persiste, contacta soporte.`);
+          break;
       }
     } finally {
       setLoading(false);

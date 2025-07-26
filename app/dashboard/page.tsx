@@ -28,6 +28,8 @@ import type { Devocional } from "@/lib/firestore"
 import { useAuthContext } from "@/context/auth-context"
 // 🚀 Usar el servicio con cache móvil automático
 import { cachedFirestoreService } from "@/lib/firestore-cached"
+import { notificationService } from "@/lib/notification-service"
+import { Timestamp } from "firebase/firestore"
 import { BibleViewer } from "@/components/bible/bible-viewer"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import withAuth from "@/components/auth/with-auth"
@@ -97,6 +99,42 @@ function DashboardPage() {
       timeZone: 'UTC'
     })
   }
+
+  // 🎯 Toggle estado completado de devocional
+  const toggleDevocionalCompleted = async (devocional: Devocional) => {
+    if (!user) return;
+
+    try {
+      const updatedDevocional: Devocional = {
+        ...devocional,
+        completado: !devocional.completado,
+        updatedAt: Timestamp.now(),
+      };
+
+      // Actualizar en Firestore
+      const { userId, ...devocionalData } = updatedDevocional;
+      await cachedFirestoreService.saveDevocional(user.uid, devocionalData);
+
+      // 🔔 Si se marca como completado, notificar al servicio
+      if (!devocional.completado && updatedDevocional.completado) {
+        notificationService.markDevocionalCompleted();
+        console.log('✅ Devocional marcado como completado');
+      }
+
+      // Actualizar estado local
+      if (devocionalDelDia && devocionalDelDia.id === devocional.id) {
+        setDevocionalDelDia(updatedDevocional);
+      }
+
+      // Actualizar lista de devocionales
+      setDevocionales(prev => 
+        prev.map(d => d.id === devocional.id ? updatedDevocional : d)
+      );
+
+    } catch (error) {
+      console.error('Error actualizando devocional:', error);
+    }
+  };
   
   // const devocionalDelDia = devocionales.find((d) => d.fecha === selectedDate); // This line is no longer needed
 
@@ -195,10 +233,20 @@ function DashboardPage() {
               {devocionalDelDia ? (
                 <div className="space-y-6">
                   <div className="flex items-center justify-between">
-                    <Badge className={devocionalDelDia.completado ? "bg-green-500/20 text-green-400 border-green-500/30" : "bg-yellow-500/20 text-yellow-400 border-yellow-500/30"}>
-                      {devocionalDelDia.completado ? <CheckCircle2 className="h-3 w-3 mr-1" /> : <Circle className="h-3 w-3 mr-1" />}
-                      {devocionalDelDia.completado ? "Completado" : "Pendiente"}
-                    </Badge>
+                                    <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    toggleDevocionalCompleted(devocionalDelDia);
+                  }}
+                  className="p-0 h-auto hover:bg-transparent"
+                >
+                  <Badge className={`cursor-pointer transition-all hover:scale-105 ${devocionalDelDia.completado ? "bg-green-500/20 text-green-400 border-green-500/30 hover:bg-green-500/30" : "bg-yellow-500/20 text-yellow-400 border-yellow-500/30 hover:bg-yellow-500/30"}`}>
+                    {devocionalDelDia.completado ? <CheckCircle2 className="h-3 w-3 mr-1" /> : <Circle className="h-3 w-3 mr-1" />}
+                    {devocionalDelDia.completado ? "Completado" : "Pendiente"}
+                  </Badge>
+                </Button>
                     <Link href={`/devocional/${devocionalDelDia.id}`}>
                         <Button
                             variant="outline"
@@ -288,26 +336,37 @@ function DashboardPage() {
                                 <p className="text-sm text-gray-400 capitalize">{formatDate(devocional.fecha)}</p>
                             </div>
                             </div>
-                            <Badge
-                            variant={devocional.completado ? "secondary" : "outline"}
-                            className={
-                                devocional.completado
-                                ? "bg-green-500/20 text-green-400 border-green-500/30"
-                                : "border-gray-600 text-gray-400"
-                            }
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                toggleDevocionalCompleted(devocional);
+                              }}
+                              className="p-0 h-auto hover:bg-transparent"
                             >
-                            {devocional.completado ? (
-                                <>
-                                <CheckCircle2 className="h-3 w-3 mr-1" />
-                                Completado
-                                </>
-                            ) : (
-                                <>
-                                <Circle className="h-3 w-3 mr-1" />
-                                Pendiente
-                                </>
-                            )}
-                            </Badge>
+                              <Badge
+                                variant={devocional.completado ? "secondary" : "outline"}
+                                className={`cursor-pointer transition-all hover:scale-105 ${
+                                  devocional.completado
+                                    ? "bg-green-500/20 text-green-400 border-green-500/30 hover:bg-green-500/30"
+                                    : "border-gray-600 text-gray-400 hover:border-gray-500 hover:text-gray-300"
+                                }`}
+                              >
+                                {devocional.completado ? (
+                                  <>
+                                    <CheckCircle2 className="h-3 w-3 mr-1" />
+                                    Completado
+                                  </>
+                                ) : (
+                                  <>
+                                    <Circle className="h-3 w-3 mr-1" />
+                                    Pendiente
+                                  </>
+                                )}
+                              </Badge>
+                            </Button>
                         </div>
                     </Link>
                   ))}
