@@ -179,7 +179,7 @@ export class NativeNotificationSystem {
    */
   async showDailyReminder(): Promise<boolean> {
     try {
-      if (!this.canShowNotification()) return false;
+      // if (!this.canShowNotification()) return false;
 
       const verses = [
         '"Lámpara es a mis pies tu palabra, y lumbrera a mi camino." - Salmos 119:105',
@@ -240,7 +240,7 @@ export class NativeNotificationSystem {
    */
   async showStreakReminder(stats: UserStats): Promise<boolean> {
     try {
-      if (!this.canShowNotification()) return false;
+      // if (!this.canShowNotification()) return false;
 
       const streakEmojis = stats.streak >= 30 ? '🏆🔥' : stats.streak >= 14 ? '💪🔥' : '🔥';
       
@@ -285,7 +285,7 @@ export class NativeNotificationSystem {
    */
   async showWeeklyReport(stats: UserStats): Promise<boolean> {
     try {
-      if (!this.canShowNotification()) return false;
+      // if (!this.canShowNotification()) return false;
 
       const completionRate = Math.round((stats.completedThisWeek / 7) * 100);
       
@@ -609,10 +609,12 @@ export class NativeNotificationSystem {
    */
   async sendTestNotification(): Promise<boolean> {
     try {
-      if (!this.canShowNotification()) {
-        console.log('⚠️ No se pueden enviar notificaciones');
-        return false;
-      }
+      // if (!this.canShowNotification()) {
+      //   console.log('⚠️ No se pueden enviar notificaciones');
+      //   return false;
+      // }
+
+      console.log('Este es mi service worker: ', this.serviceWorkerRegistration)
 
       await this.serviceWorkerRegistration?.showNotification('🧪 Notificación de Prueba', {
         body: `¡Perfecto ${this.userName}! Las notificaciones funcionan correctamente.`,
