@@ -17,6 +17,16 @@ import { CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { GradientCard } from "@/components/ui/gradient-card"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { Badge } from "@/components/ui/badge"
@@ -44,6 +54,8 @@ function TopicalStudyPage({ params }: { params: Promise<{ id: string }> }) {
   const [saving, setSaving] = useState(false);
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const hasChangesRef = useRef(false);
+  const [deleteEntryDialogOpen, setDeleteEntryDialogOpen] = useState(false);
+  const [entryToDelete, setEntryToDelete] = useState<{ id: string; referencia: string } | null>(null);
   
   useEffect(() => {
     async function fetchOrCreateStudy() {
@@ -68,25 +80,77 @@ function TopicalStudyPage({ params }: { params: Promise<{ id: string }> }) {
     fetchOrCreateStudy();
   }, [id, user, isNew]);
 
+  // 🔄 Marcar flag cuando se sale de esta página para invalidar cache en la página principal
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (hasChangesRef.current) {
+        console.log('🔄 Marcando flag de cambios para invalidar cache en página principal...');
+        sessionStorage.setItem('topical-return-flag', 'true');
+      }
+    };
+
+    // Marcar flag cuando el componente se desmonta
+    return () => {
+      if (hasChangesRef.current) {
+        console.log('🔄 Componente desmontándose con cambios - marcando flag...');
+        sessionStorage.setItem('topical-return-flag', 'true');
+      }
+    };
+  }, []);
+
   const handleStudyChange = (field: keyof TopicalStudy, value: any) => {
     setStudy(prev => prev ? { ...prev, [field]: value, updatedAt: Timestamp.now() } : null);
+    hasChangesRef.current = true; // 🔄 Marcar que hay cambios
     triggerAutoSave(); // 🔄 Activar auto-guardado
   };
 
   const handleAddStudyEntry = () => {
     if (!study) return;
+    console.log('➕ Agregando nueva entrada...');
     const newEntry: StudyEntry = { id: Date.now().toString(), referencia: "", learning: "", versionTexto: "rv1960" };
     handleStudyChange('entries', [...study.entries, newEntry]);
+    hasChangesRef.current = true; // 🔄 Marcar cambios explícitamente
   };
 
   const handleUpdateStudyEntry = (updatedEntry: StudyEntry) => {
     if (!study) return;
+    console.log('✏️ Actualizando entrada:', updatedEntry.id);
     handleStudyChange('entries', study.entries.map(e => e.id === updatedEntry.id ? updatedEntry : e));
+    hasChangesRef.current = true; // 🔄 Marcar cambios explícitamente
   };
 
   const handleRemoveStudyEntry = (entryId: string) => {
     if (!study) return;
-    handleStudyChange('entries', study.entries.filter(e => e.id !== entryId));
+    
+    // Buscar la entrada para mostrar información en el modal
+    const entry = study.entries.find(e => e.id === entryId);
+    if (!entry) return;
+    
+    console.log('🗑️ Solicitando confirmación para eliminar entrada:', entry.referencia);
+    setEntryToDelete({ 
+      id: entryId, 
+      referencia: entry.referencia || 'Entrada sin referencia' 
+    });
+    setDeleteEntryDialogOpen(true);
+  }
+
+  const confirmDeleteEntry = () => {
+    if (!study || !entryToDelete) return;
+    
+    console.log('🗑️ Confirmado - Eliminando entrada:', entryToDelete.referencia);
+    handleStudyChange('entries', study.entries.filter(e => e.id !== entryToDelete.id));
+    hasChangesRef.current = true; // 🔄 Marcar cambios explícitamente
+    
+    // 🔔 Notificación de éxito
+    toast({
+      title: "✅ Versículo eliminado",
+      description: `Se eliminó "${entryToDelete.referencia}" del estudio`,
+      duration: 3000,
+    });
+    
+    // Limpiar estados
+    setDeleteEntryDialogOpen(false);
+    setEntryToDelete(null);
   }
 
   const handleSave = async () => {
@@ -276,7 +340,7 @@ function TopicalStudyPage({ params }: { params: Promise<{ id: string }> }) {
                                 onClose={async (selectedVersion) => {
                                   setSaving(true);
                                   const verseText = await fetchVerseText(entry.referencia, selectedVersion);
-                                  handleUpdateStudyEntry({...entry, learning: verseText, versionTexto: selectedVersion})
+                                  handleUpdateStudyEntry({...entry, versionTexto: selectedVersion})
                                   setSaving(false);
                                 }}
                                 trigger={
@@ -371,6 +435,30 @@ function TopicalStudyPage({ params }: { params: Promise<{ id: string }> }) {
           )}
         </div>
       </div>
+
+      {/* ⚠️ Modal de confirmación para eliminar versículo */}
+      <AlertDialog open={deleteEntryDialogOpen} onOpenChange={setDeleteEntryDialogOpen}>
+        <AlertDialogContent className="bg-gray-900 border-gray-800">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white">¿Eliminar versículo?</AlertDialogTitle>
+            <AlertDialogDescription className="text-gray-400">
+              Esta acción no se puede deshacer. Se eliminará permanentemente el versículo 
+              <strong className="text-white"> "{entryToDelete?.referencia}"</strong> de este estudio temático.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-gray-800 border-gray-700 text-white hover:bg-gray-700">
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDeleteEntry}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              Eliminar versículo
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

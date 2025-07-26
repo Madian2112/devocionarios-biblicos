@@ -4,6 +4,7 @@ import React, { createContext, useContext, useEffect, useState, ReactNode, useMe
 import { onAuthStateChanged, User, signOut as firebaseSignOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { hybridNotificationSystem } from '@/lib/hybrid-notification-system';
 
 interface AuthContextType {
   user: User | null;
@@ -19,8 +20,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     // 🚀 onAuthStateChanged optimizado
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
+      
+      // 🎯 Inicializar sistema híbrido cuando el usuario se autentica
+      if (currentUser) {
+        try {
+          console.log('🚀 Inicializando sistema híbrido para usuario autenticado...');
+          const userName = currentUser.displayName || currentUser.email?.split('@')[0] || 'Hermano(a)';
+          const userEmail = currentUser.email || '';
+          
+          // Inicializar en background sin bloquear la UI
+          hybridNotificationSystem.initialize(userName, userEmail)
+            .then((result) => {
+              console.log('✅ Sistema híbrido inicializado:', result);
+              
+              // Iniciar recordatorios automáticos si están habilitados
+              hybridNotificationSystem.startAutomaticReminders();
+            })
+            .catch((error) => {
+              console.warn('⚠️ Error inicializando sistema híbrido:', error);
+            });
+            
+        } catch (error) {
+          console.error('❌ Error en inicialización híbrida:', error);
+        }
+      }
+      
       setLoading(false);
     }, (error) => {
       console.error("Error en auth state:", error);

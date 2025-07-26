@@ -14,8 +14,8 @@ import {
 } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import { EmailService } from "@/lib/email-service";
-import { notificationService } from "@/lib/notification-service";
+import { BrevoEmailService } from "@/lib/brevo-email-service";
+import { hybridNotificationSystem } from "@/lib/hybrid-notification-system";
 
 interface LoginPageProps {
   defaultMode?: 'login' | 'signup';
@@ -42,28 +42,19 @@ export function LoginPage({ defaultMode = 'login' }: LoginPageProps = {}) {
         // 🎉 Crear nuevo usuario
         userCredential = await createUserWithEmailAndPassword(auth, email, password);
         
-        // 📧 Enviar email de bienvenida (no bloquear el flujo)
-        EmailService.sendWelcomeEmail({
-          userName: email.split('@')[0], // Usar nombre del email como fallback
-          userEmail: email,
-        }).then(success => {
-          if (success) {
-            console.log('✅ Email de bienvenida enviado exitosamente');
-          } else {
-            console.log('⚠️ No se pudo enviar el email de bienvenida');
-          }
-        }).catch(error => {
-          console.error('❌ Error enviando email de bienvenida:', error);
-        });
-
-        // 🔔 Inicializar servicio de notificaciones para nuevo usuario
+        // 🎉 SOLO PARA NUEVOS USUARIOS: Enviar bienvenida híbrida (Email + Setup notificaciones)
         if (userCredential.user) {
-          notificationService.initialize(userCredential.user.uid).then(initialized => {
-            if (initialized) {
-              console.log('✅ Servicio de notificaciones inicializado');
-            }
-          }).catch(error => {
-            console.error('❌ Error inicializando notificaciones:', error);
+          const userName = email.split('@')[0];
+          const userEmail = email;
+          
+          console.log('🎉 Nuevo usuario registrado - enviando bienvenida híbrida...');
+          hybridNotificationSystem.sendWelcome({
+            userName,
+            userEmail
+          }).then((result) => {
+            console.log('✅ Bienvenida híbrida para nuevo usuario completada:', result);
+          }).catch((error) => {
+            console.error('❌ Error en bienvenida híbrida para nuevo usuario:', error);
           });
         }
         
@@ -71,12 +62,9 @@ export function LoginPage({ defaultMode = 'login' }: LoginPageProps = {}) {
         // 🔑 Iniciar sesión usuario existente
         userCredential = await signInWithEmailAndPassword(auth, email, password);
         
-        // 🔔 Inicializar notificaciones para usuario existente
-        if (userCredential.user) {
-          notificationService.initialize(userCredential.user.uid).catch(error => {
-            console.error('❌ Error inicializando notificaciones:', error);
-          });
-        }
+        // 🔔 El sistema híbrido ya se inicializa automáticamente en AuthContext
+        // No es necesario hacer nada adicional aquí para el login
+        console.log('✅ Usuario autenticado, sistema híbrido se inicializará automáticamente');
       }
       
       router.push('/home');
@@ -117,13 +105,26 @@ export function LoginPage({ defaultMode = 'login' }: LoginPageProps = {}) {
     try {
       console.log("🔑 Enviando correo de restablecimiento a:", email);
       
+      // 🔒 Firebase Auth - Correo oficial con token seguro
       await sendPasswordResetEmail(auth, email, {
         url: window.location.origin + '/login', // URL de retorno después del reset
         handleCodeInApp: false
       });
       
-      console.log("✅ Correo enviado exitosamente");
-      setSuccess("¡Correo enviado! Revisa tu bandeja de entrada (y la carpeta de spam). El correo puede tardar unos minutos en llegar.");
+      console.log("✅ Correo de Firebase enviado exitosamente");
+      
+      // 📧 Brevo - Email personalizado de notificación (no bloquear el flujo)
+      hybridNotificationSystem.sendPasswordReset(email).then(success => {
+        if (success) {
+          console.log("✅ Email personalizado enviado via Brevo");
+        } else {
+          console.log("⚠️ Email personalizado no se pudo enviar via Brevo");
+        }
+      }).catch(error => {
+        console.error("❌ Error enviando email personalizado via Brevo:", error);
+      });
+      
+      setSuccess("¡Correos enviados! Revisa tu bandeja de entrada (y la carpeta de spam). Recibirás 2 emails: uno oficial de Firebase y otro personalizado nuestro.");
     } catch (err: any) {
       const error = err;
       console.error("❌ Error enviando correo de reset:", error);

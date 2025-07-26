@@ -14,6 +14,7 @@ import {
   Check,
   AlertCircle,
   TrendingUp,
+  Lock,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -24,7 +25,9 @@ import { Separator } from "@/components/ui/separator"
 import { GradientCard } from "@/components/ui/gradient-card"
 import { useAuthContext } from "@/context/auth-context"
 import { notificationService } from "@/lib/notification-service"
-import { EmailService } from "@/lib/email-service"
+import { BrevoEmailService } from "@/lib/brevo-email-service"
+import { hybridNotificationSystem } from "@/lib/hybrid-notification-system"
+import { nativeNotificationSystem } from "@/lib/native-notification-system"
 import { useToast } from "@/hooks/use-toast"
 interface NotificationSettings {
   enabled: boolean;
@@ -171,19 +174,42 @@ function SettingsPage() {
   };
 
   const requestNotificationPermission = async () => {
-    const granted = await notificationService.requestPermission();
-    setSettings(prev => ({ ...prev, permissionGranted: granted }));
-    
-    if (granted) {
+    if (!user) return;
+
+    try {
+      // Inicializar sistema nativo
+      const nativeReady = await nativeNotificationSystem.initialize(user.displayName || 'Hermano(a)');
+      
+      if (!nativeReady) {
+        toast({
+          title: "⚠️ No compatible",
+          description: "Tu navegador no soporta notificaciones PWA",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const granted = await nativeNotificationSystem.requestPermission();
+      setSettings(prev => ({ ...prev, permissionGranted: granted }));
+      
+      if (granted) {
+        toast({
+          title: "✅ Permisos concedidos",
+          description: "¡Perfecto! Ya puedes recibir notificaciones.",
+          duration: 3000,
+        });
+      } else {
+        toast({
+          title: "❌ Permisos denegados",
+          description: "No podrás recibir notificaciones push.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('❌ Error solicitando permisos:', error);
       toast({
-        title: "✅ Permisos concedidos",
-        description: "¡Perfecto! Ya puedes recibir notificaciones.",
-        duration: 3000,
-      });
-    } else {
-      toast({
-        title: "❌ Permisos denegados",
-        description: "No podrás recibir notificaciones push.",
+        title: "❌ Error",
+        description: "Hubo un problema solicitando permisos",
         variant: "destructive",
       });
     }
@@ -270,41 +296,118 @@ function SettingsPage() {
   };
 
   const testNotification = async () => {
-    if (!settings.permissionGranted) {
-      await requestNotificationPermission();
-      return;
-    }
+    if (!user) return;
 
-    notificationService.showDailyReminderNotification();
-    toast({
-      title: "🔔 Notificación de prueba",
-      description: "¡Revisa tu dispositivo!",
-      duration: 2000,
-    });
+    try {
+      // 📱 Inicializar el sistema híbrido si aún no está listo
+      console.log('🧪 Probando notificación híbrida...');
+      
+      // Inicializar sistema nativo
+      const nativeReady = await nativeNotificationSystem.initialize(user.displayName || 'Hermano(a)');
+      
+      if (!nativeReady) {
+        toast({
+          title: "⚠️ Sistema no listo",
+          description: "Tu navegador no soporta notificaciones PWA",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // 🔔 Solicitar permisos si no los tiene
+      if (!settings.permissionGranted) {
+        const granted = await nativeNotificationSystem.requestPermission();
+        setSettings(prev => ({ ...prev, permissionGranted: granted }));
+        
+        if (!granted) {
+          toast({
+            title: "❌ Permisos requeridos",
+            description: "Debes permitir notificaciones para probar",
+            variant: "destructive",
+          });
+          return;
+        }
+      }
+
+      // 🚀 Enviar notificación de prueba
+      const sent = await nativeNotificationSystem.sendTestNotification();
+      
+      if (sent) {
+        toast({
+          title: "🔔 ¡Notificación enviada!",
+          description: "Revisa la barra de notificaciones de tu dispositivo",
+          duration: 3000,
+        });
+      } else {
+        toast({
+          title: "⚠️ Error",
+          description: "No se pudo enviar la notificación. Revisa permisos.",
+          variant: "destructive",
+        });
+      }
+
+    } catch (error) {
+      console.error('❌ Error probando notificación:', error);
+      toast({
+        title: "❌ Error técnico",
+        description: "Hubo un problema enviando la notificación",
+        variant: "destructive",
+      });
+    }
   };
 
   const sendTestEmail = async () => {
     if (!user?.email) return;
 
     try {
-      const success = await EmailService.sendWelcomeEmail({
+      console.log('📧 Enviando email de prueba via Brevo (GRATIS)...');
+      const success = await BrevoEmailService.sendWelcomeEmail({
         userName: user.displayName || 'Hermano(a)',
         userEmail: user.email,
       });
 
       if (success) {
         toast({
-          title: "📧 Email de prueba enviado",
-          description: "Revisa tu bandeja de entrada.",
-          duration: 3000,
+          title: "📧 Email de prueba enviado via Brevo (GRATIS)",
+          description: "El email ha sido enviado. Revisa tu bandeja de entrada en unos minutos.",
+          duration: 4000,
         });
       } else {
-        throw new Error('Failed to send email');
+        throw new Error('Failed to send email via Firebase');
       }
     } catch (error) {
+      console.error('❌ Error enviando email via Firebase:', error);
       toast({
         title: "❌ Error enviando email",
-        description: "No se pudo enviar el email de prueba.",
+        description: "No se pudo enviar el email de prueba. Revisa la consola para más detalles.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const sendTestResetPasswordEmail = async () => {
+    if (!user?.email) return;
+
+    try {
+      console.log('🔑 Enviando email de reset password de prueba via Brevo...');
+      const success = await BrevoEmailService.sendPasswordResetEmail({
+        userEmail: user.email,
+      });
+
+      if (success) {
+        toast({
+          title: "🔑 Email de reset password enviado via Brevo",
+          description: "El email personalizado ha sido enviado. Revisa tu bandeja de entrada.",
+          duration: 4000,
+        });
+      } else {
+        throw new Error('Failed to send reset password email via Brevo');
+      }
+    } catch (error) {
+      console.error('❌ Error enviando email de reset password:', error);
+      toast({
+        title: "❌ Error enviando email",
+        description: "No se pudo enviar el email de reset password. Revisa la consola.",
         variant: "destructive",
       });
     }
@@ -556,26 +659,37 @@ function SettingsPage() {
                 />
               </div>
 
-              {/* Botón de prueba email */}
-              <Button
-                onClick={sendTestEmail}
-                variant="outline"
-                className="w-full bg-purple-500/10 border-purple-500/30 text-purple-400 hover:bg-purple-500/20 hover:border-purple-400 transition-all"
-              >
-                <Mail className="h-4 w-4 mr-2" />
-                Enviar email de prueba
-              </Button>
+              {/* Botones de prueba */}
+              <div className="space-y-3">
+                <Button
+                  onClick={sendTestEmail}
+                  variant="outline"
+                  className="w-full bg-purple-500/10 border-purple-500/30 text-purple-400 hover:bg-purple-500/20 hover:border-purple-400 transition-all"
+                >
+                  <Mail className="h-4 w-4 mr-2" />
+                  Probar email de bienvenida
+                </Button>
+                
+                <Button
+                  onClick={sendTestResetPasswordEmail}
+                  variant="outline"
+                  className="w-full bg-red-500/10 border-red-500/30 text-red-400 hover:bg-red-500/20 hover:border-red-400 transition-all"
+                >
+                  <Lock className="h-4 w-4 mr-2" />
+                  Probar email de reset password
+                </Button>
+              </div>
 
-              {/* Info sobre configuración de EmailJS */}
-              <div className="p-4 rounded-xl bg-orange-900/10 border border-orange-500/30">
+              {/* Info sobre configuración de Firebase */}
+              <div className="p-4 rounded-xl bg-blue-900/10 border border-blue-500/30">
                 <div className="flex items-start gap-3">
-                  <div className="p-2 bg-orange-500/20 rounded-lg">
-                    <AlertCircle className="h-4 w-4 text-orange-400" />
+                  <div className="p-2 bg-blue-500/20 rounded-lg">
+                    <AlertCircle className="h-4 w-4 text-blue-400" />
                   </div>
                   <div>
-                    <p className="text-sm text-orange-300 font-medium">Configuración adicional</p>
-                    <p className="text-xs text-orange-200/80 mt-1">
-                      Para habilitar emails automáticos, configura las variables de entorno de EmailJS en tu servidor.
+                    <p className="text-sm text-blue-300 font-medium">🔥 Powered by Firebase</p>
+                    <p className="text-xs text-blue-200/80 mt-1">
+                      Los emails se envían usando Firebase Trigger Email Extension. Más confiable que servicios externos.
                     </p>
                   </div>
                 </div>

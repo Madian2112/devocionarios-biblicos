@@ -36,7 +36,17 @@ import withAuth from "@/components/auth/with-auth"
 
 function DashboardPage() {
   const { user } = useAuthContext();
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0])
+  
+  // 🗓️ Usar fecha local del dispositivo en lugar de UTC
+  const getLocalDateString = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = (now.getMonth() + 1).toString().padStart(2, '0');
+    const day = now.getDate().toString().padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+  
+  const [selectedDate, setSelectedDate] = useState(getLocalDateString())
   const [devocionales, setDevocionales] = useState<Devocional[]>([])
   const [loading, setLoading] = useState(true);
   const [devocionalDelDia, setDevocionalDelDia] = useState<Devocional | null>(null);
@@ -88,15 +98,17 @@ function DashboardPage() {
   }
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    // Asegurarse de que la fecha se interpreta en UTC para evitar problemas de zona horaria
-    const utcDate = new Date(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
-    return utcDate.toLocaleDateString("es-ES", {
+    // 🗓️ Usar fecha local del dispositivo - parseando directamente el string YYYY-MM-DD
+    const [year, month, day] = dateString.split('-').map(Number);
+    const localDate = new Date(year, month - 1, day); // month - 1 porque Date usa 0-indexing para meses
+    
+    return localDate.toLocaleDateString("es-ES", {
       weekday: "long",
       year: "numeric",
       month: "long",
       day: "numeric",
-      timeZone: 'UTC'
+      // Usar zona horaria local del dispositivo
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
     })
   }
 
@@ -200,9 +212,15 @@ function DashboardPage() {
                     onChange={(e) => setSelectedDate(e.target.value)}
                     className="bg-[#2a2a2a]/50 border-gray-700 text-white text-center w-full max-w-[200px]"
                   />
-                  <Button onClick={() => setSelectedDate(new Date().toISOString().split('T')[0])} variant="link" size="sm" className="text-gray-400 hover:text-white">
-                    Hoy: {formatDate(new Date().toISOString())}
+                  <Button onClick={() => setSelectedDate(getLocalDateString())} variant="link" size="sm" className="text-gray-400 hover:text-white">
+                    Hoy: {formatDate(getLocalDateString())}
                   </Button>
+                  {/* 🗓️ Info de zona horaria (solo para desarrollo) */}
+                  {process.env.NODE_ENV === 'development' && (
+                    <p className="text-xs text-gray-500 text-center">
+                      Zona horaria: {Intl.DateTimeFormat().resolvedOptions().timeZone}
+                    </p>
+                  )}
                 </div>
 
                 <Button

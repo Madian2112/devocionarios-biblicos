@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import {
@@ -44,9 +44,57 @@ function TopicalStudiesPage() {
   const [editingTopicName, setEditingTopicName] = useState("");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [topicToDelete, setTopicToDelete] = useState<{ id: string; name: string } | null>(null);
+  const [refreshingEntries, setRefreshingEntries] = useState<Set<string>>(new Set());
 
   // 🚀 Usar hook optimizado con cache y mejor manejo de estados
   const { studies: topicalStudies, loading, error, invalidateCache } = useTopicalStudies();
+
+  // 🔄 Invalidar cache automáticamente cuando se regresa de página individual
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('🔄 Página visible de nuevo - verificando si necesita refresh...');
+        
+        // Verificar si venimos de una página individual de topical
+        const currentPath = window.location.pathname;
+        const referrer = document.referrer;
+        
+        if (currentPath === '/topical' && referrer.includes('/topical/')) {
+          console.log('🔄 Regresando de página individual - invalidando cache...');
+          setTimeout(() => {
+            invalidateCache();
+            
+            // Marcar todos los topics como "refrescando entradas" brevemente
+            if (topicalStudies.length > 0) {
+              const allIds = new Set(topicalStudies.map(t => t.id));
+              setRefreshingEntries(allIds);
+              
+              // Quitar loading después de 1.5 segundos
+              setTimeout(() => {
+                setRefreshingEntries(new Set());
+              }, 1500);
+            }
+          }, 200);
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [invalidateCache, topicalStudies]);
+
+  // 🔄 También invalidar cache cuando el componente se monta
+  useEffect(() => {
+    const sessionKey = 'topical-return-flag';
+    if (sessionStorage.getItem(sessionKey)) {
+      console.log('🔄 Detectado regreso de página individual - invalidando cache...');
+      sessionStorage.removeItem(sessionKey);
+      invalidateCache();
+    }
+  }, [invalidateCache]);
 
   
 
@@ -152,22 +200,47 @@ function TopicalStudiesPage() {
   };
 
   const confirmDeleteTopic = async () => {
-    if (!topicToDelete) return;
+    if (!topicToDelete || !user) return;
+    
+    // 🚀 Optimistic Update - Actualizar UI inmediatamente
+    console.log('🗑️ Eliminando tema optimísticamente:', topicToDelete.name);
+    
+    // 1. Cerrar modal inmediatamente para mejor UX
+    setDeleteDialogOpen(false);
+    
+    // 2. Mostrar loading en el tema específico
+    setRefreshingEntries(new Set([topicToDelete.id]));
+    
+    // 3. Toast de inicio
+    toast({
+      title: "🔄 Eliminando estudio...",
+      description: `Eliminando "${topicToDelete.name}"`,
+      duration: 2000,
+    });
     
     try {
+        // 4. Eliminar de la base de datos
         await firestoreService.deleteTopicalStudy(topicToDelete.id);
-        invalidateCache(); // Invalidate cache to refetch without the deleted topic
         
-        // 🔔 Notificación de éxito
+        // 5. Invalidar cache y forzar refetch
+        invalidateCache();
+        
+        console.log('✅ Tema eliminado exitosamente:', topicToDelete.name);
+        
+        // 6. Notificación de éxito
         toast({
           title: "✅ Estudio eliminado",
           description: `"${topicToDelete.name}" ha sido eliminado correctamente.`,
           duration: 3000,
         });
-    } catch (error) {
-        console.error("Error deleting topic:", error);
         
-        // 🔔 Notificación de error
+    } catch (error) {
+        console.error("❌ Error eliminando tema:", error);
+        
+        // 7. Si falla, recargar datos para revertir UI
+        invalidateCache();
+        
+        // 8. Notificación de error
         toast({
           title: "❌ Error al eliminar",
           description: "No se pudo eliminar el estudio temático. Inténtalo de nuevo.",
@@ -175,7 +248,8 @@ function TopicalStudiesPage() {
           duration: 5000,
         });
     } finally {
-        setDeleteDialogOpen(false);
+        // 9. Limpiar estados
+        setRefreshingEntries(new Set());
         setTopicToDelete(null);
     }
   };
@@ -275,7 +349,16 @@ function TopicalStudiesPage() {
                             ) : (
                             <h3 className="text-xl font-semibold text-white">{topic.name}</h3>
                             )}
-                            <p className="text-gray-400 mt-2">{topic.entries.length} {topic.entries.length === 1 ? 'entrada' : 'entradas'}</p>
+                            <div className="flex items-center gap-2 mt-2">
+                              {refreshingEntries.has(topic.id) ? (
+                                <>
+                                  <div className="animate-spin h-4 w-4 border-2 border-blue-400 border-t-transparent rounded-full"></div>
+                                  <p className="text-gray-400">Actualizando entradas...</p>
+                                </>
+                              ) : (
+                                <p className="text-gray-400">{topic.entries.length} {topic.entries.length === 1 ? 'entrada' : 'entradas'}</p>
+                              )}
+                            </div>
                         </CardContent>
                     </Link>
                     <CardHeader className="p-2 border-t border-gray-700/50 flex-row justify-around">

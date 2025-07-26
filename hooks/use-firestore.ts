@@ -244,9 +244,14 @@ export function useTopicalStudies() {
 
   const invalidateCache = useCallback(() => {
     if (user) {
-      cache.delete(`topical_studies_${user.uid}`);
+      const cacheKey = `topical_studies_${user.uid}`;
+      console.log('🔄 Invalidando cache para:', cacheKey);
+      cache.delete(cacheKey);
+      
+      // Forzar refetch inmediato
+      fetchStudies();
     }
-  }, [user]);
+  }, [user, fetchStudies]);
 
   return {
     studies,
