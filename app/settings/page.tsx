@@ -53,13 +53,17 @@ function SettingsPage() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
+    console.log('🔄 useEffect ejecutado - loading:', loading, 'user:', !!user);
+    
     // Verificar autenticación manualmente
     if (!loading && !user) {
+      console.log('🚪 Redirigiendo a login - no hay usuario autenticado');
       router.replace('/login');
       return;
     }
     
     if (user) {
+      console.log('👤 Usuario autenticado, cargando configuración...');
       loadSettings();
     }
   }, [user, loading, router]);
@@ -77,44 +81,66 @@ function SettingsPage() {
       const permissionGranted = 'Notification' in window && Notification.permission === 'granted';
       console.log('🔔 Permisos de notificación:', permissionGranted);
       
-      // Intentar inicializar servicio (con timeout)
+      // Intentar cargar desde localStorage primero
+      const configKey = `notification_config_${user.uid}`;
+      const savedConfigString = localStorage.getItem(configKey);
+      console.log('📖 Configuración en localStorage:', savedConfigString);
+      
       let config = null;
-      try {
-        const initTimeout = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Timeout')), 3000)
-        );
-        
-        const initPromise = notificationService.initialize(user.uid);
-        await Promise.race([initPromise, initTimeout]);
-        
-        // Cargar configuración guardada
-        config = notificationService.loadNotificationConfig();
-        console.log('⚙️ Configuración cargada:', config);
-        
-      } catch (initError) {
-        console.warn('⚠️ No se pudo inicializar servicio de notificaciones:', initError);
-        // Continuar sin el servicio de notificaciones
+      
+      if (savedConfigString) {
+        try {
+          config = JSON.parse(savedConfigString);
+          console.log('✅ Configuración cargada desde localStorage:', config);
+        } catch (parseError) {
+          console.error('❌ Error parseando configuración desde localStorage:', parseError);
+        }
+      }
+      
+      // Si no hay configuración en localStorage, intentar con el servicio
+      if (!config) {
+        try {
+          const initTimeout = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Timeout')), 3000)
+          );
+          
+          const initPromise = notificationService.initialize(user.uid);
+          await Promise.race([initPromise, initTimeout]);
+          
+          // Cargar configuración guardada
+          config = notificationService.loadNotificationConfig();
+          console.log('⚙️ Configuración cargada desde servicio:', config);
+          
+        } catch (initError) {
+          console.warn('⚠️ No se pudo inicializar servicio de notificaciones:', initError);
+        }
       }
       
       if (config) {
-        setSettings({
-          enabled: config.enabled,
-          dailyTime: config.dailyTime,
-          streakReminders: config.streakReminders,
-          weeklyReports: config.weeklyReports,
+        const loadedSettings = {
+          enabled: config.enabled || false,
+          dailyTime: config.dailyTime || '08:00',
+          streakReminders: config.streakReminders !== undefined ? config.streakReminders : true,
+          weeklyReports: config.weeklyReports !== undefined ? config.weeklyReports : true,
           emailNotifications: true,
           permissionGranted,
-        });
+        };
+        
+        console.log('📋 Aplicando configuración cargada:', loadedSettings);
+        setSettings(loadedSettings);
       } else {
         // Configuración por defecto
-        setSettings({
+        const defaultSettings = {
           enabled: false,
           dailyTime: '08:00',
           streakReminders: true,
           weeklyReports: true,
           emailNotifications: true,
           permissionGranted,
-        });
+        };
+        
+        console.log('📋 Aplicando configuración por defecto:', defaultSettings);
+        setSettings(defaultSettings);
       }
       
       console.log('✅ Configuración cargada exitosamente');
@@ -123,14 +149,16 @@ function SettingsPage() {
       console.error('❌ Error cargando configuración:', error);
       
       // Cargar configuración por defecto en caso de error
-      setSettings({
+      const fallbackSettings = {
         enabled: false,
         dailyTime: '08:00',
         streakReminders: true,
         weeklyReports: true,
         emailNotifications: true,
         permissionGranted: 'Notification' in window && Notification.permission === 'granted',
-      });
+      };
+      
+      setSettings(fallbackSettings);
       
       toast({
         title: "⚠️ Advertencia",
@@ -162,26 +190,66 @@ function SettingsPage() {
   };
 
   const handleSettingChange = (key: keyof NotificationSettings, value: boolean | string) => {
-    setSettings(prev => ({ ...prev, [key]: value }));
+    console.log(`🔄 Cambiando configuración: ${key} = ${value}`);
+    setSettings(prev => {
+      const newSettings = { ...prev, [key]: value };
+      console.log('📝 Nuevo estado de configuración:', newSettings);
+      return newSettings;
+    });
   };
 
   const saveSettings = async () => {
-    if (!user) return;
+    if (!user) {
+      console.error('❌ No hay usuario autenticado para guardar configuración');
+      return;
+    }
 
     setSaving(true);
+    console.log('💾 Guardando configuración:', settings);
+
     try {
-      // Guardar configuración de notificaciones
-      notificationService.saveNotificationConfig({
+      // Crear objeto de configuración
+      const configToSave = {
         enabled: settings.enabled,
         dailyTime: settings.dailyTime,
         streakReminders: settings.streakReminders,
         weeklyReports: settings.weeklyReports,
-      });
+      };
+
+      console.log('📝 Configuración que se va a guardar:', configToSave);
+      console.log('👤 Usuario ID:', user.uid);
+
+      // Guardar directamente en localStorage como fallback
+      const configKey = `notification_config_${user.uid}`;
+      localStorage.setItem(configKey, JSON.stringify(configToSave));
+      console.log('💾 Guardado en localStorage con clave:', configKey);
+
+      // Intentar guardar con el servicio de notificaciones
+      try {
+        await notificationService.initialize(user.uid);
+        notificationService.saveNotificationConfig(configToSave);
+        console.log('✅ Guardado con servicio de notificaciones exitoso');
+      } catch (serviceError) {
+        console.warn('⚠️ Error con servicio de notificaciones, usando localStorage:', serviceError);
+      }
 
       // Si está habilitado pero no tiene permisos, solicitarlos
       if (settings.enabled && !settings.permissionGranted) {
+        console.log('🔔 Solicitando permisos de notificación...');
         await requestNotificationPermission();
+        // Verificar si se concedieron los permisos
+        const newPermissionState = 'Notification' in window && Notification.permission === 'granted';
+        if (newPermissionState) {
+          setSettings(prev => ({ ...prev, permissionGranted: true }));
+          // Guardar nuevamente con permisos actualizados
+          const updatedConfig = { ...configToSave };
+          localStorage.setItem(configKey, JSON.stringify(updatedConfig));
+        }
       }
+
+      // Verificar que se guardó correctamente
+      const savedConfig = localStorage.getItem(configKey);
+      console.log('🔍 Verificación - configuración guardada:', savedConfig);
 
       toast({
         title: "✅ Configuración guardada",
@@ -190,10 +258,10 @@ function SettingsPage() {
       });
 
     } catch (error) {
-      console.error('Error guardando configuración:', error);
+      console.error('❌ Error guardando configuración:', error);
       toast({
         title: "❌ Error al guardar",
-        description: "No se pudo guardar la configuración.",
+        description: "No se pudo guardar la configuración. Revisa la consola para más detalles.",
         variant: "destructive",
       });
     } finally {
@@ -242,6 +310,32 @@ function SettingsPage() {
     }
   };
 
+  const clearAllSettings = () => {
+    if (!user) return;
+    
+    console.log('🧹 Limpiando toda la configuración...');
+    const configKey = `notification_config_${user.uid}`;
+    localStorage.removeItem(configKey);
+    
+    // Recargar configuración por defecto
+    const defaultSettings = {
+      enabled: false,
+      dailyTime: '08:00',
+      streakReminders: true,
+      weeklyReports: true,
+      emailNotifications: true,
+      permissionGranted: 'Notification' in window && Notification.permission === 'granted',
+    };
+    
+    setSettings(defaultSettings);
+    
+    toast({
+      title: "🧹 Configuración limpiada",
+      description: "Se ha restablecido la configuración por defecto.",
+      duration: 3000,
+    });
+  };
+
   // Mostrar loading mientras se verifica autenticación
   if (loading) {
     return (
@@ -288,6 +382,11 @@ function SettingsPage() {
               ⚙️ Configuración
             </h1>
             <p className="text-gray-400">Personaliza tus notificaciones y recordatorios</p>
+            {process.env.NODE_ENV === 'development' && (
+              <p className="text-xs text-yellow-400 mt-1">
+                🔧 Modo desarrollo - Revisa la consola para logs detallados
+              </p>
+            )}
           </div>
         </div>
 
@@ -487,8 +586,8 @@ function SettingsPage() {
 
         </div>
 
-        {/* Botón guardar configuración */}
-        <div className="flex justify-center mt-8">
+        {/* Botones de acción */}
+        <div className="flex flex-col sm:flex-row justify-center items-center gap-4 mt-8">
           <Button
             onClick={saveSettings}
             disabled={saving}
@@ -507,6 +606,18 @@ function SettingsPage() {
               </>
             )}
           </Button>
+          
+          {/* Botón de debug - solo para desarrollo */}
+          {process.env.NODE_ENV === 'development' && (
+            <Button
+              onClick={clearAllSettings}
+              variant="outline"
+              size="sm"
+              className="bg-red-900/20 border-red-500/30 text-red-400 hover:bg-red-900/30 hover:border-red-400"
+            >
+              🧹 Limpiar Config
+            </Button>
+          )}
         </div>
 
       </div>
