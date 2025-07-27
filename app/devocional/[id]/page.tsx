@@ -37,6 +37,7 @@ import { fetchVerseText } from "@/lib/bible-api"
 import withAuth from "@/components/auth/with-auth"
 import { useToast } from "@/hooks/use-toast"
 import { notificationService } from "@/lib/notification-service"
+import { useDisableMobileZoom } from '@/hooks/use-disable-mobile-zoom';
 
 
 function DevocionalPage({ params }: { params: Promise<{ id: string }> }) {
@@ -48,6 +49,8 @@ function DevocionalPage({ params }: { params: Promise<{ id: string }> }) {
   const [devocional, setDevocional] = useState<Devocional | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+
+  useDisableMobileZoom()
 
   useEffect(() => {
     async function fetchOrCreateDevocional() {

@@ -16,6 +16,7 @@ import { useRouter } from "next/navigation";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { notificationSystem } from "@/lib/hybrid-notification-system";
 import { toast } from "@/hooks/use-toast";
+import { useDisableMobileZoom } from '@/hooks/use-disable-mobile-zoom';
 
 interface LoginPageProps {
   defaultMode?: 'login' | 'signup';
@@ -29,6 +30,7 @@ export function LoginPage({ defaultMode = 'login' }: LoginPageProps = {}) {
   const [loading, setLoading] = useState(false);
   const [isSignUp, setIsSignUp] = useState(defaultMode === 'signup');
   const router = useRouter();
+  useDisableMobileZoom();
 
   const handleAuthAction = async () => {
     // Validación de campos vacíos
@@ -188,7 +190,7 @@ export function LoginPage({ defaultMode = 'login' }: LoginPageProps = {}) {
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="tu@correo.com"
                     className="pl-10 bg-[#2a2a2a]/50 border-gray-700"
-                    autoFocus={false}
+                    
                   />
               </div>
             </div>
@@ -204,7 +206,7 @@ export function LoginPage({ defaultMode = 'login' }: LoginPageProps = {}) {
                     onKeyDown={(e) => e.key === 'Enter' && handleAuthAction()}
                     placeholder="••••••••"
                     className="pl-10 bg-[#2a2a2a]/50 border-gray-700"
-                    autoFocus={false}
+                    
                   />
                </div>
             </div>

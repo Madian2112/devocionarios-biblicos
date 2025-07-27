@@ -25,6 +25,7 @@ import { BibleViewer } from "@/components/bible/bible-viewer"
 import { useAuthContext } from "@/context/auth-context"
 import { firestoreService } from "@/lib/firestore"
 import withAuth from "@/components/auth/with-auth"
+import { useDisableMobileZoom } from '@/hooks/use-disable-mobile-zoom';
 
 function SearchPage() {
   const { user } = useAuthContext();
@@ -33,6 +34,8 @@ function SearchPage() {
   const [devocionales, setDevocionarios] = useState<Devocional[]>([]);
   const [topicalStudies, setTopicalStudies] = useState<TopicalStudy[]>([]);
   
+  useDisableMobileZoom()
+
   useEffect(() => {
     async function loadAllData() {
         if (user) {

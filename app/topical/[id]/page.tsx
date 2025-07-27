@@ -40,6 +40,7 @@ import { Timestamp } from "firebase/firestore"
 import { fetchVerseText } from "@/lib/bible-api"
 import withAuth from "@/components/auth/with-auth"
 import { useToast } from "@/hooks/use-toast"
+import { useDisableMobileZoom } from '@/hooks/use-disable-mobile-zoom';
 
 
 function TopicalStudyPage({ params }: { params: Promise<{ id: string }> }) {
@@ -57,6 +58,8 @@ function TopicalStudyPage({ params }: { params: Promise<{ id: string }> }) {
   const [deleteEntryDialogOpen, setDeleteEntryDialogOpen] = useState(false);
   const [entryToDelete, setEntryToDelete] = useState<{ id: string; referencia: string } | null>(null);
   
+  useDisableMobileZoom()
+
   useEffect(() => {
     async function fetchOrCreateStudy() {
         if (!user) return;

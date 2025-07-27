@@ -34,6 +34,7 @@ import { Timestamp } from "firebase/firestore"
 // 🚀 Usar el hook optimizado con cache
 import { useTopicalStudies } from "@/hooks/use-firestore"
 import { useToast } from "@/hooks/use-toast"
+import { useDisableMobileZoom } from '@/hooks/use-disable-mobile-zoom';
 
 function TopicalStudiesPage() {
   const router = useRouter();
@@ -45,6 +46,7 @@ function TopicalStudiesPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [topicToDelete, setTopicToDelete] = useState<{ id: string; name: string } | null>(null);
   const [refreshingEntries, setRefreshingEntries] = useState<Set<string>>(new Set());
+  useDisableMobileZoom()
 
   // 🚀 Usar hook optimizado con cache y mejor manejo de estados
   const { studies: topicalStudies, loading, error, invalidateCache } = useTopicalStudies();
