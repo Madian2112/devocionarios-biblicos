@@ -4,7 +4,7 @@ import React, { createContext, useContext, useEffect, useState, ReactNode, useMe
 import { onAuthStateChanged, User, signOut as firebaseSignOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
-import { hybridNotificationSystem } from '@/lib/hybrid-notification-system';
+import { notificationSystem } from '@/lib/hybrid-notification-system';
 
 interface AuthContextType {
   user: User | null;
@@ -17,6 +17,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
     // 🚀 onAuthStateChanged optimizado
@@ -31,12 +32,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const userEmail = currentUser.email || '';
           
           // Inicializar en background sin bloquear la UI
-          hybridNotificationSystem.initialize(userName, userEmail)
+          notificationSystem.initialize(userName)
             .then((result) => {
               console.log('✅ Sistema híbrido inicializado:', result);
               
               // Iniciar recordatorios automáticos si están habilitados
-              hybridNotificationSystem.startAutomaticReminders();
+              // notificationSystem.startAutomaticReminders();
             })
             .catch((error) => {
               console.warn('⚠️ Error inicializando sistema híbrido:', error);
@@ -65,7 +66,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // 🚀 Memoizar el valor del contexto para evitar re-renders innecesarios
   const value = useMemo(() => ({ 
     user, 
     loading, 
@@ -93,4 +93,4 @@ export function useAuthContext() {
     throw new Error('useAuthContext debe ser usado dentro de un AuthProvider');
   }
   return context;
-} 
+}

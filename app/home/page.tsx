@@ -27,20 +27,15 @@ function HomePage() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const stats = useStatistics(); // 📊 Estadísticas reales del usuario
 
-  // 🛡️ Protección manual: redirigir al login si no hay usuario (pero NO durante logout o registro)
+  // 🛡️ Protección manual: redirigir al login si no hay usuario
   useEffect(() => {
-    // Agregar delay para permitir que el contexto de auth se actualice después del registro
-    const timer = setTimeout(() => {
-      if (!loading && !user && !isLoggingOut) {
-        // Solo redirigir al login si NO estamos en proceso de logout
-        const isLogoutInProgress = sessionStorage.getItem('logout-in-progress');
-        if (!isLogoutInProgress) {
-          router.replace('/login');
-        }
+    if (!loading && !user && !isLoggingOut) {
+      // Solo redirigir al login si NO estamos en proceso de logout
+      const isLogoutInProgress = sessionStorage.getItem('logout-in-progress');
+      if (!isLogoutInProgress) {
+        router.replace('/login');
       }
-    }, 1000); // 1 segundo de delay para permitir que auth se actualice
-
-    return () => clearTimeout(timer);
+    }
   }, [user, loading, router, isLoggingOut]);
 
   // 🧹 Limpiar sessionStorage al desmontar componente
@@ -50,33 +45,33 @@ function HomePage() {
     };
   }, []);
 
-  // 🚀 Logout con Firebase y redirección al landing page
-  const handleLogout = () => {
-    // 🔥 LOGOUT SÚPER AGRESIVO - Redirección inmediata
-    
-    // Marcar que el logout está en progreso
-    sessionStorage.setItem('logout-in-progress', 'true');
-    
-    // REDIRECCIÓN INMEDIATA - No esperamos a nada
-    window.location.href = '/';
-    
-    // Firebase logout en background (no bloqueante)
-    signOut().catch(() => {
-      // Si falla, no importa - ya estamos en el landing page
-    }).finally(() => {
+  // 🚀 Logout optimizado - Redirección inmediata
+const handleLogout = () => {
+  // 1. Marcar logout en progreso INMEDIATAMENTE
+  sessionStorage.setItem('logout-in-progress', 'true');
+  setIsLoggingOut(true);
+  
+  // 2. REDIRECCIÓN INMEDIATA - antes de que Firebase elimine el user
+  router.replace('/');
+  
+  // 3. Firebase logout en background (no bloquea la navegación)
+  signOut().catch(console.error).finally(() => {
+    // Limpiar después de un tiempo para evitar loops
+    setTimeout(() => {
       sessionStorage.removeItem('logout-in-progress');
-    });
-  };
+    }, 1000);
+  });
+};
 
-  // Mostrar loading mientras verifica autenticación
-  // Display loading while verifying authentication or loading stats
-  if (loading || stats.loading) {
+  // ⚡ RENDER INMEDIATO - Sin esperar estadísticas
+  // Mostrar UI básica inmediatamente, estadísticas se cargan después
+  if (loading) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-gradient-to-br from-[#0a0a0a] to-[#0f0f0f]">
         <div className="flex flex-col items-center space-y-4">
           <LoadingSpinner size="lg" />
           <p className="text-gray-400 text-sm animate-pulse">
-            {loading ? "Verificando autenticación..." : "Calculando estadísticas..."}
+            Verificando autenticación...
           </p>
         </div>
       </div>
@@ -99,7 +94,7 @@ function HomePage() {
             onClick={handleLogout}
             className="bg-[#1a1a1a]/50 border-gray-700 hover:bg-[#2a2a2a]/50 backdrop-blur-sm"
           >
-            <LogOutIcon className="h-4 w-4 mr-2 rotate-180" />
+        <LogOutIcon className="h-4 w-4 mr-2 rotate-180" />
           </Button>
         </div>
 
@@ -133,7 +128,7 @@ function HomePage() {
             </div>
           </div>
         </div>
-
+        
         {/* 🚀 NAVEGACIÓN PRINCIPAL - ACCESO RÁPIDO EN MÓVILES */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
             <Link href="/dashboard">
@@ -156,105 +151,125 @@ function HomePage() {
             </Link>
         </div>
         
-        {/* 📊 ESTADÍSTICAS DE PROGRESO */}
+        {/* 📊 ESTADÍSTICAS DE PROGRESO - Con loading optimizado */}
         <div className="mb-8">
           <h2 className="text-lg sm:text-xl font-semibold text-white mb-6 text-center">📊 Tu Progreso Espiritual</h2>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
-            <GradientCard gradient="blue" className="group hover:scale-105 transition-transform">
-              <CardContent className="p-3 sm:p-4 lg:p-6">
+          
+          {/* ⚡ Mostrar estadísticas inmediatamente si están disponibles, skeleton si no */}
+          {stats.loading ? (
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
+              {Array(4).fill(0).map((_, i) => (
+                <div key={i} className="bg-gray-900/50 rounded-xl border border-gray-800 p-3 sm:p-4 lg:p-6 animate-pulse">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs sm:text-sm font-medium text-gray-400 mb-1">Completados</p>
-                    <p className="text-lg sm:text-xl lg:text-2xl font-bold text-white">{stats.completados}</p>
+                      <div className="h-3 bg-gray-700 rounded w-16 mb-2"></div>
+                      <div className="h-6 bg-gray-700 rounded w-8"></div>
                   </div>
-                  <div className="p-2 sm:p-3 bg-blue-500/20 rounded-xl group-hover:bg-blue-500/30 transition-colors">
-                    <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 text-blue-400" />
+                    <div className="w-8 h-8 bg-gray-700 rounded-xl"></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
+              <GradientCard gradient="blue" className="group hover:scale-105 transition-transform">
+                <CardContent className="p-3 sm:p-4 lg:p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs sm:text-sm font-medium text-gray-400 mb-1">Completados</p>
+                      <p className="text-lg sm:text-xl lg:text-2xl font-bold text-white">{stats.completados}</p>
+                    </div>
+                    <div className="p-2 sm:p-3 bg-blue-500/20 rounded-xl group-hover:bg-blue-500/30 transition-colors">
+                      <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 text-blue-400" />
                   </div>
                 </div>
               </CardContent>
             </GradientCard>
 
             <GradientCard gradient="purple" className="group hover:scale-105 transition-transform">
-              <CardContent className="p-3 sm:p-4 lg:p-6">
+                <CardContent className="p-3 sm:p-4 lg:p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs sm:text-sm font-medium text-gray-400 mb-1">Versículos</p>
-                    <p className="text-lg sm:text-xl lg:text-2xl font-bold text-white">{stats.versiculos}</p>
+                      <p className="text-xs sm:text-sm font-medium text-gray-400 mb-1">Versículos</p>
+                      <p className="text-lg sm:text-xl lg:text-2xl font-bold text-white">{stats.versiculos}</p>
                   </div>
-                  <div className="p-2 sm:p-3 bg-purple-500/20 rounded-xl group-hover:bg-purple-500/30 transition-colors">
-                    <Book className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 text-purple-400" />
+                    <div className="p-2 sm:p-3 bg-purple-500/20 rounded-xl group-hover:bg-purple-500/30 transition-colors">
+                      <Book className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 text-purple-400" />
                   </div>
                 </div>
               </CardContent>
             </GradientCard>
 
             <GradientCard gradient="green" className="group hover:scale-105 transition-transform">
-              <CardContent className="p-3 sm:p-4 lg:p-6">
+                <CardContent className="p-3 sm:p-4 lg:p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs sm:text-sm font-medium text-gray-400 mb-1">Referencias</p>
-                    <p className="text-lg sm:text-xl lg:text-2xl font-bold text-white">{stats.referencias}</p>
+                      <p className="text-xs sm:text-sm font-medium text-gray-400 mb-1">Referencias</p>
+                      <p className="text-lg sm:text-xl lg:text-2xl font-bold text-white">{stats.referencias}</p>
+                    </div>
+                    <div className="p-2 sm:p-3 bg-green-500/20 rounded-xl group-hover:bg-green-500/30 transition-colors">
+                      <LinkIcon className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 text-green-400" />
+                    </div>
                   </div>
-                  <div className="p-2 sm:p-3 bg-green-500/20 rounded-xl group-hover:bg-green-500/30 transition-colors">
-                    <LinkIcon className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 text-green-400" />
+                </CardContent>
+              </GradientCard>
+
+              <GradientCard gradient="orange" className="group hover:scale-105 transition-transform">
+                <CardContent className="p-3 sm:p-4 lg:p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs sm:text-sm font-medium text-gray-400 mb-1">Racha</p>
+                      <p className="text-lg sm:text-xl lg:text-2xl font-bold text-white">{stats.racha}</p>
+                      <p className="text-xs text-gray-500 mt-1 hidden sm:block">
+                        {stats.racha === 0 ? "¡Comienza hoy!" : 
+                         stats.racha === 1 ? "día" : "días consecutivos"}
+                      </p>
+                    </div>
+                    <div className="p-2 sm:p-3 bg-orange-500/20 rounded-xl group-hover:bg-orange-500/30 transition-colors">
+                      <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 text-orange-400" />
+                    </div>
+                  </div>
+                </CardContent>
+              </GradientCard>
+            </div>
+          )}
+
+          {/* 📊 Estadísticas adicionales - Solo mostrar cuando no están cargando */}
+          {!stats.loading && (
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:gap-6 mt-4 lg:hidden">
+              <GradientCard gradient="purple" className="group hover:scale-105 transition-transform">
+                <CardContent className="p-3 sm:p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs sm:text-sm font-medium text-gray-400 mb-1">Total Devoc.</p>
+                      <p className="text-lg sm:text-xl font-bold text-white">{stats.totalDevocionales}</p>
+                    </div>
+                    <div className="p-2 sm:p-3 bg-purple-500/20 rounded-xl group-hover:bg-purple-500/30 transition-colors">
+                      <BookOpen className="h-4 w-4 sm:h-5 sm:w-5 text-purple-400" />
                   </div>
                 </div>
               </CardContent>
             </GradientCard>
 
-            <GradientCard gradient="orange" className="group hover:scale-105 transition-transform">
-              <CardContent className="p-3 sm:p-4 lg:p-6">
+              <GradientCard gradient="blue" className="group hover:scale-105 transition-transform">
+                <CardContent className="p-3 sm:p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs sm:text-sm font-medium text-gray-400 mb-1">Racha</p>
-                    <p className="text-lg sm:text-xl lg:text-2xl font-bold text-white">{stats.racha}</p>
-                    <p className="text-xs text-gray-500 mt-1 hidden sm:block">
-                      {stats.racha === 0 ? "¡Comienza hoy!" : 
-                       stats.racha === 1 ? "día" : "días consecutivos"}
-                    </p>
+                      <p className="text-xs sm:text-sm font-medium text-gray-400 mb-1">Estudios</p>
+                      <p className="text-lg sm:text-xl font-bold text-white">{stats.totalEstudios}</p>
+                    </div>
+                    <div className="p-2 sm:p-3 bg-blue-500/20 rounded-xl group-hover:bg-blue-500/30 transition-colors">
+                      <BookCopy className="h-4 w-4 sm:h-5 sm:w-5 text-blue-400" />
+                    </div>
                   </div>
-                  <div className="p-2 sm:p-3 bg-orange-500/20 rounded-xl group-hover:bg-orange-500/30 transition-colors">
-                    <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 text-orange-400" />
-                  </div>
-                </div>
-              </CardContent>
-            </GradientCard>
-          </div>
-
-          {/* 📊 Estadísticas adicionales - Solo en pantallas más grandes */}
-          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:gap-6 mt-4 lg:hidden">
-            <GradientCard gradient="purple" className="group hover:scale-105 transition-transform">
-              <CardContent className="p-3 sm:p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs sm:text-sm font-medium text-gray-400 mb-1">Total Devoc.</p>
-                    <p className="text-lg sm:text-xl font-bold text-white">{stats.totalDevocionales}</p>
-                  </div>
-                  <div className="p-2 sm:p-3 bg-purple-500/20 rounded-xl group-hover:bg-purple-500/30 transition-colors">
-                    <BookOpen className="h-4 w-4 sm:h-5 sm:w-5 text-purple-400" />
-                  </div>
-                </div>
-              </CardContent>
-            </GradientCard>
-
-            <GradientCard gradient="blue" className="group hover:scale-105 transition-transform">
-              <CardContent className="p-3 sm:p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs sm:text-sm font-medium text-gray-400 mb-1">Estudios</p>
-                    <p className="text-lg sm:text-xl font-bold text-white">{stats.totalEstudios}</p>
-                  </div>
-                  <div className="p-2 sm:p-3 bg-blue-500/20 rounded-xl group-hover:bg-blue-500/30 transition-colors">
-                    <BookCopy className="h-4 w-4 sm:h-5 sm:w-5 text-blue-400" />
-                  </div>
-                </div>
-              </CardContent>
-            </GradientCard>
-          </div>
+                </CardContent>
+              </GradientCard>
+            </div>
+          )}
         </div>
 
-        {/* 📈 Barra de progreso de completados */}
-        {stats.totalDevocionales > 0 && (
+        {/* 📈 Barra de progreso de completados - Solo mostrar cuando hay datos */}
+        {!stats.loading && stats.totalDevocionales > 0 && (
           <div className="mt-8">
             <GradientCard gradient="purple">
               <CardContent className="p-6">
@@ -263,7 +278,7 @@ function HomePage() {
                   <span className="text-sm text-gray-400">
                     {stats.completados} de {stats.totalDevocionales} completados
                   </span>
-                </div>
+                  </div>
                 <div className="w-full bg-gray-700 rounded-full h-3">
                   <div 
                     className="bg-gradient-to-r from-purple-500 to-blue-500 h-3 rounded-full transition-all duration-500"
@@ -277,7 +292,7 @@ function HomePage() {
                 </p>
               </CardContent>
             </GradientCard>
-          </div>
+        </div>
         )}
 
       </div>

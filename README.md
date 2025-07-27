@@ -24,12 +24,14 @@
 - ✅ Reportes semanales de progreso
 - ✅ Configuración de horarios flexible
 
-### 📧 **Emails automáticos (Firebase)**
+### 📧 **Emails automáticos (Sin Dominio)**
+- ✅ **Sistema dual Supabase + Brevo**
+- ✅ **Sin verificación de dominio requerida**
 - ✅ Emails de bienvenida para nuevos usuarios
 - ✅ Recordatorios de racha por email
 - ✅ Reportes semanales detallados
-- ✅ Diseño HTML profesional y responsivo
-- ✅ Integración nativa con Firebase
+- ✅ Edge Functions para máximo rendimiento
+- ✅ Fallbacks automáticos
 
 ### 📱 **PWA optimizada**
 - ✅ Instalación como app nativa

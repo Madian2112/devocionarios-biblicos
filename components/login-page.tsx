@@ -14,8 +14,8 @@ import {
 } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import { BrevoEmailService } from "@/lib/brevo-email-service";
-import { hybridNotificationSystem } from "@/lib/hybrid-notification-system";
+import { notificationSystem } from "@/lib/hybrid-notification-system";
+import { toast } from "@/hooks/use-toast";
 
 interface LoginPageProps {
   defaultMode?: 'login' | 'signup';
@@ -31,6 +31,25 @@ export function LoginPage({ defaultMode = 'login' }: LoginPageProps = {}) {
   const router = useRouter();
 
   const handleAuthAction = async () => {
+    // Validación de campos vacíos
+    if (!email.trim()) {
+      toast({
+        title: "⚠️ Campo requerido",
+        description: "Por favor ingresa tu email",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!password.trim()) {
+      toast({
+        title: "⚠️ Campo requerido", 
+        description: "Por favor ingresa tu contraseña",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setError("");
     setSuccess("");
     setLoading(true);
@@ -42,119 +61,111 @@ export function LoginPage({ defaultMode = 'login' }: LoginPageProps = {}) {
         // 🎉 Crear nuevo usuario
         userCredential = await createUserWithEmailAndPassword(auth, email, password);
         
-        // 🎉 SOLO PARA NUEVOS USUARIOS: Enviar bienvenida híbrida (Email + Setup notificaciones)
+        // 🎉 SOLO PARA NUEVOS USUARIOS: Configurar notificaciones de bienvenida
         if (userCredential.user) {
           const userName = email.split('@')[0];
-          const userEmail = email;
           
-          console.log('🎉 Nuevo usuario registrado - enviando bienvenida híbrida...');
-          hybridNotificationSystem.sendWelcome({
-            userName,
-            userEmail
-          }).then((result) => {
-            console.log('✅ Bienvenida híbrida para nuevo usuario completada:', result);
-          }).catch((error) => {
-            console.error('❌ Error en bienvenida híbrida para nuevo usuario:', error);
+          console.log('🎉 Nuevo usuario registrado - configurando notificaciones...');
+          
+          // Configurar notificaciones nativas (no bloquear el flujo)
+          notificationSystem.setupWelcomeNotifications(userName).catch((error: any) => {
+            console.warn('⚠️ No se pudieron configurar las notificaciones:', error);
           });
         }
         
+        setSuccess("¡Cuenta creada exitosamente! Bienvenido 🎉");
       } else {
-        // 🔑 Iniciar sesión usuario existente
+        // 🔑 Iniciar sesión
         userCredential = await signInWithEmailAndPassword(auth, email, password);
-        
-        // 🔔 El sistema híbrido ya se inicializa automáticamente en AuthContext
-        // No es necesario hacer nada adicional aquí para el login
-        console.log('✅ Usuario autenticado, sistema híbrido se inicializará automáticamente');
+        setSuccess("¡Sesión iniciada exitosamente! 🚀");
       }
-      
+
+      // Redirigir al home
       router.push('/home');
-    } catch (err: any) {
-      const error = err;
+      
+    } catch (error: any) {
+      console.error('Error en autenticación:', error);
+      
+      let errorMessage = "Ha ocurrido un error inesperado";
+      
       switch (error.code) {
         case 'auth/user-not-found':
-          setError("No se encontró un usuario con ese correo.");
+          errorMessage = "No existe una cuenta con este email";
           break;
         case 'auth/wrong-password':
-          setError("Contraseña incorrecta. Inténtalo de nuevo.");
+          errorMessage = "Contraseña incorrecta";
           break;
         case 'auth/email-already-in-use':
-          setError("Este correo electrónico ya está en uso.");
+          errorMessage = "Ya existe una cuenta con este email";
           break;
         case 'auth/weak-password':
-          setError("La contraseña debe tener al menos 6 caracteres.");
+          errorMessage = "La contraseña debe tener al menos 6 caracteres";
+          break;
+        case 'auth/invalid-email':
+          errorMessage = "Email inválido";
+          break;
+        case 'auth/too-many-requests':
+          errorMessage = "Demasiados intentos. Intenta más tarde";
           break;
         default:
-          setError("Ocurrió un error. Por favor, inténtalo de nuevo.");
-          break;
+          errorMessage = error.message || "Error de autenticación";
       }
+      
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
   };
-  
+
   const handlePasswordReset = async () => {
-    if (!email) {
-      setError("Por favor, escribe tu correo electrónico para restablecer tu contraseña.");
-      setSuccess("");
+    if (!email.trim()) {
+      toast({
+        title: "⚠️ Email requerido",
+        description: "Ingresa tu email para enviar el enlace de recuperación",
+        variant: "destructive",
+      });
       return;
     }
+
     setError("");
     setSuccess("");
     setLoading(true);
 
     try {
-      console.log("🔑 Enviando correo de restablecimiento a:", email);
-      
-      // 🔒 Firebase Auth - Correo oficial con token seguro
+      // 🔐 Enviar email de reset via Firebase (nativo)
       await sendPasswordResetEmail(auth, email, {
-        url: window.location.origin + '/login', // URL de retorno después del reset
+        url: window.location.origin + '/login',
         handleCodeInApp: false
       });
+
+      setSuccess("✅ Email de recuperación enviado. Revisa tu bandeja de entrada.");
       
-      console.log("✅ Correo de Firebase enviado exitosamente");
+    } catch (error: any) {
+      console.error('Error en reset password:', error);
       
-      // 📧 Brevo - Email personalizado de notificación (no bloquear el flujo)
-      hybridNotificationSystem.sendPasswordReset(email).then(success => {
-        if (success) {
-          console.log("✅ Email personalizado enviado via Brevo");
-        } else {
-          console.log("⚠️ Email personalizado no se pudo enviar via Brevo");
-        }
-      }).catch(error => {
-        console.error("❌ Error enviando email personalizado via Brevo:", error);
-      });
-      
-      setSuccess("¡Correos enviados! Revisa tu bandeja de entrada (y la carpeta de spam). Recibirás 2 emails: uno oficial de Firebase y otro personalizado nuestro.");
-    } catch (err: any) {
-      const error = err;
-      console.error("❌ Error enviando correo de reset:", error);
+      let errorMessage = "Error enviando email de recuperación";
       
       switch (error.code) {
         case 'auth/user-not-found':
-          setError("No se encontró ninguna cuenta con ese correo electrónico.");
+          errorMessage = "No existe una cuenta con este email";
           break;
         case 'auth/invalid-email':
-          setError("El formato del correo electrónico no es válido.");
+          errorMessage = "Email inválido";
           break;
-        case 'auth/missing-android-pkg-name':
-        case 'auth/missing-continue-uri':
-        case 'auth/missing-ios-bundle-id':
-        case 'auth/invalid-continue-uri':
-          setError("Error de configuración. Contacta al administrador.");
-          break;
-        case 'auth/unauthorized-continue-uri':
-          setError("Dominio no autorizado para restablecimiento de contraseña.");
+        case 'auth/too-many-requests':
+          errorMessage = "Demasiados intentos. Intenta más tarde";
           break;
         default:
-          setError(`Error: ${error.message}. Si persiste, contacta soporte.`);
-          break;
+          errorMessage = error.message || "Error enviando email";
       }
+      
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
   };
 
-  return (
+   return (
     <div className="min-h-screen bg-gradient-to-br from-[#0a0a0a] via-[#1a1a1a] to-[#0a0a0a] text-white flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">

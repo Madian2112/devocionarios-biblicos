@@ -60,9 +60,9 @@ function DashboardPage() {
           const userDevocionarios = await cachedFirestoreService.getDevocionarios(user.uid);
           setDevocionales(userDevocionarios);
         } catch (error) {
-          console.error("Error al cargar devocionales:", error);
+            console.error("Error al cargar devocionales:", error);
         } finally {
-          setLoading(false);
+            setLoading(false);
         }
       } else {
         setLoading(false);
@@ -86,7 +86,7 @@ function DashboardPage() {
     };
     fetchDevocionalDelDia();
   }, [user, selectedDate]);
-
+  
   const handleDateChange = (direction: "prev" | "next") => {
     const currentDate = new Date(selectedDate)
     if (direction === "prev") {
@@ -111,7 +111,7 @@ function DashboardPage() {
       timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
     })
   }
-
+  
   // 🎯 Toggle estado completado de devocional
   const toggleDevocionalCompleted = async (devocional: Devocional) => {
     if (!user) return;
@@ -261,9 +261,9 @@ function DashboardPage() {
                   className="p-0 h-auto hover:bg-transparent"
                 >
                   <Badge className={`cursor-pointer transition-all hover:scale-105 ${devocionalDelDia.completado ? "bg-green-500/20 text-green-400 border-green-500/30 hover:bg-green-500/30" : "bg-yellow-500/20 text-yellow-400 border-yellow-500/30 hover:bg-yellow-500/30"}`}>
-                    {devocionalDelDia.completado ? <CheckCircle2 className="h-3 w-3 mr-1" /> : <Circle className="h-3 w-3 mr-1" />}
-                    {devocionalDelDia.completado ? "Completado" : "Pendiente"}
-                  </Badge>
+                      {devocionalDelDia.completado ? <CheckCircle2 className="h-3 w-3 mr-1" /> : <Circle className="h-3 w-3 mr-1" />}
+                      {devocionalDelDia.completado ? "Completado" : "Pendiente"}
+                    </Badge>
                 </Button>
                     <Link href={`/devocional/${devocionalDelDia.id}`}>
                         <Button
@@ -364,26 +364,26 @@ function DashboardPage() {
                               }}
                               className="p-0 h-auto hover:bg-transparent"
                             >
-                              <Badge
-                                variant={devocional.completado ? "secondary" : "outline"}
+                            <Badge
+                            variant={devocional.completado ? "secondary" : "outline"}
                                 className={`cursor-pointer transition-all hover:scale-105 ${
-                                  devocional.completado
+                                devocional.completado
                                     ? "bg-green-500/20 text-green-400 border-green-500/30 hover:bg-green-500/30"
                                     : "border-gray-600 text-gray-400 hover:border-gray-500 hover:text-gray-300"
                                 }`}
-                              >
-                                {devocional.completado ? (
-                                  <>
-                                    <CheckCircle2 className="h-3 w-3 mr-1" />
-                                    Completado
-                                  </>
-                                ) : (
-                                  <>
-                                    <Circle className="h-3 w-3 mr-1" />
-                                    Pendiente
-                                  </>
-                                )}
-                              </Badge>
+                            >
+                            {devocional.completado ? (
+                                <>
+                                <CheckCircle2 className="h-3 w-3 mr-1" />
+                                Completado
+                                </>
+                            ) : (
+                                <>
+                                <Circle className="h-3 w-3 mr-1" />
+                                Pendiente
+                                </>
+                            )}
+                            </Badge>
                             </Button>
                         </div>
                     </Link>

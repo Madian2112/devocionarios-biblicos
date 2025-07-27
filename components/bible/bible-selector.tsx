@@ -1,7 +1,7 @@
 "use client";
 
 import type React from "react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, use } from "react";
 import { Book } from "lucide-react";
 
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -43,27 +43,33 @@ interface BibleSelectorProps {
   onSelect: (reference: string) => void;
   trigger?: React.ReactNode;
   currentReference?: string;
+  instanceId?: string;
 }
 
 export function BibleSelector({
   onSelect,
   trigger,
   currentReference = "Juan 3:16",
+  instanceId = "default",
 }: BibleSelectorProps) {
   const [open, setOpen] = useState(false);
   const isMobile = useIsMobile();
+  useEffect(() => {
+    console.log('Esta es mi instacia:', instanceId);
+  }, [instanceId])
   
   const FormContent = (
     <BibleSelectorForm
       onSelect={onSelect}
       setOpen={setOpen}
       currentReference={currentReference}
+      instanceId={instanceId} 
     />
   );
   
   if (isMobile) {
     return (
-      <Drawer open={open} onOpenChange={setOpen}>
+      <Drawer key={`drawer-${instanceId}`} open={open} onOpenChange={setOpen}>
         <DrawerTrigger asChild>{trigger}</DrawerTrigger>
         <DrawerContent className="bg-[#1a1a1a] border-gray-800 text-white">
           <DrawerHeader className="text-left">
@@ -77,7 +83,7 @@ export function BibleSelector({
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog key={`dialog-${instanceId}`} open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent className="bg-[#1a1a1a] border-gray-800 text-white max-w-2xl">
         <DialogHeader>
@@ -95,12 +101,14 @@ interface BibleSelectorFormProps {
   onSelect: (reference: string) => void;
   setOpen: (open: boolean) => void;
   currentReference?: string;
+  instanceId?: string;
 }
 
 function BibleSelectorForm({
   onSelect,
   setOpen,
   currentReference,
+  instanceId = "default",
 }: BibleSelectorFormProps) {
     const [selectionType, setSelectionType] = useState<'verse' | 'chapter'>('verse');
     const [selectedBook, setSelectedBook] = useState('Juan');
@@ -116,22 +124,22 @@ function BibleSelectorForm({
     // Efecto #1: Rápido y síncrono para actualizar la UI principal (el Switch)
     useEffect(() => {
         const parsed = parseReference(currentReference || "");
+        console.log()
         if (parsed) {
-            // Esto es instantáneo, por lo que el switch se actualiza de inmediato
             if (parsed.startVerse) {
                 setSelectionType('verse');
                 setStartVerse(parsed.startVerse);
                 setEndVerse(parsed.endVerse || null);
             } else {
                 setSelectionType('chapter');
-                setStartVerse(1); // Resetear para consistencia
+                setStartVerse(1);
                 setEndVerse(null);
             }
             setSelectedBook(parsed.book);
             setStartChapter(parsed.startChapter);
             setEndChapter(parsed.endChapter || null);
         }
-    }, [currentReference]);
+    }, [currentReference, instanceId]);
 
 
     // Efecto #2: Carga asíncrona de los libros y síncrona de versiones
@@ -142,9 +150,8 @@ function BibleSelectorForm({
         setLoadingBooks(false);
       }).catch(() => setLoadingBooks(false));
 
-      // Las versiones se cargan desde la caché o el valor por defecto, es síncrono
       setVersions(getBibleVersions());
-    }, []);
+    }, [instanceId]);
 
     // Efecto #3: Enriquecimiento de datos (opcional, pero buena práctica)
     // Este efecto asegura que el nombre del libro en el estado coincida con el de la lista
@@ -156,7 +163,7 @@ function BibleSelectorForm({
           setSelectedBook(bookMatch.name);
         }
       }
-    }, [books, selectedBook]);
+    }, [books, selectedBook, instanceId]); 
 
 
     const handleBookChange = (bookName: string) => {
@@ -175,8 +182,12 @@ function BibleSelectorForm({
 
     const handleSelect = () => {
         let reference = '';
+        console.log('Mi type: ', selectionType)
+        console.log("selectedBook:", selectedBook, "startChapter:", startChapter, "startVerse:", startVerse, "endVerse:", endVerse);
+
         if (selectionType === 'verse') {
             reference = bibleService.formatReference(selectedBook, startChapter, startVerse, endVerse || undefined);
+            console.log('Referencia generada:', reference);
         } else {
             // Para selección de capítulo, solo usamos el capítulo inicial.
             reference = `${selectedBook} ${startChapter}`;
@@ -194,7 +205,7 @@ function BibleSelectorForm({
     }
 
   return (
-    <div className="space-y-6 p-4">
+    <div className="space-y-6 p-4" key={`form-${instanceId}`}>
         {/* Switch para tipo de selección */}
         <div className="flex items-center justify-center space-x-2">
             <Label>Versículo</Label>
@@ -208,7 +219,7 @@ function BibleSelectorForm({
       {/* Selector de libro */}
       <div>
         <Label className="text-gray-300 mb-2 block">Libro</Label>
-        <Select value={selectedBook} onValueChange={handleBookChange} disabled={loadingBooks}>
+        <Select key={`book-select-${instanceId}`} value={selectedBook} onValueChange={handleBookChange} disabled={loadingBooks}>
           <SelectTrigger className="bg-[#2a2a2a]/50 border-gray-700 text-white">
             <SelectValue placeholder="Seleccione un libro" />
           </SelectTrigger>
@@ -219,7 +230,7 @@ function BibleSelectorForm({
                 ) : (
                   books.map((book) => (
                     <SelectItem
-                      key={book.name}
+                      key={`${instanceId}-book-${book.name}`}
                       value={book.name}
                       className="hover:bg-[#2a2a2a]"
                     >
@@ -238,7 +249,7 @@ function BibleSelectorForm({
           {/* Capítulo */}
           <div>
             <Label className="text-gray-300 mb-2 block">Capítulo</Label>
-            <Select value={startChapter.toString()} onValueChange={(v) => setStartChapter(parseInt(v))} disabled={!selectedBook}>
+            <Select key={`chapter-select-${instanceId}`} value={startChapter.toString()} onValueChange={(v) => setStartChapter(parseInt(v))} disabled={!selectedBook}>
               <SelectTrigger className="bg-[#2a2a2a]/50 border-gray-700 text-white">
                 <SelectValue placeholder="Seleccione un capítulo" />
               </SelectTrigger>
@@ -250,26 +261,26 @@ function BibleSelectorForm({
           {/* Versículo Inicial */}
           <div>
             <Label className="text-gray-300 mb-2 block">Versículo</Label>
-            <Select value={startVerse.toString()} onValueChange={(v) => setStartVerse(parseInt(v))} disabled={!selectedBook}>
+            <Select key={`chapter-select-${instanceId}`} value={startVerse.toString()} onValueChange={(v) => setStartVerse(parseInt(v))} disabled={!selectedBook}>
                <SelectTrigger className="bg-[#2a2a2a]/50 border-gray-700 text-white">
                  <SelectValue placeholder="Seleccione un versículo" />
                </SelectTrigger>
                <SelectContent className="bg-[#1a1a1a] border-gray-800 text-white max-h-60">
-                 <ScrollArea className="h-60">{Array.from({ length: maxVerses }, (_, i) => i + 1).map(v => <SelectItem key={v} value={v.toString()} className="hover:bg-[#2a2a2a]">{v}</SelectItem>)}</ScrollArea>
+                 <ScrollArea className="h-60">{Array.from({ length: maxVerses }, (_, i) => i + 1).map(v => <SelectItem key={`${instanceId}-verse-${v}`} value={v.toString()} className="hover:bg-[#2a2a2a]">{v}</SelectItem>)}</ScrollArea>
                </SelectContent>
             </Select>
           </div>
           {/* Versículo Final */}
           <div>
             <Label className="text-gray-300 mb-2 block">Hasta (opcional)</Label>
-            <Select value={endVerse?.toString() || 'none'} onValueChange={(v) => setEndVerse(v === 'none' ? null : parseInt(v))} disabled={!selectedBook}>
+            <Select key={`end-verse-select-${instanceId}`} value={endVerse?.toString() || 'none'} onValueChange={(v) => setEndVerse(v === 'none' ? null : parseInt(v))} disabled={!selectedBook}>
               <SelectTrigger className="bg-[#2a2a2a]/50 border-gray-700 text-white">
                 <SelectValue placeholder="Seleccionar" />
               </SelectTrigger>
               <SelectContent className="bg-[#1a1a1a] border-gray-800 text-white max-h-60">
                 <ScrollArea className="h-60">
-                    <SelectItem value="none" className="hover:bg-[#2a2a2a]">Solo un versículo</SelectItem>
-                    {Array.from({ length: maxVerses }, (_, i) => i + 1).filter(v => v > startVerse).map(v => <SelectItem key={v} value={v.toString()} className="hover:bg-[#2a2a2a]">{v}</SelectItem>)}
+                    <SelectItem key={`${instanceId}-none`}  value="none" className="hover:bg-[#2a2a2a]">Solo un versículo</SelectItem>
+                    {Array.from({ length: maxVerses }, (_, i) => i + 1).filter(v => v > startVerse).map(v => <SelectItem key={`${instanceId}-end-verse-${v}`} value={v.toString()} className="hover:bg-[#2a2a2a]">{v}</SelectItem>)}
                 </ScrollArea>
               </SelectContent>
             </Select>
@@ -280,12 +291,12 @@ function BibleSelectorForm({
             {/* Capítulo Inicial */}
             <div>
               <Label className="text-gray-300 mb-2 block">Capítulo</Label>
-              <Select value={startChapter.toString()} onValueChange={(v) => setStartChapter(parseInt(v))} disabled={!selectedBook}>
+              <Select key={`chapter-only-select-${instanceId}`} value={startChapter.toString()} onValueChange={(v) => setStartChapter(parseInt(v))} disabled={!selectedBook}>
                 <SelectTrigger className="bg-[#2a2a2a]/50 border-gray-700 text-white">
                   <SelectValue placeholder="Seleccione un capítulo" />
                 </SelectTrigger>
                 <SelectContent className="bg-[#1a1a1a] border-gray-800 text-white max-h-60">
-                  <ScrollArea className="h-60">{Array.from({ length: maxChapters }, (_, i) => i + 1).map(c => <SelectItem key={c} value={c.toString()} className="hover:bg-[#2a2a2a]">{c}</SelectItem>)}</ScrollArea>
+                  <ScrollArea className="h-60">{Array.from({ length: maxChapters }, (_, i) => i + 1).map(c => <SelectItem key={`${instanceId}-chapter-only-${c}`} value={c.toString()} className="hover:bg-[#2a2a2a]">{c}</SelectItem>)}</ScrollArea>
                 </SelectContent>
               </Select>
             </div>

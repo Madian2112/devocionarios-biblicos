@@ -1,394 +1,240 @@
-// 🎯 SISTEMA HÍBRIDO DE NOTIFICACIONES
-// 📧 Emails (Brevo) para casos importantes + 📱 Notificaciones nativas para recordatorios
+// 🚀 NATIVE NOTIFICATION SYSTEM - Solo PWA
+// 📱 Sistema de notificaciones nativas optimizado
+// 🎯 Sin configuración de emails - Solo notificaciones del teléfono
 
-import { BrevoEmailService } from './brevo-email-service';
-import { nativeNotificationSystem } from './native-notification-system';
+import { NativeNotificationSystem } from './native-notification-system'
 
-interface WelcomeData {
-  userName: string;
-  userEmail: string;
-}
+export class NotificationSystemWrapper {
+  private static instance: NotificationSystemWrapper
+  private nativeNotifications: NativeNotificationSystem
+  private isInitialized: boolean = false
 
-interface UserStats {
-  streak: number;
-  completedThisWeek: number;
-  totalDevocionales: number;
-  totalStudies: number;
-}
+  constructor() {
+    this.nativeNotifications = NativeNotificationSystem.getInstance()
+  }
 
-interface NotificationPreferences {
-  emailEnabled: boolean;
-  nativeEnabled: boolean;
-  dailyReminder: boolean;
-  streakReminder: boolean;
-  weeklyReport: boolean;
-  reminderTime: string;
-}
-
-export class HybridNotificationSystem {
-  private static instance: HybridNotificationSystem;
-  
-  static getInstance(): HybridNotificationSystem {
-    if (!HybridNotificationSystem.instance) {
-      HybridNotificationSystem.instance = new HybridNotificationSystem();
+  static getInstance(): NotificationSystemWrapper {
+    if (!NotificationSystemWrapper.instance) {
+      NotificationSystemWrapper.instance = new NotificationSystemWrapper()
     }
-    return HybridNotificationSystem.instance;
+    return NotificationSystemWrapper.instance
   }
 
   /**
-   * 🚀 Inicializar sistema híbrido completo
+   * 🔧 Inicializar solo notificaciones nativas
    */
-  async initialize(userName: string, userEmail: string): Promise<{
-    emailReady: boolean;
-    nativeReady: boolean;
-  }> {
-    console.log('🚀 Inicializando sistema híbrido de notificaciones...');
+  async initialize(userName: string): Promise<boolean> {
+    console.log('🚀 Inicializando notificaciones nativas PWA...')
 
     try {
-      // Inicializar sistema nativo (paralelo)
-      const nativeReady = await nativeNotificationSystem.initialize(userName);
-      
-      // Email siempre está listo con Brevo (no requiere inicialización)
-      const emailReady = true;
-      
-      console.log('✅ Sistema híbrido inicializado:', { emailReady, nativeReady });
-      
-      return { emailReady, nativeReady };
-      
+      // Inicializar notificaciones nativas
+      const nativeReady = await this.nativeNotifications.initialize(userName)
+      console.log('📱 Notificaciones nativas:', nativeReady ? 'Listas ✅' : 'No disponibles ⚠️')
+
+      this.isInitialized = true
+      console.log('✅ Sistema de notificaciones PWA inicializado')
+      return true
+
     } catch (error) {
-      console.error('❌ Error inicializando sistema híbrido:', error);
-      return { emailReady: false, nativeReady: false };
+      console.error('💥 Error inicializando notificaciones PWA:', error)
+      this.isInitialized = false
+      return false
     }
   }
 
   /**
-   * 🎉 BIENVENIDA COMPLETA (Email + Notificación)
+   * 🌟 Configurar notificaciones de bienvenida (Solo solicitar permisos)
    */
-  async sendWelcome(data: WelcomeData): Promise<{
-    emailSent: boolean;
-    notificationShown: boolean;
-  }> {
-    console.log('🎉 Enviando bienvenida híbrida...');
+  async setupWelcomeNotifications(userName: string): Promise<boolean> {
+    console.log('🌟 Configurando notificaciones de bienvenida para:', userName)
 
-    // 📧 Email de bienvenida (Brevo) - IMPORTANTE, debe persistir
-    const emailPromise = BrevoEmailService.sendWelcomeEmail(data)
-      .catch(error => {
-        console.error('❌ Error email bienvenida:', error);
-        return false;
-      });
-
-    // 📱 Notificación nativa - Para engagement inmediato
-    const notificationPromise = nativeNotificationSystem.requestPermission()
-      .catch(error => {
-        console.error('❌ Error notificación bienvenida:', error);
-        return false;
-      });
-
-    // Ejecutar en paralelo para máxima velocidad
-    const [emailSent, notificationShown] = await Promise.all([
-      emailPromise,
-      notificationPromise
-    ]);
-
-    console.log('🎉 Bienvenida híbrida completada:', { emailSent, notificationShown });
-    
-    return { emailSent, notificationShown };
-  }
-
-  /**
-   * 🔑 RESET PASSWORD (Email personalizado complementario)
-   */
-  async sendPasswordReset(userEmail: string): Promise<boolean> {
-    console.log('🔑 Enviando email personalizado de reset password...');
-    
     try {
-      // Usar nueva función específica de reset password en Brevo
-      const emailSent = await BrevoEmailService.sendPasswordResetEmail({
-        userEmail: userEmail
-      });
-
-      if (emailSent) {
-        console.log('✅ Email personalizado de reset password enviado');
+      // 📱 Solicitar permisos para notificaciones
+      console.log('📱 Solicitando permisos para notificaciones...')
+      const notificationResult = await this.nativeNotifications.requestPermission()
+      
+      if (notificationResult) {
+        console.log('✅ Permisos de notificación otorgados')
+        // Enviar notificación de prueba como bienvenida
+        await this.nativeNotifications.sendTestNotification()
       } else {
-        console.log('⚠️ Error enviando email personalizado de reset password');
+        console.warn('⚠️ Permisos de notificación denegados')
       }
 
-      return emailSent;
+      return notificationResult
 
-    } catch (error) {
-      console.error('❌ Error en reset password personalizado:', error);
-      return false;
+    } catch (error: any) {
+      console.error('💥 Error configurando notificaciones:', error)
+      return false
     }
   }
 
   /**
-   * 🙏 RECORDATORIO DIARIO (Solo Notificación Nativa)
+   * 🔥 Enviar recordatorio de racha (Solo Notificación)
    */
-  async sendDailyReminder(): Promise<boolean> {
-    console.log('🙏 Enviando recordatorio diario...');
-    
+  async sendStreakReminder(userName: string, streak: number): Promise<boolean> {
+    console.log('🔥 Enviando recordatorio de racha para:', userName, 'Racha:', streak)
+
     try {
-      // Solo notificación nativa - para engagement inmediato
-      const sent = await nativeNotificationSystem.showDailyReminder();
+      const stats = {
+        streak: streak,
+        completedThisWeek: 0,
+        totalDevocionales: 0,
+        totalStudies: 0
+      }
       
-      if (sent) {
-        console.log('✅ Recordatorio diario enviado');
+      const notificationResult = await this.nativeNotifications.showStreakReminder(stats)
+      
+      if (notificationResult) {
+        console.log('✅ Recordatorio de racha enviado via PWA')
       } else {
-        console.log('⚠️ No se pudo enviar recordatorio diario');
+        console.warn('⚠️ No se pudo enviar recordatorio de racha')
       }
 
-      return sent;
+      return notificationResult
 
-    } catch (error) {
-      console.error('❌ Error enviando recordatorio diario:', error);
-      return false;
+    } catch (error: any) {
+      console.error('💥 Error enviando recordatorio de racha:', error)
+      return false
     }
   }
 
   /**
-   * 🔥 RECORDATORIO DE RACHA (Solo Notificación Nativa)
+   * ⏰ Enviar recordatorio diario (Solo Notificación)
    */
-  async sendStreakReminder(stats: UserStats): Promise<boolean> {
-    console.log('🔥 Enviando recordatorio de racha...');
-    
+  async sendDailyReminder(userName: string): Promise<boolean> {
+    console.log('⏰ Enviando recordatorio diario para:', userName)
+
     try {
-      // Solo notificación nativa - para engagement inmediato
-      const sent = await nativeNotificationSystem.showStreakReminder(stats);
+      const notificationResult = await this.nativeNotifications.showDailyReminder()
       
-      if (sent) {
-        console.log('✅ Recordatorio de racha enviado');
+      if (notificationResult) {
+        console.log('✅ Recordatorio diario enviado via PWA')
       } else {
-        console.log('⚠️ No se pudo enviar recordatorio de racha');
+        console.warn('⚠️ No se pudo enviar recordatorio diario')
       }
 
-      return sent;
+      return notificationResult
 
-    } catch (error) {
-      console.error('❌ Error enviando recordatorio de racha:', error);
-      return false;
+    } catch (error: any) {
+      console.error('💥 Error enviando recordatorio diario:', error)
+      return false
     }
   }
 
   /**
-   * 📊 REPORTE SEMANAL (Ambos - Email + Notificación)
+   * 📊 Enviar reporte semanal (Solo Notificación)
    */
-  async sendWeeklyReport(data: WelcomeData & UserStats): Promise<{
-    emailSent: boolean;
-    notificationShown: boolean;
-  }> {
-    console.log('📊 Enviando reporte semanal híbrido...');
-
-    // 📧 Email detallado (persistente, se puede revisar después)
-    const emailData = {
-      ...data,
-      completed: data.completedThisWeek // Mapear correctamente
-    };
-    
-    const emailPromise = BrevoEmailService.sendWelcomeEmail(emailData) // Por ahora usar sendWelcomeEmail
-      .catch(error => {
-        console.error('❌ Error email reporte:', error);
-        return false;
-      });
-
-    // 📱 Notificación nativa (engagement inmediato)
-    const notificationPromise = nativeNotificationSystem.showWeeklyReport(data)
-      .catch(error => {
-        console.error('❌ Error notificación reporte:', error);
-        return false;
-      });
-
-    // Ejecutar en paralelo
-    const [emailSent, notificationShown] = await Promise.all([
-      emailPromise,
-      notificationPromise
-    ]);
-
-    console.log('📊 Reporte semanal híbrido completado:', { emailSent, notificationShown });
-    
-    return { emailSent, notificationShown };
-  }
-
-  /**
-   * ⚙️ CONFIGURAR PREFERENCIAS
-   */
-  async configurePreferences(prefs: NotificationPreferences): Promise<boolean> {
-    console.log('⚙️ Configurando preferencias híbridas:', prefs);
+  async sendWeeklyReport(userName: string, stats: any): Promise<boolean> {
+    console.log('📊 Enviando reporte semanal para:', userName)
 
     try {
-      // Configurar sistema nativo
-      if (prefs.nativeEnabled) {
-        nativeNotificationSystem.saveConfig({
-          enabled: prefs.nativeEnabled,
-          dailyReminder: prefs.dailyReminder,
-          streakReminder: prefs.streakReminder,
-          weeklyReport: prefs.weeklyReport,
-          time: prefs.reminderTime,
-          customVerse: true
-        });
-
-        // Programar notificaciones
-        nativeNotificationSystem.scheduleNotifications();
+      const weeklyStats = {
+        streak: stats.racha || 0,
+        completedThisWeek: stats.completados || 0,
+        totalDevocionales: stats.totalDevocionales || 0,
+        totalStudies: stats.totalEstudios || 0
       }
-
-      // Guardar preferencias híbridas
-      localStorage.setItem('hybrid-notification-prefs', JSON.stringify(prefs));
       
-      console.log('✅ Preferencias híbridas configuradas');
-      return true;
-
-    } catch (error) {
-      console.error('❌ Error configurando preferencias:', error);
-      return false;
-    }
-  }
-
-  /**
-   * 📖 CARGAR PREFERENCIAS
-   */
-  getPreferences(): NotificationPreferences {
-    try {
-      const saved = localStorage.getItem('hybrid-notification-prefs');
-      if (saved) {
-        return JSON.parse(saved);
+      const notificationResult = await this.nativeNotifications.showWeeklyReport(weeklyStats)
+      
+      if (notificationResult) {
+        console.log('✅ Reporte semanal enviado via PWA')
+      } else {
+        console.warn('⚠️ No se pudo enviar reporte semanal')
       }
-    } catch (error) {
-      console.error('❌ Error cargando preferencias:', error);
-    }
 
-    // Valores por defecto
-    return {
-      emailEnabled: true,
-      nativeEnabled: true,
-      dailyReminder: true,
-      streakReminder: true,
-      weeklyReport: true,
-      reminderTime: '19:00'
-    };
-  }
+      return notificationResult
 
-  /**
-   * 🧪 ENVIAR NOTIFICACIONES DE PRUEBA
-   */
-  async sendTestNotifications(data: WelcomeData): Promise<{
-    emailSent: boolean;
-    notificationShown: boolean;
-  }> {
-    console.log('🧪 Enviando notificaciones de prueba...');
-
-    // 📧 Email de prueba
-    const emailPromise = BrevoEmailService.sendWelcomeEmail({
-      ...data,
-      userName: `${data.userName} (Prueba)`
-    }).catch(() => false);
-
-    // 📱 Notificación de prueba
-    const notificationPromise = nativeNotificationSystem.sendTestNotification()
-      .catch(() => false);
-
-    const [emailSent, notificationShown] = await Promise.all([
-      emailPromise,
-      notificationPromise
-    ]);
-
-    console.log('🧪 Pruebas completadas:', { emailSent, notificationShown });
-    
-    return { emailSent, notificationShown };
-  }
-
-  /**
-   * 📊 OBTENER ESTADO DEL SISTEMA
-   */
-  getSystemStatus(): {
-    email: {
-      service: string;
-      available: boolean;
-    };
-    native: {
-      supported: boolean;
-      permission: NotificationPermission;
-      serviceWorkerReady: boolean;
-    };
-    preferences: NotificationPreferences;
-  } {
-    const nativeStats = nativeNotificationSystem.getStats();
-    
-    return {
-      email: {
-        service: 'Brevo',
-        available: true // Brevo siempre disponible
-      },
-      native: {
-        supported: nativeStats.supported,
-        permission: nativeStats.permission,
-        serviceWorkerReady: nativeStats.serviceWorkerReady
-      },
-      preferences: this.getPreferences()
-    };
-  }
-
-  /**
-   * 🔄 INICIALIZAR RECORDATORIOS AUTOMÁTICOS
-   */
-  startAutomaticReminders(): void {
-    console.log('🔄 Iniciando recordatorios automáticos...');
-    
-    const prefs = this.getPreferences();
-    
-    if (prefs.nativeEnabled) {
-      nativeNotificationSystem.scheduleNotifications();
-      console.log('✅ Recordatorios automáticos iniciados');
-    } else {
-      console.log('📵 Recordatorios automáticos deshabilitados');
+    } catch (error: any) {
+      console.error('💥 Error enviando reporte semanal:', error)
+      return false
     }
   }
 
   /**
-   * 🛑 DETENER RECORDATORIOS AUTOMÁTICOS
+   * 🧪 Enviar notificación de prueba
    */
-  stopAutomaticReminders(): void {
-    console.log('🛑 Deteniendo recordatorios automáticos...');
-    
-    // Deshabilitar notificaciones nativas
-    nativeNotificationSystem.saveConfig({
-      enabled: false,
-      dailyReminder: false,
-      streakReminder: false,
-      weeklyReport: false,
-      time: '19:00',
-      customVerse: true
-    });
-    
-    console.log('✅ Recordatorios automáticos detenidos');
+  async sendTestNotifications(): Promise<boolean> {
+    console.log('🧪 Enviando notificaciones de prueba...')
+
+    try {
+      const result = await this.nativeNotifications.sendTestNotification()
+      
+      if (result) {
+        console.log('✅ Notificación de prueba enviada')
+      } else {
+        console.warn('⚠️ No se pudo enviar notificación de prueba')
+      }
+
+      return result
+
+    } catch (error: any) {
+      console.error('💥 Error enviando notificación de prueba:', error)
+      return false
+    }
+  }
+
+  /**
+   * ⚙️ Configurar recordatorios programados
+   */
+  async configureScheduledNotifications(config: {
+    dailyReminderTime: string
+    enableStreakReminders: boolean
+    enableWeeklyReports: boolean
+  }): Promise<boolean> {
+    console.log('⚙️ Configurando notificaciones programadas:', config)
+
+    try {
+      this.nativeNotifications.saveConfig({
+        enabled: true,
+        dailyReminder: true,
+        streakReminder: config.enableStreakReminders,
+        weeklyReport: config.enableWeeklyReports,
+        time: config.dailyReminderTime,
+        customVerse: true
+      })
+
+      console.log('✅ Notificaciones programadas configuradas')
+      return true
+
+    } catch (error: any) {
+      console.error('💥 Error configurando notificaciones programadas:', error)
+      return false
+    }
+  }
+
+  /**
+   * 📱 Solicitar permisos de notificación
+   */
+  async requestPermission(): Promise<boolean> {
+    try {
+      return await this.nativeNotifications.requestPermission()
+    } catch (error: any) {
+      console.error('💥 Error solicitando permisos:', error)
+      return false
+    }
+  }
+
+  /**
+   * 📋 Obtener estadísticas del sistema
+   */
+  getStats(): any {
+    try {
+      return this.nativeNotifications.getStats()
+    } catch (error: any) {
+      console.error('💥 Error obteniendo estadísticas:', error)
+      return { supported: false, permission: 'default' }
+    }
+  }
+
+  /**
+   * 🔄 Verificar si está inicializado
+   */
+  isReady(): boolean {
+    return this.isInitialized
   }
 }
 
-// 🌟 Exportar instancia singleton
-export const hybridNotificationSystem = HybridNotificationSystem.getInstance();
-
-/**
- * 🎯 ESTRATEGIA HÍBRIDA PERFECTA:
- * 
- * 📧 EMAILS (BREVO) PARA:
- * ✅ Bienvenida - Mensaje importante que debe persistir
- * ✅ Reset Password - Crítico, debe ser confiable
- * ✅ Reportes semanales - Información detallada para revisar
- * ✅ Notificaciones especiales - Ocasionales e importantes
- * 
- * 📱 NOTIFICACIONES NATIVAS PARA:
- * ✅ Recordatorios diarios - Engagement inmediato
- * ✅ Recordatorios de racha - Motivación en tiempo real
- * ✅ Alertas de progreso - Feedback instantáneo
- * ✅ Todo lo que requiere acción inmediata
- * 
- * 💡 BENEFICIOS DE ESTA ESTRATEGIA:
- * 
- * 🎯 Máximo engagement con notificaciones nativas
- * 📧 Persistencia con emails importantes
- * 💰 100% gratis para ambos sistemas
- * ⚡ Paralelo = máxima velocidad
- * 🔧 Control total del comportamiento
- * 📊 Estadísticas completas
- * 🚀 Escalable y mantenible
- * 
- * 🔥 EL MEJOR DE AMBOS MUNDOS! 🔥
- */ 
+// 🚀 Instancia singleton para uso global
+export const notificationSystem = NotificationSystemWrapper.getInstance() 

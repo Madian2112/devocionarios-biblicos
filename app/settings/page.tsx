@@ -7,162 +7,85 @@ import {
   ChevronLeft,
   Bell,
   Clock,
-  Mail,
   Smartphone,
   Calendar,
   Save,
   Check,
   AlertCircle,
-  TrendingUp,
-  Lock,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
-import { Separator } from "@/components/ui/separator"
 import { GradientCard } from "@/components/ui/gradient-card"
 import { useAuthContext } from "@/context/auth-context"
-import { notificationService } from "@/lib/notification-service"
-import { BrevoEmailService } from "@/lib/brevo-email-service"
-import { hybridNotificationSystem } from "@/lib/hybrid-notification-system"
+import { notificationSystem } from "@/lib/hybrid-notification-system"
 import { nativeNotificationSystem } from "@/lib/native-notification-system"
 import { useToast } from "@/hooks/use-toast"
+
 interface NotificationSettings {
   enabled: boolean;
   dailyTime: string;
   streakReminders: boolean;
   weeklyReports: boolean;
-  emailNotifications: boolean;
   permissionGranted: boolean;
 }
 
-function SettingsPage() {
+export default function SettingsPage() {
   const { user, loading } = useAuthContext();
-  const { toast } = useToast();
   const router = useRouter();
+  const { toast } = useToast();
   
   const [settings, setSettings] = useState<NotificationSettings>({
     enabled: false,
-    dailyTime: '08:00',
+    dailyTime: '19:00',
     streakReminders: true,
     weeklyReports: true,
-    emailNotifications: true,
     permissionGranted: false,
   });
-  
   const [configLoading, setConfigLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
 
+  // 🔐 Verificación manual de autenticación
   useEffect(() => {
-    console.log('🔄 useEffect ejecutado - loading:', loading, 'user:', !!user);
-    
-    // Verificar autenticación manualmente
     if (!loading && !user) {
-      console.log('🚪 Redirigiendo a login - no hay usuario autenticado');
       router.replace('/login');
-      return;
-    }
-    
-    if (user) {
-      console.log('👤 Usuario autenticado, cargando configuración...');
-      loadSettings();
     }
   }, [user, loading, router]);
 
-  const loadSettings = async () => {
-    if (!user) {
-      setConfigLoading(false);
-      return;
-    }
+  // 📱 Cargar configuración de notificaciones
+  useEffect(() => {
+    loadNotificationConfig();
+  }, [user]);
+
+  const loadNotificationConfig = async () => {
+    if (!user) return;
 
     try {
-      console.log('🔄 Cargando configuración para usuario:', user.uid);
-      
-      // Verificar permisos actuales (sin bloquear)
+      setConfigLoading(true);
+      console.log('📱 Cargando configuración de notificaciones...');
+
+      // Verificar permisos
       const permissionGranted = 'Notification' in window && Notification.permission === 'granted';
-      console.log('🔔 Permisos de notificación:', permissionGranted);
       
-      // Intentar cargar desde localStorage primero
-      const configKey = `notification_config_${user.uid}`;
-      const savedConfigString = localStorage.getItem(configKey);
-      console.log('📖 Configuración en localStorage:', savedConfigString);
+      // Obtener estadísticas del sistema nativo
+      const stats = nativeNotificationSystem.getStats();
       
-      let config = null;
+      // Configuración por defecto mejorada
+      const defaultSettings = {
+        enabled: permissionGranted,
+        dailyTime: '19:00',
+        streakReminders: true,
+        weeklyReports: true,
+        permissionGranted,
+      };
       
-      if (savedConfigString) {
-        try {
-          config = JSON.parse(savedConfigString);
-          console.log('✅ Configuración cargada desde localStorage:', config);
-        } catch (parseError) {
-          console.error('❌ Error parseando configuración desde localStorage:', parseError);
-        }
-      }
-      
-      // Si no hay configuración en localStorage, intentar con el servicio
-      if (!config) {
-        try {
-          const initTimeout = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Timeout')), 3000)
-          );
-          
-          const initPromise = notificationService.initialize(user.uid);
-          await Promise.race([initPromise, initTimeout]);
-          
-          // Cargar configuración guardada
-          config = notificationService.loadNotificationConfig();
-          console.log('⚙️ Configuración cargada desde servicio:', config);
-          
-        } catch (initError) {
-          console.warn('⚠️ No se pudo inicializar servicio de notificaciones:', initError);
-        }
-      }
-      
-      if (config) {
-        const loadedSettings = {
-          enabled: config.enabled || false,
-          dailyTime: config.dailyTime || '08:00',
-          streakReminders: config.streakReminders !== undefined ? config.streakReminders : true,
-          weeklyReports: config.weeklyReports !== undefined ? config.weeklyReports : true,
-          emailNotifications: true,
-          permissionGranted,
-        };
-        
-        console.log('📋 Aplicando configuración cargada:', loadedSettings);
-        setSettings(loadedSettings);
-      } else {
-        // Configuración por defecto
-        const defaultSettings = {
-          enabled: false,
-          dailyTime: '08:00',
-          streakReminders: true,
-          weeklyReports: true,
-          emailNotifications: true,
-          permissionGranted,
-        };
-        
-        console.log('📋 Aplicando configuración por defecto:', defaultSettings);
-        setSettings(defaultSettings);
-      }
-      
-      console.log('✅ Configuración cargada exitosamente');
+      setSettings(defaultSettings);
+      console.log('📱 Configuración de notificaciones cargada:', defaultSettings);
+      console.log('📊 Stats del sistema:', stats);
       
     } catch (error) {
       console.error('❌ Error cargando configuración:', error);
-      
-      // Cargar configuración por defecto en caso de error
-      const fallbackSettings = {
-        enabled: false,
-        dailyTime: '08:00',
-        streakReminders: true,
-        weeklyReports: true,
-        emailNotifications: true,
-        permissionGranted: 'Notification' in window && Notification.permission === 'granted',
-      };
-      
-      setSettings(fallbackSettings);
-      
       toast({
         title: "⚠️ Advertencia",
         description: "Se cargó configuración por defecto.",
@@ -190,7 +113,7 @@ function SettingsPage() {
       }
 
       const granted = await nativeNotificationSystem.requestPermission();
-      setSettings(prev => ({ ...prev, permissionGranted: granted }));
+      setSettings(prev => ({ ...prev, permissionGranted: granted, enabled: granted }));
       
       if (granted) {
         toast({
@@ -209,263 +132,98 @@ function SettingsPage() {
       console.error('❌ Error solicitando permisos:', error);
       toast({
         title: "❌ Error",
-        description: "Hubo un problema solicitando permisos",
+        description: "Error solicitando permisos de notificación",
         variant: "destructive",
       });
     }
   };
 
   const handleSettingChange = (key: keyof NotificationSettings, value: boolean | string) => {
-    console.log(`🔄 Cambiando configuración: ${key} = ${value}`);
-    setSettings(prev => {
-      const newSettings = { ...prev, [key]: value };
-      console.log('📝 Nuevo estado de configuración:', newSettings);
-      return newSettings;
-    });
+    setSettings(prev => ({ ...prev, [key]: value }));
   };
 
   const saveSettings = async () => {
-    if (!user) {
-      console.error('❌ No hay usuario autenticado para guardar configuración');
-      return;
-    }
-
-    setSaving(true);
-    console.log('💾 Guardando configuración:', settings);
+    if (!user) return;
 
     try {
-      // Crear objeto de configuración
-      const configToSave = {
-        enabled: settings.enabled,
-        dailyTime: settings.dailyTime,
-        streakReminders: settings.streakReminders,
-        weeklyReports: settings.weeklyReports,
-      };
+      console.log('💾 Guardando configuración:', settings);
 
-      console.log('📝 Configuración que se va a guardar:', configToSave);
-      console.log('👤 Usuario ID:', user.uid);
-
-      // Guardar directamente en localStorage como fallback
-      const configKey = `notification_config_${user.uid}`;
-      localStorage.setItem(configKey, JSON.stringify(configToSave));
-      console.log('💾 Guardado en localStorage con clave:', configKey);
-
-      // Intentar guardar con el servicio de notificaciones
-      try {
-        await notificationService.initialize(user.uid);
-        notificationService.saveNotificationConfig(configToSave);
-        console.log('✅ Guardado con servicio de notificaciones exitoso');
-      } catch (serviceError) {
-        console.warn('⚠️ Error con servicio de notificaciones, usando localStorage:', serviceError);
+      // Configurar notificaciones programadas
+      if (settings.enabled && settings.permissionGranted) {
+        await notificationSystem.configureScheduledNotifications({
+          dailyReminderTime: settings.dailyTime,
+          enableStreakReminders: settings.streakReminders,
+          enableWeeklyReports: settings.weeklyReports,
+        });
       }
-
-      // Si está habilitado pero no tiene permisos, solicitarlos
-      if (settings.enabled && !settings.permissionGranted) {
-        console.log('🔔 Solicitando permisos de notificación...');
-        await requestNotificationPermission();
-        // Verificar si se concedieron los permisos
-        const newPermissionState = 'Notification' in window && Notification.permission === 'granted';
-        if (newPermissionState) {
-          setSettings(prev => ({ ...prev, permissionGranted: true }));
-          // Guardar nuevamente con permisos actualizados
-          const updatedConfig = { ...configToSave };
-          localStorage.setItem(configKey, JSON.stringify(updatedConfig));
-        }
-      }
-
-      // Verificar que se guardó correctamente
-      const savedConfig = localStorage.getItem(configKey);
-      console.log('🔍 Verificación - configuración guardada:', savedConfig);
 
       toast({
         title: "✅ Configuración guardada",
-        description: "Tus preferencias se han actualizado correctamente.",
+        description: `Notificaciones ${settings.enabled ? 'activadas' : 'desactivadas'} correctamente.`,
         duration: 3000,
       });
-
+      
     } catch (error) {
       console.error('❌ Error guardando configuración:', error);
       toast({
-        title: "❌ Error al guardar",
-        description: "No se pudo guardar la configuración. Revisa la consola para más detalles.",
+        title: "❌ Error",
+        description: "No se pudo guardar la configuración",
         variant: "destructive",
       });
-    } finally {
-      setSaving(false);
     }
   };
 
   const testNotification = async () => {
-    if (!user) return;
+    if (!settings.permissionGranted) {
+      toast({
+        title: "⚠️ Permisos requeridos",
+        description: "Primero otorga permisos de notificación",
+        variant: "destructive",
+      });
+      return;
+    }
 
     try {
-      // 📱 Inicializar el sistema híbrido si aún no está listo
-      console.log('🧪 Probando notificación híbrida...');
+      const success = await notificationSystem.sendTestNotifications();
       
-      // Inicializar sistema nativo
-      const nativeReady = await nativeNotificationSystem.initialize(user.displayName || 'Hermano(a)');
-      
-      if (!nativeReady) {
+      if (success) {
         toast({
-          title: "⚠️ Sistema no listo",
-          description: "Tu navegador no soporta notificaciones PWA",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // 🔔 Solicitar permisos si no los tiene
-      if (!settings.permissionGranted) {
-        const granted = await nativeNotificationSystem.requestPermission();
-        setSettings(prev => ({ ...prev, permissionGranted: granted }));
-        
-        if (!granted) {
-          toast({
-            title: "❌ Permisos requeridos",
-            description: "Debes permitir notificaciones para probar",
-            variant: "destructive",
-          });
-          return;
-        }
-      }
-
-      // 🚀 Enviar notificación de prueba
-      const sent = await nativeNotificationSystem.sendTestNotification();
-      
-      if (sent) {
-        toast({
-          title: "🔔 ¡Notificación enviada!",
+          title: "🎉 ¡Notificación enviada!",
           description: "Revisa la barra de notificaciones de tu dispositivo",
-          duration: 3000,
+          duration: 4000,
         });
       } else {
         toast({
-          title: "⚠️ Error",
-          description: "No se pudo enviar la notificación. Revisa permisos.",
+          title: "⚠️ No enviada",
+          description: "Verifica los permisos de notificación",
           variant: "destructive",
         });
       }
-
     } catch (error) {
-      console.error('❌ Error probando notificación:', error);
+      console.error('❌ Error enviando notificación de prueba:', error);
       toast({
-        title: "❌ Error técnico",
-        description: "Hubo un problema enviando la notificación",
+        title: "❌ Error",
+        description: "No se pudo enviar la notificación de prueba",
         variant: "destructive",
       });
     }
   };
 
-  const sendTestEmail = async () => {
-    if (!user?.email) return;
-
-    try {
-      console.log('📧 Enviando email de prueba via Brevo (GRATIS)...');
-      const success = await BrevoEmailService.sendWelcomeEmail({
-        userName: user.displayName || 'Hermano(a)',
-        userEmail: user.email,
-      });
-
-      if (success) {
-        toast({
-          title: "📧 Email de prueba enviado via Brevo (GRATIS)",
-          description: "El email ha sido enviado. Revisa tu bandeja de entrada en unos minutos.",
-          duration: 4000,
-        });
-      } else {
-        throw new Error('Failed to send email via Firebase');
-      }
-    } catch (error) {
-      console.error('❌ Error enviando email via Firebase:', error);
-      toast({
-        title: "❌ Error enviando email",
-        description: "No se pudo enviar el email de prueba. Revisa la consola para más detalles.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const sendTestResetPasswordEmail = async () => {
-    if (!user?.email) return;
-
-    try {
-      console.log('🔑 Enviando email de reset password de prueba via Brevo...');
-      const success = await BrevoEmailService.sendPasswordResetEmail({
-        userEmail: user.email,
-      });
-
-      if (success) {
-        toast({
-          title: "🔑 Email de reset password enviado via Brevo",
-          description: "El email personalizado ha sido enviado. Revisa tu bandeja de entrada.",
-          duration: 4000,
-        });
-      } else {
-        throw new Error('Failed to send reset password email via Brevo');
-      }
-    } catch (error) {
-      console.error('❌ Error enviando email de reset password:', error);
-      toast({
-        title: "❌ Error enviando email",
-        description: "No se pudo enviar el email de reset password. Revisa la consola.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const clearAllSettings = () => {
-    if (!user) return;
-    
-    console.log('🧹 Limpiando toda la configuración...');
-    const configKey = `notification_config_${user.uid}`;
-    localStorage.removeItem(configKey);
-    
-    // Recargar configuración por defecto
-    const defaultSettings = {
-      enabled: false,
-      dailyTime: '08:00',
-      streakReminders: true,
-      weeklyReports: true,
-      emailNotifications: true,
-      permissionGranted: 'Notification' in window && Notification.permission === 'granted',
-    };
-    
-    setSettings(defaultSettings);
-    
-    toast({
-      title: "🧹 Configuración limpiada",
-      description: "Se ha restablecido la configuración por defecto.",
-      duration: 3000,
-    });
-  };
-
-  // Mostrar loading mientras se verifica autenticación
-  if (loading) {
+  // Mostrar loading si está cargando auth o config
+  if (loading || configLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#0a0a0a] to-[#0f0f0f] flex items-center justify-center">
-        <div className="flex flex-col items-center space-y-4">
-          <div className="animate-spin h-8 w-8 border-2 border-white border-t-transparent rounded-full"></div>
-          <div className="text-white">Verificando acceso...</div>
+      <div className="min-h-screen bg-gradient-to-br from-[#0a0a0a] via-[#0f0f0f] to-[#0a0a0a] flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-gray-400">Cargando configuración...</p>
         </div>
       </div>
     );
   }
 
-  // Si no está autenticado, no mostrar nada (se redirigirá)
+  // Si no hay usuario, no mostrar nada (se redirigirá)
   if (!user) {
     return null;
-  }
-
-  // Mostrar loading mientras se carga la configuración
-  if (configLoading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-[#0a0a0a] to-[#0f0f0f] flex items-center justify-center">
-        <div className="flex flex-col items-center space-y-4">
-          <div className="animate-spin h-8 w-8 border-2 border-white border-t-transparent rounded-full"></div>
-          <div className="text-white">Cargando configuración...</div>
-        </div>
-      </div>
-    );
   }
 
   return (
@@ -475,268 +233,170 @@ function SettingsPage() {
         {/* Header */}
         <div className="flex items-center gap-4 mb-8">
           <Link href="/home">
-            <Button variant="outline" size="sm" className="bg-[#1a1a1a]/50 border-gray-600 hover:bg-[#2a2a2a]/50 hover:border-gray-500 transition-all">
-              <ChevronLeft className="h-4 w-4 mr-2" />
-              Volver
+            <Button variant="outline" size="icon" className="bg-[#1a1a1a] border-gray-700">
+              <ChevronLeft className="h-4 w-4" />
             </Button>
           </Link>
           <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-              ⚙️ Configuración
-            </h1>
-            <p className="text-gray-400">Personaliza tus notificaciones y recordatorios</p>
-            {process.env.NODE_ENV === 'development' && (
-              <p className="text-xs text-yellow-400 mt-1">
-                🔧 Modo desarrollo - Revisa la consola para logs detallados
-              </p>
-            )}
+            <h1 className="text-3xl font-bold text-white">Configuración</h1>
+            <p className="text-gray-400">Personaliza tus notificaciones</p>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="space-y-6">
           
-          {/* 📱 Notificaciones Push */}
+          {/* Notificaciones Push */}
           <GradientCard gradient="blue" className="group hover:scale-[1.02] transition-transform">
             <CardHeader>
               <CardTitle className="flex items-center gap-3 text-white">
                 <div className="p-2 bg-blue-500/20 rounded-lg group-hover:bg-blue-500/30 transition-colors">
                   <Smartphone className="h-5 w-5 text-blue-400" />
                 </div>
-                Notificaciones Push
+                Notificaciones del Teléfono
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
               
               {/* Estado de permisos */}
-              <div className="flex items-center justify-between p-4 rounded-xl bg-blue-900/10 border border-blue-500/20">
+              <div className="flex items-center justify-between p-4 rounded-xl bg-blue-900/10 border border-blue-500/30">
                 <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-lg ${settings.permissionGranted ? 'bg-green-500/20' : 'bg-orange-500/20'}`}>
-                    {settings.permissionGranted ? (
-                      <Check className="h-5 w-5 text-green-400" />
-                    ) : (
-                      <AlertCircle className="h-5 w-5 text-orange-400" />
-                    )}
+                  <div className="p-2 bg-blue-500/20 rounded-lg">
+                    <Bell className="h-4 w-4 text-blue-400" />
                   </div>
                   <div>
-                    <p className="font-medium text-white">Estado de Permisos</p>
+                    <p className="text-white font-medium">Permisos de notificación</p>
                     <p className="text-sm text-gray-400">
-                      {settings.permissionGranted ? 'Notificaciones habilitadas' : 'Se requieren permisos para continuar'}
+                      {settings.permissionGranted ? 'Permisos concedidos ✅' : 'Permisos requeridos ❌'}
                     </p>
                   </div>
                 </div>
                 {!settings.permissionGranted && (
                   <Button 
-                    onClick={requestNotificationPermission} 
+                    onClick={requestNotificationPermission}
                     size="sm"
-                    className="bg-blue-600 hover:bg-blue-700 text-white border-none"
+                    className="bg-blue-600 hover:bg-blue-700"
                   >
-                    Permitir
+                    Solicitar Permisos
                   </Button>
                 )}
               </div>
 
-              {/* Habilitar notificaciones */}
-              <div className="flex items-center justify-between py-2">
-                <div>
-                  <Label className="text-white font-medium flex items-center gap-2">
-                    <Bell className="h-4 w-4 text-blue-400" />
-                    Habilitar notificaciones
-                  </Label>
-                  <p className="text-sm text-gray-400">Recibir recordatorios diarios automáticos</p>
-                </div>
-                <Switch
-                  checked={settings.enabled}
-                  onCheckedChange={(checked) => handleSettingChange('enabled', checked)}
-                  disabled={!settings.permissionGranted}
-                  className="data-[state=checked]:bg-blue-600"
-                />
-              </div>
-
-              {/* Hora de recordatorio */}
-              <div className="space-y-3">
-                <Label className="text-white font-medium flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-blue-400" />
-                  Hora del recordatorio diario
-                </Label>
-                <Input
-                  type="time"
-                  value={settings.dailyTime}
-                  onChange={(e) => handleSettingChange('dailyTime', e.target.value)}
-                  disabled={!settings.enabled}
-                  className="bg-[#1a1a1a]/80 border-gray-600 text-white focus:border-blue-500 focus:ring-blue-500/20 disabled:opacity-50"
-                />
-                <p className="text-xs text-gray-500">Tu recordatorio diario llegará a esta hora</p>
-              </div>
-
-              <Separator className="bg-gray-600/50" />
-
-              {/* Recordatorios de racha */}
-              <div className="flex items-center justify-between py-2">
-                <div>
-                  <Label className="text-white font-medium flex items-center gap-2">
-                    <TrendingUp className="h-4 w-4 text-orange-400" />
-                    Recordatorios de racha
-                  </Label>
-                  <p className="text-sm text-gray-400">Si no has hecho tu devocional del día</p>
-                </div>
-                <Switch
-                  checked={settings.streakReminders}
-                  onCheckedChange={(checked) => handleSettingChange('streakReminders', checked)}
-                  disabled={!settings.enabled}
-                  className="data-[state=checked]:bg-orange-600"
-                />
-              </div>
-
-              {/* Reportes semanales */}
-              <div className="flex items-center justify-between py-2">
-                <div>
-                  <Label className="text-white font-medium flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-green-400" />
-                    Reportes semanales
-                  </Label>
-                  <p className="text-sm text-gray-400">Resumen semanal de tu progreso espiritual</p>
-                </div>
-                <Switch
-                  checked={settings.weeklyReports}
-                  onCheckedChange={(checked) => handleSettingChange('weeklyReports', checked)}
-                  disabled={!settings.enabled}
-                  className="data-[state=checked]:bg-green-600"
-                />
-              </div>
-
-              {/* Botón de prueba */}
-              <Button
-                onClick={testNotification}
-                variant="outline"
-                className="w-full bg-blue-500/10 border-blue-500/30 text-blue-400 hover:bg-blue-500/20 hover:border-blue-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                disabled={!settings.permissionGranted}
-              >
-                <Bell className="h-4 w-4 mr-2" />
-                {settings.permissionGranted ? 'Probar notificación' : 'Permisos requeridos'}
-              </Button>
-
-            </CardContent>
-          </GradientCard>
-
-          {/* 📧 Notificaciones por Email */}
-          <GradientCard gradient="purple" className="group hover:scale-[1.02] transition-transform">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-3 text-white">
-                <div className="p-2 bg-purple-500/20 rounded-lg group-hover:bg-purple-500/30 transition-colors">
-                  <Mail className="h-5 w-5 text-purple-400" />
-                </div>
-                Notificaciones por Email
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              
-              {/* Email actual */}
-              <div className="p-4 rounded-xl bg-purple-900/10 border border-purple-500/20">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-purple-500/20 rounded-lg">
-                    <Mail className="h-4 w-4 text-purple-400" />
-                  </div>
+              {/* Configuraciones */}
+              <div className="space-y-4">
+                
+                {/* Habilitar notificaciones */}
+                <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-gray-400">Correo registrado</p>
-                    <p className="font-medium text-white">{user?.email}</p>
+                    <Label className="text-white font-medium flex items-center gap-2">
+                      <Bell className="h-4 w-4 text-blue-400" />
+                      Notificaciones habilitadas
+                    </Label>
+                    <p className="text-sm text-gray-400">Recibir notificaciones en tu dispositivo</p>
                   </div>
+                  <Switch
+                    checked={settings.enabled}
+                    onCheckedChange={(checked) => handleSettingChange('enabled', checked)}
+                    disabled={!settings.permissionGranted}
+                    className="data-[state=checked]:bg-blue-600"
+                  />
+                </div>
+
+                {/* Hora del recordatorio */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="text-white font-medium flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-blue-400" />
+                      Hora del recordatorio diario
+                    </Label>
+                    <p className="text-sm text-gray-400">Cuándo recibir el recordatorio</p>
+                  </div>
+                  <Input
+                    type="time"
+                    value={settings.dailyTime}
+                    onChange={(e) => handleSettingChange('dailyTime', e.target.value)}
+                    className="w-24 bg-[#1a1a1a] border-gray-700 text-white"
+                    disabled={!settings.enabled}
+                  />
+                </div>
+
+                {/* Recordatorios de racha */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="text-white font-medium flex items-center gap-2">
+                      <AlertCircle className="h-4 w-4 text-blue-400" />
+                      Recordatorios de racha
+                    </Label>
+                    <p className="text-sm text-gray-400">Avisos para mantener tu racha</p>
+                  </div>
+                  <Switch
+                    checked={settings.streakReminders}
+                    onCheckedChange={(checked) => handleSettingChange('streakReminders', checked)}
+                    disabled={!settings.enabled}
+                    className="data-[state=checked]:bg-blue-600"
+                  />
+                </div>
+
+                {/* Reportes semanales */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="text-white font-medium flex items-center gap-2">
+                      <Calendar className="h-4 w-4 text-blue-400" />
+                      Reportes semanales
+                    </Label>
+                    <p className="text-sm text-gray-400">Resumen semanal de tu progreso</p>
+                  </div>
+                  <Switch
+                    checked={settings.weeklyReports}
+                    onCheckedChange={(checked) => handleSettingChange('weeklyReports', checked)}
+                    disabled={!settings.enabled}
+                    className="data-[state=checked]:bg-blue-600"
+                  />
                 </div>
               </div>
 
-              {/* Habilitar emails */}
-              <div className="flex items-center justify-between py-2">
-                <div>
-                  <Label className="text-white font-medium flex items-center gap-2">
-                    <Mail className="h-4 w-4 text-purple-400" />
-                    Emails de bienvenida
-                  </Label>
-                  <p className="text-sm text-gray-400">Envío automático a nuevos usuarios</p>
-                </div>
-                <Switch
-                  checked={settings.emailNotifications}
-                  onCheckedChange={(checked) => handleSettingChange('emailNotifications', checked)}
-                  className="data-[state=checked]:bg-purple-600"
-                />
-              </div>
-
-              {/* Botones de prueba */}
-              <div className="space-y-3">
+              {/* Botones */}
+              <div className="flex gap-3">
                 <Button
-                  onClick={sendTestEmail}
-                  variant="outline"
-                  className="w-full bg-purple-500/10 border-purple-500/30 text-purple-400 hover:bg-purple-500/20 hover:border-purple-400 transition-all"
+                  onClick={saveSettings}
+                  className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
                 >
-                  <Mail className="h-4 w-4 mr-2" />
-                  Probar email de bienvenida
+                  <Save className="h-4 w-4 mr-2" />
+                  Guardar Configuración
                 </Button>
                 
                 <Button
-                  onClick={sendTestResetPasswordEmail}
+                  onClick={testNotification}
                   variant="outline"
-                  className="w-full bg-red-500/10 border-red-500/30 text-red-400 hover:bg-red-500/20 hover:border-red-400 transition-all"
+                  className="bg-blue-500/10 border-blue-500/30 text-blue-400 hover:bg-blue-500/20"
                 >
-                  <Lock className="h-4 w-4 mr-2" />
-                  Probar email de reset password
+                  <Bell className="h-4 w-4 mr-2" />
+                  Probar
                 </Button>
-              </div>
-
-              {/* Info sobre configuración de Firebase */}
-              <div className="p-4 rounded-xl bg-blue-900/10 border border-blue-500/30">
-                <div className="flex items-start gap-3">
-                  <div className="p-2 bg-blue-500/20 rounded-lg">
-                    <AlertCircle className="h-4 w-4 text-blue-400" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-blue-300 font-medium">🔥 Powered by Firebase</p>
-                    <p className="text-xs text-blue-200/80 mt-1">
-                      Los emails se envían usando Firebase Trigger Email Extension. Más confiable que servicios externos.
-                    </p>
-                  </div>
-                </div>
               </div>
 
             </CardContent>
           </GradientCard>
 
-        </div>
+          {/* Info sobre PWA */}
+          <div className="p-4 rounded-xl bg-green-900/10 border border-green-500/30">
+            <div className="flex items-start gap-3">
+              <div className="p-2 bg-green-500/20 rounded-lg">
+                <Check className="h-4 w-4 text-green-400" />
+              </div>
+              <div>
+                <p className="text-sm text-green-300 font-medium">📱 Notificaciones Nativas PWA</p>
+                <p className="text-xs text-green-200/80 mt-1">
+                  100% gratuito • Funciona offline • Aparece en barra de notificaciones
+                </p>
+                <p className="text-xs text-green-200/60 mt-1">
+                  Sin servicios externos • Privacidad garantizada
+                </p>
+              </div>
+            </div>
+          </div>
 
-        {/* Botones de acción */}
-        <div className="flex flex-col sm:flex-row justify-center items-center gap-4 mt-8">
-          <Button
-            onClick={saveSettings}
-            disabled={saving}
-            size="lg"
-            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-xl px-8 py-3 text-white font-medium transition-all transform hover:scale-105 disabled:hover:scale-100 disabled:opacity-50"
-          >
-            {saving ? (
-              <>
-                <div className="animate-spin h-5 w-5 mr-2 border-2 border-white border-t-transparent rounded-full"></div>
-                Guardando configuración...
-              </>
-            ) : (
-              <>
-                <Save className="h-5 w-5 mr-2" />
-                Guardar Configuración
-              </>
-            )}
-          </Button>
-          
-          {/* Botón de debug - solo para desarrollo */}
-          {process.env.NODE_ENV === 'development' && (
-            <Button
-              onClick={clearAllSettings}
-              variant="outline"
-              size="sm"
-              className="bg-red-900/20 border-red-500/30 text-red-400 hover:bg-red-900/30 hover:border-red-400"
-            >
-              🧹 Limpiar Config
-            </Button>
-          )}
         </div>
-
       </div>
     </div>
   );
-}
-
-export default SettingsPage; 
+} 
