@@ -245,7 +245,7 @@ export function useTopicalStudies() {
   const invalidateCache = useCallback(() => {
     if (user) {
       const cacheKey = `topical_studies_${user.uid}`;
-      console.log('🔄 Invalidando cache para:', cacheKey);
+      
       cache.delete(cacheKey);
       
       // Forzar refetch inmediato

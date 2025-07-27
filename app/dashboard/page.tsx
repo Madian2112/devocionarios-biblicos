@@ -130,7 +130,6 @@ function DashboardPage() {
       // 🔔 Si se marca como completado, notificar al servicio
       if (!devocional.completado && updatedDevocional.completado) {
         notificationService.markDevocionalCompleted();
-        console.log('✅ Devocional marcado como completado');
       }
 
       // Actualizar estado local

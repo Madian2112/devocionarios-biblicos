@@ -44,13 +44,11 @@ export class NativeNotificationSystem {
    */
   async initialize(userName: string): Promise<boolean> {
     try {
-      console.log('📱 Inicializando sistema de notificaciones nativas...');
       
       this.userName = userName;
-      
+        
       // Verificar soporte del navegador
       if (!this.checkBrowserSupport()) {
-        console.log('⚠️ Navegador no soporta notificaciones');
         return false;
       }
 
@@ -63,7 +61,6 @@ export class NativeNotificationSystem {
       // Configurar event listeners
       this.setupEventListeners();
       
-      console.log('✅ Sistema de notificaciones inicializado');
       return true;
 
     } catch (error) {
@@ -79,12 +76,7 @@ export class NativeNotificationSystem {
     const hasNotificationAPI = 'Notification' in window;
     const hasServiceWorker = 'serviceWorker' in navigator;
     const hasPushManager = 'PushManager' in window;
-    
-    console.log('📊 Soporte del navegador:', {
-      notifications: hasNotificationAPI,
-      serviceWorker: hasServiceWorker,
-      pushManager: hasPushManager
-    });
+  
 
     return hasNotificationAPI && hasServiceWorker;
   }
@@ -95,7 +87,6 @@ export class NativeNotificationSystem {
   async requestPermission(): Promise<boolean> {
     try {
       if (!('Notification' in window)) {
-        console.log('⚠️ Notificaciones no soportadas');
         return false;
       }
 
@@ -108,10 +99,8 @@ export class NativeNotificationSystem {
       const granted = permission === 'granted';
       
       if (granted) {
-        console.log('✅ Permisos de notificación concedidos');
         await this.showWelcomeNotification();
       } else {
-        console.log('❌ Permisos de notificación denegados');
       }
 
       return granted;
@@ -131,7 +120,6 @@ export class NativeNotificationSystem {
         const registration = await navigator.serviceWorker.register('/sw.js');
         this.serviceWorkerRegistration = registration;
         
-        console.log('✅ Service Worker registrado');
         
         // Esperar a que esté listo
         await navigator.serviceWorker.ready;
@@ -226,7 +214,6 @@ export class NativeNotificationSystem {
         }
       } as any);
 
-      console.log('✅ Recordatorio diario enviado');
       return true;
 
     } catch (error) {
@@ -271,7 +258,6 @@ export class NativeNotificationSystem {
         }
       } as any);
 
-      console.log('✅ Recordatorio de racha enviado');
       return true;
 
     } catch (error) {
@@ -317,7 +303,6 @@ export class NativeNotificationSystem {
         }
       } as any);
 
-      console.log('✅ Reporte semanal enviado');
       return true;
 
     } catch (error) {
@@ -335,7 +320,6 @@ export class NativeNotificationSystem {
       this.clearScheduledNotifications();
 
       if (!this.config.enabled) {
-        console.log('📵 Notificaciones deshabilitadas');
         return;
       }
 
@@ -356,7 +340,6 @@ export class NativeNotificationSystem {
         this.scheduleWeeklyReport();
       }
 
-      console.log('⏰ Notificaciones programadas');
 
     } catch (error) {
       console.error('❌ Error programando notificaciones:', error);
@@ -384,7 +367,6 @@ export class NativeNotificationSystem {
       this.scheduleDailyNotification(hours, minutes);
     }, msUntilNotification);
 
-    console.log(`⏰ Recordatorio diario programado para: ${scheduledTime.toLocaleString()}`);
   }
 
   /**
@@ -443,7 +425,6 @@ export class NativeNotificationSystem {
       this.scheduleWeeklyReport();
     }, msUntilSunday);
 
-    console.log(`📊 Reporte semanal programado para: ${nextSunday.toLocaleString()}`);
   }
 
   /**
@@ -479,7 +460,6 @@ export class NativeNotificationSystem {
    * 🖱️ Manejar clic en notificación
    */
   private handleNotificationClick(data: any): void {
-    console.log('🖱️ Notificación clickeada:', data);
     
     // Redirigir según el tipo de notificación
     if (data.url) {
@@ -492,7 +472,6 @@ export class NativeNotificationSystem {
    * ⚡ Manejar acciones de notificación
    */
   private handleNotificationAction(data: any): void {
-    console.log('⚡ Acción de notificación:', data);
     
     switch (data.action) {
       case 'start-study':
@@ -520,7 +499,6 @@ export class NativeNotificationSystem {
   saveConfig(config: NotificationConfig): void {
     this.config = { ...config };
     localStorage.setItem('notification-config', JSON.stringify(config));
-    console.log('💾 Configuración guardada:', config);
     
     // Reprogramar notificaciones con la nueva configuración
     this.scheduleNotifications();
@@ -534,7 +512,6 @@ export class NativeNotificationSystem {
       const saved = localStorage.getItem('notification-config');
       if (saved) {
         this.config = { ...this.config, ...JSON.parse(saved) };
-        console.log('📖 Configuración cargada:', this.config);
       }
     } catch (error) {
       console.error('❌ Error cargando configuración:', error);
@@ -546,7 +523,6 @@ export class NativeNotificationSystem {
    */
   private clearScheduledNotifications(): void {
     // Aquí almacenarías los IDs de los timeouts para poder cancelarlos
-    console.log('🧹 Notificaciones programadas limpiadas');
   }
 
   /**
@@ -584,7 +560,6 @@ export class NativeNotificationSystem {
    */
   private checkPendingNotifications(): void {
     // Aquí podrías verificar si hay notificaciones que se perdieron
-    console.log('🔍 Verificando notificaciones pendientes...');
   }
 
   /**
@@ -610,11 +585,9 @@ export class NativeNotificationSystem {
   async sendTestNotification(): Promise<boolean> {
     try {
       // if (!this.canShowNotification()) {
-      //   console.log('⚠️ No se pueden enviar notificaciones');
       //   return false;
       // }
 
-      console.log('Este es mi service worker: ', this.serviceWorkerRegistration)
 
       await this.serviceWorkerRegistration?.showNotification('🧪 Notificación de Prueba', {
         body: `¡Perfecto ${this.userName}! Las notificaciones funcionan correctamente.`,
@@ -629,7 +602,6 @@ export class NativeNotificationSystem {
         }
       } as any);
 
-      console.log('✅ Notificación de prueba enviada');
       return true;
 
     } catch (error) {

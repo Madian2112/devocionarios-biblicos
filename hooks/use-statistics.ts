@@ -108,6 +108,8 @@ export function useStatistics(): UserStatistics {
         cachedFirestoreService.getTopicalStudies(user.uid)
       ]);
 
+      
+
       const newStats = computeStats(devocionales, estudios);
       
       // 🚀 Guardar en cache

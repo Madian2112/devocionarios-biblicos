@@ -39,18 +39,18 @@ export class NotificationService {
     
     // Verificar soporte del navegador
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-      console.log('❌ Notificaciones push no soportadas en este navegador');
+      
       return false;
     }
 
     // Verificar si el service worker está registrado
     const registration = await navigator.serviceWorker.ready;
     if (!registration) {
-      console.log('❌ Service Worker no está registrado');
+      
       return false;
     }
 
-    console.log('✅ Servicio de notificaciones inicializado');
+    
     return true;
   }
 
@@ -59,7 +59,7 @@ export class NotificationService {
    */
   async requestPermission(): Promise<boolean> {
     if (!('Notification' in window)) {
-      console.log('❌ Este navegador no soporta notificaciones');
+      
       return false;
     }
 
@@ -72,11 +72,11 @@ export class NotificationService {
     const isGranted = permission === 'granted';
     
     if (isGranted) {
-      console.log('✅ Permisos de notificación concedidos');
+      
       // Mostrar notificación de bienvenida
       this.showWelcomeNotification();
     } else {
-      console.log('❌ Permisos de notificación denegados');
+      
     }
 
     return isGranted;
@@ -162,7 +162,7 @@ export class NotificationService {
    */
   private async showNotification(options: ExtendedNotificationOptions & { title: string }): Promise<void> {
     if (Notification.permission !== 'granted') {
-      console.log('❌ No hay permisos para mostrar notificaciones');
+      
       return;
     }
 
@@ -182,7 +182,7 @@ export class NotificationService {
       };
 
       await registration.showNotification(options.title, notificationOptions);
-      console.log('✅ Notificación mostrada:', options.title);
+      
 
     } catch (error) {
       console.error('❌ Error mostrando notificación:', error);
@@ -220,7 +220,7 @@ export class NotificationService {
     // Guardar referencia para poder cancelar
     localStorage.setItem(`notification_daily_${this.userId}`, timeoutId.toString());
     
-    console.log(`⏰ Notificación diaria programada para las ${time}`);
+    
   }
 
   /**

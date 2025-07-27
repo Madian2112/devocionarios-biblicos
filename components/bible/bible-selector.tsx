@@ -55,7 +55,7 @@ export function BibleSelector({
   const [open, setOpen] = useState(false);
   const isMobile = useIsMobile();
   useEffect(() => {
-    console.log('Esta es mi instacia:', instanceId);
+    
   }, [instanceId])
   
   const FormContent = (
@@ -124,7 +124,7 @@ function BibleSelectorForm({
     // Efecto #1: Rápido y síncrono para actualizar la UI principal (el Switch)
     useEffect(() => {
         const parsed = parseReference(currentReference || "");
-        console.log()
+        
         if (parsed) {
             if (parsed.startVerse) {
                 setSelectionType('verse');
@@ -182,12 +182,12 @@ function BibleSelectorForm({
 
     const handleSelect = () => {
         let reference = '';
-        console.log('Mi type: ', selectionType)
-        console.log("selectedBook:", selectedBook, "startChapter:", startChapter, "startVerse:", startVerse, "endVerse:", endVerse);
+        
+        
 
         if (selectionType === 'verse') {
             reference = bibleService.formatReference(selectedBook, startChapter, startVerse, endVerse || undefined);
-            console.log('Referencia generada:', reference);
+            
         } else {
             // Para selección de capítulo, solo usamos el capítulo inicial.
             reference = `${selectedBook} ${startChapter}`;

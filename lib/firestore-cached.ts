@@ -54,7 +54,7 @@ class CachedFirestoreService {
 
   // 🚀 Precargar devocionales recientes en background
   private async precacheRecentDevocionales(userId: string, devocionales: Devocional[]): Promise<void> {
-    const recentDates = this.getRecentDates(3);
+    const recentDates = this.getRecentDates(1);
     
     for (const fecha of recentDates) {
       try {

@@ -24,15 +24,15 @@ export class NotificationSystemWrapper {
    * 🔧 Inicializar solo notificaciones nativas
    */
   async initialize(userName: string): Promise<boolean> {
-    console.log('🚀 Inicializando notificaciones nativas PWA...')
+    
 
     try {
       // Inicializar notificaciones nativas
       const nativeReady = await this.nativeNotifications.initialize(userName)
-      console.log('📱 Notificaciones nativas:', nativeReady ? 'Listas ✅' : 'No disponibles ⚠️')
+      
 
       this.isInitialized = true
-      console.log('✅ Sistema de notificaciones PWA inicializado')
+      
       return true
 
     } catch (error) {
@@ -46,15 +46,15 @@ export class NotificationSystemWrapper {
    * 🌟 Configurar notificaciones de bienvenida (Solo solicitar permisos)
    */
   async setupWelcomeNotifications(userName: string): Promise<boolean> {
-    console.log('🌟 Configurando notificaciones de bienvenida para:', userName)
+    
 
     try {
       // 📱 Solicitar permisos para notificaciones
-      console.log('📱 Solicitando permisos para notificaciones...')
+      
       const notificationResult = await this.nativeNotifications.requestPermission()
       
       if (notificationResult) {
-        console.log('✅ Permisos de notificación otorgados')
+        
         // Enviar notificación de prueba como bienvenida
         await this.nativeNotifications.sendTestNotification()
       } else {
@@ -73,7 +73,7 @@ export class NotificationSystemWrapper {
    * 🔥 Enviar recordatorio de racha (Solo Notificación)
    */
   async sendStreakReminder(userName: string, streak: number): Promise<boolean> {
-    console.log('🔥 Enviando recordatorio de racha para:', userName, 'Racha:', streak)
+    
 
     try {
       const stats = {
@@ -86,7 +86,7 @@ export class NotificationSystemWrapper {
       const notificationResult = await this.nativeNotifications.showStreakReminder(stats)
       
       if (notificationResult) {
-        console.log('✅ Recordatorio de racha enviado via PWA')
+        
       } else {
         console.warn('⚠️ No se pudo enviar recordatorio de racha')
       }
@@ -103,13 +103,13 @@ export class NotificationSystemWrapper {
    * ⏰ Enviar recordatorio diario (Solo Notificación)
    */
   async sendDailyReminder(userName: string): Promise<boolean> {
-    console.log('⏰ Enviando recordatorio diario para:', userName)
+    
 
     try {
       const notificationResult = await this.nativeNotifications.showDailyReminder()
       
       if (notificationResult) {
-        console.log('✅ Recordatorio diario enviado via PWA')
+        
       } else {
         console.warn('⚠️ No se pudo enviar recordatorio diario')
       }
@@ -126,7 +126,7 @@ export class NotificationSystemWrapper {
    * 📊 Enviar reporte semanal (Solo Notificación)
    */
   async sendWeeklyReport(userName: string, stats: any): Promise<boolean> {
-    console.log('📊 Enviando reporte semanal para:', userName)
+    
 
     try {
       const weeklyStats = {
@@ -139,7 +139,7 @@ export class NotificationSystemWrapper {
       const notificationResult = await this.nativeNotifications.showWeeklyReport(weeklyStats)
       
       if (notificationResult) {
-        console.log('✅ Reporte semanal enviado via PWA')
+        
       } else {
         console.warn('⚠️ No se pudo enviar reporte semanal')
       }
@@ -156,13 +156,13 @@ export class NotificationSystemWrapper {
    * 🧪 Enviar notificación de prueba
    */
   async sendTestNotifications(): Promise<boolean> {
-    console.log('🧪 Enviando notificaciones de prueba...')
+    
 
     try {
       const result = await this.nativeNotifications.sendTestNotification()
       
       if (result) {
-        console.log('✅ Notificación de prueba enviada')
+        
       } else {
         console.warn('⚠️ No se pudo enviar notificación de prueba')
       }
@@ -183,7 +183,7 @@ export class NotificationSystemWrapper {
     enableStreakReminders: boolean
     enableWeeklyReports: boolean
   }): Promise<boolean> {
-    console.log('⚙️ Configurando notificaciones programadas:', config)
+    
 
     try {
       this.nativeNotifications.saveConfig({
@@ -195,7 +195,7 @@ export class NotificationSystemWrapper {
         customVerse: true
       })
 
-      console.log('✅ Notificaciones programadas configuradas')
+      
       return true
 
     } catch (error: any) {

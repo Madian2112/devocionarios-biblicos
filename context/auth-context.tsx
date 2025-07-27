@@ -27,14 +27,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // 🎯 Inicializar sistema híbrido cuando el usuario se autentica
       if (currentUser) {
         try {
-          console.log('🚀 Inicializando sistema híbrido para usuario autenticado...');
+          
           const userName = currentUser.displayName || currentUser.email?.split('@')[0] || 'Hermano(a)';
           const userEmail = currentUser.email || '';
           
           // Inicializar en background sin bloquear la UI
           notificationSystem.initialize(userName)
             .then((result) => {
-              console.log('✅ Sistema híbrido inicializado:', result);
+              
               
               // Iniciar recordatorios automáticos si están habilitados
               // notificationSystem.startAutomaticReminders();

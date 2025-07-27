@@ -54,7 +54,7 @@ function DevocionalPage({ params }: { params: Promise<{ id: string }> }) {
       if (user && fecha) {
         setLoading(true);
         const existingDevocional = await firestoreService.getDevocionalByDate(user.uid, fecha);
-        console.log('Existe un devocional:', existingDevocional);
+        
         if (existingDevocional) {
           setDevocional(existingDevocional);
         } else {
@@ -108,6 +108,7 @@ function DevocionalPage({ params }: { params: Promise<{ id: string }> }) {
       // El 'userId' ya está en el objeto devocional, pero el servicio espera que se pase por separado.
       // Creamos una copia sin el userId para pasarla como segundo argumento.
       const { userId, ...devocionalData } = devocional;
+      devocionalData.completado = devocional.aprendizajeGeneral.trim() !== "" ? true: false;
       await firestoreService.saveDevocional(user.uid, devocionalData);
       
       // 🔔 Notificación de éxito
@@ -135,7 +136,7 @@ function DevocionalPage({ params }: { params: Promise<{ id: string }> }) {
 
   const handleBibleSelection = async (index: number, reference: string) => {
   try {
-    console.log(`🔥 BibleSelector seleccionó para índice ${index}:`, reference);
+    
     
     if (!devocional || !devocional.versiculos[index]) {
       console.error(`❌ No se puede actualizar versículo en índice ${index} - no existe`);
@@ -185,8 +186,8 @@ const addVersiculo = () => {
   };
   
   const updatedVersiculos = [...devocional.versiculos, newVersiculo];
-  console.log('✅ Agregando versículo. Nuevo array:', updatedVersiculos);
-  console.log('✅ Nuevo versículo en índice:', updatedVersiculos.length - 1);
+  
+  
   
   handleDevocionalChange('versiculos', updatedVersiculos);
 };
@@ -199,8 +200,8 @@ const addVersiculo = () => {
 const handleVersiculoChange = (index: number, field: keyof Versiculo, value: any) => {
   if (!devocional) return;
   
-  console.log(`Intentando cambiar versículo en índice ${index}, campo ${field}, valor:`, value);
-  console.log(`Array actual de versículos:`, devocional.versiculos);
+  
+  
   
   const updatedVersiculos = [...devocional.versiculos];
   
@@ -213,7 +214,7 @@ const handleVersiculoChange = (index: number, field: keyof Versiculo, value: any
   
   // ✅ Ahora es seguro hacer el spread
   updatedVersiculos[index] = { ...updatedVersiculos[index], [field]: value };
-  console.log(`✅ Versículo actualizado en índice ${index}:`, updatedVersiculos[index]);
+  
   
   handleDevocionalChange('versiculos', updatedVersiculos);
 };
@@ -290,26 +291,25 @@ const handleVersiculoChange = (index: number, field: keyof Versiculo, value: any
             <Button
               onClick={() => exportDevocionalToPDF(devocional)}
               variant="outline"
-              disabled={saving}
-              className="flex-1 bg-purple-500/20 text-purple-300 border-purple-500/30 hover:bg-purple-500/30"
+              className="bg-blue-500/20 text-blue-300 border-blue-500/30 hover:bg-blue-500/30 flex-1 sm:flex-none"
             >
-              <Download className="h-4 w-4 mr-2" />
-              Exportar
+              <Download className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Exportar</span>
             </Button>
-            <Button
-              onClick={handleSave}
-              disabled={saving}
-              className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
+            <Button 
+              onClick={handleSave} 
+              disabled={saving || !devocional}
+              size="lg" 
+              className="bg-gradient-to-r from-green-600 to-green-800 hover:from-green-700 hover:to-green-900 shadow-lg px-8"
             >
               {saving ? (
                 <>
-                  <LoadingSpinner size="sm" className="mr-2" />
+                  <LoadingSpinner size="sm" className="mr-2" /> 
                   Guardando...
                 </>
               ) : (
                 <>
-                  <CheckCircle2 className="h-4 w-4 mr-2" />
-                  Guardar
+                  💾 Guardar Devocional
                 </>
               )}
             </Button>
@@ -347,7 +347,8 @@ const handleVersiculoChange = (index: number, field: keyof Versiculo, value: any
                   onSelect={async (reference) => {
                     setSaving(true);
                     const verseText = await fetchVerseText(reference, 'rv1960');
-                    setDevocional(prev => prev ? { ...prev, citaBiblica: reference, textoDevocional: verseText, versionCitaBiblica: 'rv1960' } : null);
+                    const versoCompleto = `RV1960 - ${reference}\n\n${verseText}`;
+                    setDevocional(prev => prev ? { ...prev, citaBiblica: reference, textoDevocional: versoCompleto, versionCitaBiblica: 'rv1960' } : null);
                     setSaving(false);
                   }}
                   trigger={
@@ -369,7 +370,8 @@ const handleVersiculoChange = (index: number, field: keyof Versiculo, value: any
                       if (devocional) { 
                          setSaving(true);
                          const verseText = await fetchVerseText(devocional.citaBiblica, selectedVersion);
-                         handleDevocionalChange('textoDevocional', verseText);
+                         const versoCompleto = `${selectedVersion.toUpperCase()} - ${devocional.citaBiblica}\n\n${verseText}`;
+                         handleDevocionalChange('textoDevocional', versoCompleto);
                          handleDevocionalChange('versionCitaBiblica', selectedVersion);
                          setSaving(false);
                       }
@@ -470,7 +472,7 @@ const handleVersiculoChange = (index: number, field: keyof Versiculo, value: any
 
                     {devocional?.versiculos && devocional.versiculos.length > 0 ? (
                       devocional.versiculos.map((versiculo, index) => {
-                        console.log(`Renderizando versículo ${index}:`, versiculo);
+                        
                         
                         return (
                           <GradientCard key={versiculo.id} gradient="blue" className="group">
@@ -500,7 +502,7 @@ const handleVersiculoChange = (index: number, field: keyof Versiculo, value: any
                                     <Input
                                       value={versiculo?.referencia || ''}
                                       onChange={(e) => {
-                                        console.log(`Cambiando referencia del versículo ${index} a:`, e.target.value);
+                                        
                                         handleVersiculoChange(index, 'referencia', e.target.value);
                                       }}
                                       placeholder="Ej: Salmos 23:1"
@@ -751,7 +753,7 @@ const handleVersiculoChange = (index: number, field: keyof Versiculo, value: any
               onClick={handleSave} 
               disabled={saving || !devocional}
               size="lg" 
-              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg px-8"
+              className="bg-gradient-to-r from-green-600 to-green-800 hover:from-green-700 hover:to-green-900 shadow-lg px-8"
             >
               {saving ? (
                 <>

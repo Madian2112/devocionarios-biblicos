@@ -14,7 +14,6 @@ interface BibleVerseCache {
 interface DevocionalCache {
   id: string; // fecha (YYYY-MM-DD)
   devocional: any; // datos completos del devocional
-  versiculosTextos: { [referencia: string]: string }; // textos de versículos cacheados
   timestamp: number;
 }
 
@@ -134,10 +133,10 @@ class MobileCacheManager {
   async cacheDevocional(devocional: any, versiculosTextos: { [referencia: string]: string }): Promise<void> {
     if (!this.db) return;
 
+
     const devData: DevocionalCache = {
       id: devocional.fecha,
       devocional,
-      versiculosTextos,
       timestamp: Date.now()
     };
 
@@ -162,7 +161,7 @@ class MobileCacheManager {
         if (result) {
           resolve({
             devocional: result.devocional,
-            versiculosTextos: result.versiculosTextos
+           versiculosTextos: {}
           });
         } else {
           resolve(null);

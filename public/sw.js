@@ -12,16 +12,16 @@ const urlsToCache = [
 
 // 🚀 Instalación del Service Worker
 self.addEventListener('install', (event) => {
-  console.log('📱 Service Worker: Instalando...');
+  
   
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
-        console.log('📦 Service Worker: Archivos en caché');
+        
         return cache.addAll(urlsToCache);
       })
       .then(() => {
-        console.log('✅ Service Worker: Instalado correctamente');
+        
         // Forzar activación inmediata
         return self.skipWaiting();
       })
@@ -30,20 +30,20 @@ self.addEventListener('install', (event) => {
 
 // ⚡ Activación del Service Worker
 self.addEventListener('activate', (event) => {
-  console.log('⚡ Service Worker: Activando...');
+  
   
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
           if (cacheName !== CACHE_NAME) {
-            console.log('🗑️ Service Worker: Eliminando caché antigua:', cacheName);
+            
             return caches.delete(cacheName);
           }
         })
       );
     }).then(() => {
-      console.log('✅ Service Worker: Activado correctamente');
+      
       // Tomar control inmediato de todas las páginas
       return self.clients.claim();
     })
@@ -74,7 +74,7 @@ self.addEventListener('fetch', (event) => {
 
 // Mostrar notificación
 self.addEventListener('notificationclick', (event) => {
-  console.log('🖱️ Notificación clickeada:', event.notification.data);
+  
   
   // Cerrar la notificación
   event.notification.close();
@@ -118,7 +118,7 @@ self.addEventListener('notificationclick', (event) => {
   const { action } = event;
   const notificationData = event.notification.data || {};
   
-  console.log('⚡ Acción de notificación:', action, notificationData);
+  
   
   event.notification.close();
   
@@ -199,7 +199,7 @@ self.addEventListener('notificationclick', (event) => {
 
 // 📱 Push messages (para futuras expansiones con servidor)
 self.addEventListener('push', (event) => {
-  console.log('📨 Push message recibido:', event);
+  
   
   if (!event.data) return;
   
@@ -220,7 +220,7 @@ self.addEventListener('push', (event) => {
 
 // 🔄 Sincronización en background (para futuras funcionalidades)
 self.addEventListener('sync', (event) => {
-  console.log('🔄 Background sync:', event.tag);
+  
   
   if (event.tag === 'background-sync-devocionales') {
     event.waitUntil(
@@ -233,7 +233,7 @@ self.addEventListener('sync', (event) => {
 // 📊 Función para sincronizar devocionarios (placeholder)
 async function syncDevocionales() {
   try {
-    console.log('📊 Sincronizando devocionarios...');
+    
     // Implementar lógica de sincronización
     return Promise.resolve();
   } catch (error) {
@@ -246,7 +246,7 @@ async function syncDevocionales() {
 self.addEventListener('message', (event) => {
   const { action, data } = event.data;
   
-  console.log('📨 Mensaje recibido:', action, data);
+  
   
   switch (action) {
     case 'skip-waiting':
@@ -268,7 +268,7 @@ self.addEventListener('message', (event) => {
 // 📈 Logging mejorado para debugging
 function log(message, data = null) {
   const timestamp = new Date().toISOString();
-  console.log(`[${timestamp}] SW: ${message}`, data || '');
+  
 }
 
 // 🚀 Inicialización

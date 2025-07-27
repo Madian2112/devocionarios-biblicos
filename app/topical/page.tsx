@@ -53,14 +53,14 @@ function TopicalStudiesPage() {
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        console.log('🔄 Página visible de nuevo - verificando si necesita refresh...');
+        
         
         // Verificar si venimos de una página individual de topical
         const currentPath = window.location.pathname;
         const referrer = document.referrer;
         
         if (currentPath === '/topical' && referrer.includes('/topical/')) {
-          console.log('🔄 Regresando de página individual - invalidando cache...');
+          
           setTimeout(() => {
             invalidateCache();
             
@@ -90,7 +90,7 @@ function TopicalStudiesPage() {
   useEffect(() => {
     const sessionKey = 'topical-return-flag';
     if (sessionStorage.getItem(sessionKey)) {
-      console.log('🔄 Detectado regreso de página individual - invalidando cache...');
+      
       sessionStorage.removeItem(sessionKey);
       invalidateCache();
     }
@@ -144,27 +144,24 @@ function TopicalStudiesPage() {
     setNewTopicName("");
 
     try {
-        console.log("🔍 Intentando guardar tema:", newStudyForState);
-        console.log("🔍 Usuario ID:", user.uid);
-        console.log("🔍 Usuario completo:", user);
-        console.log("🔍 ¿Usuario autenticado?", !!user?.uid);
+        
+        
+        
+        
         
         // 🔧 FIX: Remover userId del objeto antes de enviarlo (la función lo agrega automáticamente)
         const { userId, ...topicDataWithoutUserId } = newStudyForState;
-        console.log("🔍 Datos sin userId:", topicDataWithoutUserId);
+        
         console.log("🔍 Datos finales que se enviarán a Firebase:", {
           userId: user.uid,
           ...topicDataWithoutUserId
         });
         
-        // 🧪 TEST: Verificar si es operación CREATE o UPDATE
-        console.log("🔍 ID del documento:", topicDataWithoutUserId.id);
-        console.log("🔍 Esta es una operación CREATE (documento nuevo)");
         
         const savedStudy = await firestoreService.saveTopicalStudy(user.uid, topicDataWithoutUserId);
         
         
-        console.log("✅ Tema guardado exitosamente:", savedStudy);
+        
         
         // 🔔 Notificación de éxito
         toast({
@@ -203,7 +200,7 @@ function TopicalStudiesPage() {
     if (!topicToDelete || !user) return;
     
     // 🚀 Optimistic Update - Actualizar UI inmediatamente
-    console.log('🗑️ Eliminando tema optimísticamente:', topicToDelete.name);
+    
     
     // 1. Cerrar modal inmediatamente para mejor UX
     setDeleteDialogOpen(false);
@@ -225,7 +222,7 @@ function TopicalStudiesPage() {
         // 5. Invalidar cache y forzar refetch
         invalidateCache();
         
-        console.log('✅ Tema eliminado exitosamente:', topicToDelete.name);
+        
         
         // 6. Notificación de éxito
         toast({

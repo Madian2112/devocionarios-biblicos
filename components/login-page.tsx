@@ -65,7 +65,6 @@ export function LoginPage({ defaultMode = 'login' }: LoginPageProps = {}) {
         if (userCredential.user) {
           const userName = email.split('@')[0];
           
-          console.log('🎉 Nuevo usuario registrado - configurando notificaciones...');
           
           // Configurar notificaciones nativas (no bloquear el flujo)
           notificationSystem.setupWelcomeNotifications(userName).catch((error: any) => {

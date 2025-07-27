@@ -63,7 +63,7 @@ export default function SettingsPage() {
 
     try {
       setConfigLoading(true);
-      console.log('📱 Cargando configuración de notificaciones...');
+      
 
       // Verificar permisos
       const permissionGranted = 'Notification' in window && Notification.permission === 'granted';
@@ -81,8 +81,8 @@ export default function SettingsPage() {
       };
       
       setSettings(defaultSettings);
-      console.log('📱 Configuración de notificaciones cargada:', defaultSettings);
-      console.log('📊 Stats del sistema:', stats);
+      
+      
       
     } catch (error) {
       console.error('❌ Error cargando configuración:', error);
@@ -146,7 +146,7 @@ export default function SettingsPage() {
     if (!user) return;
 
     try {
-      console.log('💾 Guardando configuración:', settings);
+      
 
       // Configurar notificaciones programadas
       if (settings.enabled && settings.permissionGranted) {

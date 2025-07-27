@@ -84,7 +84,7 @@ function TopicalStudyPage({ params }: { params: Promise<{ id: string }> }) {
   useEffect(() => {
     const handleBeforeUnload = () => {
       if (hasChangesRef.current) {
-        console.log('🔄 Marcando flag de cambios para invalidar cache en página principal...');
+        
         sessionStorage.setItem('topical-return-flag', 'true');
       }
     };
@@ -92,7 +92,7 @@ function TopicalStudyPage({ params }: { params: Promise<{ id: string }> }) {
     // Marcar flag cuando el componente se desmonta
     return () => {
       if (hasChangesRef.current) {
-        console.log('🔄 Componente desmontándose con cambios - marcando flag...');
+        
         sessionStorage.setItem('topical-return-flag', 'true');
       }
     };
@@ -106,7 +106,7 @@ function TopicalStudyPage({ params }: { params: Promise<{ id: string }> }) {
 
   const handleAddStudyEntry = () => {
     if (!study) return;
-    console.log('➕ Agregando nueva entrada...');
+    
     const newEntry: StudyEntry = { id: Date.now().toString(), referencia: "", learning: "", versionTexto: "rv1960" };
     handleStudyChange('entries', [...study.entries, newEntry]);
     hasChangesRef.current = true; // 🔄 Marcar cambios explícitamente
@@ -114,7 +114,7 @@ function TopicalStudyPage({ params }: { params: Promise<{ id: string }> }) {
 
   const handleUpdateStudyEntry = (updatedEntry: StudyEntry) => {
     if (!study) return;
-    console.log('✏️ Actualizando entrada:', updatedEntry.id);
+    
     handleStudyChange('entries', study.entries.map(e => e.id === updatedEntry.id ? updatedEntry : e));
     hasChangesRef.current = true; // 🔄 Marcar cambios explícitamente
   };
@@ -126,7 +126,7 @@ function TopicalStudyPage({ params }: { params: Promise<{ id: string }> }) {
     const entry = study.entries.find(e => e.id === entryId);
     if (!entry) return;
     
-    console.log('🗑️ Solicitando confirmación para eliminar entrada:', entry.referencia);
+    
     setEntryToDelete({ 
       id: entryId, 
       referencia: entry.referencia || 'Entrada sin referencia' 
@@ -137,7 +137,7 @@ function TopicalStudyPage({ params }: { params: Promise<{ id: string }> }) {
   const confirmDeleteEntry = () => {
     if (!study || !entryToDelete) return;
     
-    console.log('🗑️ Confirmado - Eliminando entrada:', entryToDelete.referencia);
+    
     handleStudyChange('entries', study.entries.filter(e => e.id !== entryToDelete.id));
     hasChangesRef.current = true; // 🔄 Marcar cambios explícitamente
     

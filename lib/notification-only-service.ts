@@ -19,11 +19,11 @@ export class NotificationOnlyService {
    */
   static async showWelcomeNotification(data: WelcomeNotificationData): Promise<boolean> {
     try {
-      console.log('🔔 Mostrando notificación de bienvenida:', data.userName);
+      
 
       // Verificar soporte de notificaciones
       if (!('Notification' in window) || !('serviceWorker' in navigator)) {
-        console.log('⚠️ Notificaciones no soportadas en este navegador');
+        
         return false;
       }
 
@@ -34,7 +34,7 @@ export class NotificationOnlyService {
       }
 
       if (permission !== 'granted') {
-        console.log('⚠️ Permisos de notificación denegados');
+        
         return false;
       }
 
@@ -71,7 +71,7 @@ export class NotificationOnlyService {
         }
       } as any);
 
-      console.log('✅ Notificación de bienvenida mostrada');
+      
       return true;
 
     } catch (error) {
@@ -119,7 +119,7 @@ export class NotificationOnlyService {
         }
       } as any);
 
-      console.log('✅ Recordatorio de racha mostrado');
+      
       return true;
 
     } catch (error) {
@@ -166,7 +166,7 @@ export class NotificationOnlyService {
         }
       } as any);
 
-      console.log('✅ Reporte semanal mostrado');
+      
       return true;
 
     } catch (error) {
@@ -223,7 +223,7 @@ export class NotificationOnlyService {
         }
       } as any);
 
-      console.log('✅ Recordatorio diario mostrado');
+      
       return true;
 
     } catch (error) {
@@ -238,12 +238,12 @@ export class NotificationOnlyService {
   static async requestPermissions(): Promise<boolean> {
     try {
       if (!('Notification' in window)) {
-        console.log('⚠️ Navegador no soporta notificaciones');
+        
         return false;
       }
 
       if (!('serviceWorker' in navigator)) {
-        console.log('⚠️ Navegador no soporta service workers');
+        
         return false;
       }
 
@@ -253,10 +253,10 @@ export class NotificationOnlyService {
       }
 
       if (permission === 'granted') {
-        console.log('✅ Permisos de notificación concedidos');
+        
         return true;
       } else {
-        console.log('❌ Permisos de notificación denegados');
+        
         return false;
       }
 
@@ -280,7 +280,7 @@ export class NotificationOnlyService {
       // Guardar configuración en localStorage
       localStorage.setItem('notification-settings', JSON.stringify(settings));
 
-      console.log('✅ Configuración de notificaciones guardada:', settings);
+      
 
       // Mostrar notificación de confirmación
       if (await this.requestPermissions()) {
