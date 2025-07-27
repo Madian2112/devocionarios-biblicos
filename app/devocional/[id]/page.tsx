@@ -133,6 +133,44 @@ function DevocionalPage({ params }: { params: Promise<{ id: string }> }) {
     }
   };
 
+  const handleBibleSelection = async (index: number, reference: string) => {
+  try {
+    console.log(`🔥 BibleSelector seleccionó para índice ${index}:`, reference);
+    
+    if (!devocional || !devocional.versiculos[index]) {
+      console.error(`❌ No se puede actualizar versículo en índice ${index} - no existe`);
+      return;
+    }
+    
+    setSaving(true);
+    const verseText = await fetchVerseText(reference, 'rv1960');
+    
+    // 🔥 BATCH UPDATE - Más eficiente
+    setDevocional(prev => {
+      if (!prev) return prev;
+      
+      const updatedVersiculos = [...prev.versiculos];
+      updatedVersiculos[index] = {
+        ...updatedVersiculos[index],
+        referencia: reference,
+        texto: verseText,
+        versionTexto: 'rv1960'
+      };
+      
+      return {
+        ...prev,
+        versiculos: updatedVersiculos,
+        updatedAt: Timestamp.now()
+      };
+    });
+    
+  } catch (error) {
+    console.error('❌ Error al obtener el texto del versículo:', error);
+  } finally {
+    setSaving(false);
+  }
+};
+
 
 
 const addVersiculo = () => {
@@ -472,41 +510,21 @@ const handleVersiculoChange = (index: number, field: keyof Versiculo, value: any
                                   <Badge variant="outline" className="border-gray-600 text-gray-400 shrink-0">
                                     {versiculo?.versionTexto?.toUpperCase() || 'RV1960'}
                                   </Badge>
-                                  <BibleSelector
-                                    instanceId={`versiculo-${versiculo.id}`}
-                                    onSelect={async (reference) => {
-                                      try {
-                                        console.log(`🔥 BibleSelector seleccionó para índice ${index}:`, reference);
-                                        console.log(`🔥 Estado actual de versículos:`, devocional.versiculos);
-                                        
-                                        // ✅ VERIFICACIÓN ANTES DE USAR EL SELECTOR
-                                        if (!devocional || !devocional.versiculos[index]) {
-                                          console.error(`❌ No se puede actualizar versículo en índice ${index} - no existe`);
-                                          return;
+                                      <BibleSelector
+                                        key={`versiculo-${versiculo.id}-${versiculo.referencia || 'empty'}`}
+                                        instanceId={`versiculo-${versiculo.id}`}
+                                        onSelect={(reference) => handleBibleSelection(index, reference)}
+                                        currentReference={versiculo?.referencia || ''}
+                                        trigger={
+                                          <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="bg-[#2a2a2a]/50 border-gray-700 hover:bg-[#3a3a3a]/50 shrink-0"
+                                          >
+                                            <Book className="h-4 w-4" />
+                                          </Button>
                                         }
-                                        
-                                        const verseText = await fetchVerseText(reference, 'rv1960');
-                                        console.log('📖 Texto obtenido:', verseText);
-                                        
-                                        // Actualizar los tres campos uno por uno
-                                        handleVersiculoChange(index, 'referencia', reference);
-                                        handleVersiculoChange(index, 'texto', verseText);
-                                        handleVersiculoChange(index, 'versionTexto', 'rv1960');
-                                      } catch (error) {
-                                        console.error('❌ Error al obtener el texto del versículo:', error);
-                                      }
-                                    }}
-                                    currentReference={versiculo?.referencia || ''}
-                                    trigger={
-                                      <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className="bg-[#2a2a2a]/50 border-gray-700 hover:bg-[#3a3a3a]/50 shrink-0"
-                                      >
-                                        <Book className="h-4 w-4" />
-                                      </Button>
-                                    }
-                                  />
+                                      />
                                   {versiculo?.referencia && (
                                     <BibleViewer
                                       instanceId={`versiculo-viewer-${versiculo.id}`}

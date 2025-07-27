@@ -189,6 +189,7 @@ export function LoginPage({ defaultMode = 'login' }: LoginPageProps = {}) {
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="tu@correo.com"
                     className="pl-10 bg-[#2a2a2a]/50 border-gray-700"
+                    autoFocus={false}
                   />
               </div>
             </div>
@@ -204,6 +205,7 @@ export function LoginPage({ defaultMode = 'login' }: LoginPageProps = {}) {
                     onKeyDown={(e) => e.key === 'Enter' && handleAuthAction()}
                     placeholder="••••••••"
                     className="pl-10 bg-[#2a2a2a]/50 border-gray-700"
+                    autoFocus={false}
                   />
                </div>
             </div>
