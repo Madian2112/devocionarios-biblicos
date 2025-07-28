@@ -27,8 +27,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { GradientCard } from "@/components/ui/gradient-card"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
-import { BibleSelector } from "@/components/bible/bible-selector"
-import { BibleViewer } from "@/components/bible/bible-viewer"
+import { BibleSelector } from "@/components/bible/pwa-bible-selector"
+import { BibleViewer } from "@/components/bible/pwa-bible-viewer"
 import { exportDevocionalToPDF } from "@/lib/pdf-exporter"
 import type { Devocional, Versiculo, Referencia } from "@/lib/firestore"
 import { firestoreService } from "@/lib/firestore";
@@ -39,6 +39,7 @@ import withAuth from "@/components/auth/with-auth"
 import { useToast } from "@/hooks/use-toast"
 import { notificationService } from "@/lib/notification-service"
 import { useDisableMobileZoom } from '@/hooks/use-disable-mobile-zoom';
+import { usePWACleanup } from "@/hooks/use-pwa-cleanup"
 
 
 function DevocionalPage({ params }: { params: Promise<{ id: string }> }) {
@@ -50,7 +51,7 @@ function DevocionalPage({ params }: { params: Promise<{ id: string }> }) {
   const [devocional, setDevocional] = useState<Devocional | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-
+  usePWACleanup()
   useDisableMobileZoom()
 
   useEffect(() => {
@@ -203,27 +204,29 @@ const addVersiculo = () => {
     handleDevocionalChange('versiculos', devocional.versiculos.filter((v) => v.id !== versiculoId));
   }
   
-const handleVersiculoChange = (index: number, field: keyof Versiculo, value: any) => {
+const handleVersiculoChange = (index: number, updates: Partial<Versiculo>) => {
   if (!devocional) return;
-  
-  
-  
-  
+
   const updatedVersiculos = [...devocional.versiculos];
-  
-  // ✅ VERIFICACIÓN CRÍTICA: Asegurar que el versículo existe
+
+  // Verificación crítica
   if (index < 0 || index >= updatedVersiculos.length || !updatedVersiculos[index]) {
     console.error(`❌ Versículo en índice ${index} no existe. Array length: ${updatedVersiculos.length}`);
-    console.error('Versículos disponibles:', updatedVersiculos.map((v, i) => ({ index: i, id: v.id, referencia: v.referencia })));
+    console.error(
+      'Versículos disponibles:',
+      updatedVersiculos.map((v, i) => ({ index: i, id: v.id, referencia: v.referencia }))
+    );
     return;
   }
-  
-  // ✅ Ahora es seguro hacer el spread
-  updatedVersiculos[index] = { ...updatedVersiculos[index], [field]: value };
-  
-  
+
+  // Actualizar ambos campos en un solo paso
+  updatedVersiculos[index] = { ...updatedVersiculos[index], ...updates };
+
+  console.log('Estos son mis versiculos:', updatedVersiculos);
+
   handleDevocionalChange('versiculos', updatedVersiculos);
 };
+
 
   const addReferencia = () => {
     if (!devocional) return
@@ -347,52 +350,57 @@ const handleVersiculoChange = (index: number, field: keyof Versiculo, value: any
                  <Badge variant="outline" className="border-gray-600 text-gray-400 shrink-0">
                     {devocional.versionCitaBiblica?.toUpperCase() || 'RV1960'}
                  </Badge>
-                <BibleSelector
-                  instanceId="main-devocional" 
-                  currentReference={devocional.citaBiblica}
-                  onSelect={async (reference) => {
-                    setSaving(true);
-                    const verseText = await fetchVerseText(reference, 'rv1960');
-                    const versoCompleto = `RV1960 - ${reference}\n\n${verseText}`;
-                    setDevocional(prev => prev ? { ...prev, citaBiblica: reference, textoDevocional: versoCompleto, versionCitaBiblica: 'rv1960' } : null);
-                    setSaving(false);
-                  }}
-                  trigger={
-                    <Button
-                      variant="outline"
-                      className="bg-[#2a2a2a]/50 border-gray-700 hover:bg-[#3a3a3a]/50 shrink-0"
-                    >
-                      <Book className="h-4 w-4 mr-2" />
-                      Seleccionar
-                    </Button>
-                  }
-                />
-                {devocional.citaBiblica && (
-                  <BibleViewer
-                    instanceId="main-bible-viewer"
-                    reference={devocional.citaBiblica}
-                    defaultVersion={devocional.versionCitaBiblica}
-                    onClose={async (selectedVersion) => {
-                      if (devocional) { 
-                         setSaving(true);
-                         const verseText = await fetchVerseText(devocional.citaBiblica, selectedVersion);
-                         const versoCompleto = `${selectedVersion.toUpperCase()} - ${devocional.citaBiblica}\n\n${verseText}`;
-                         handleDevocionalChange('textoDevocional', versoCompleto);
-                         handleDevocionalChange('versionCitaBiblica', selectedVersion);
-                         setSaving(false);
+                    <BibleSelector
+                      instanceId="main-devocional"
+                      currentReference={devocional.citaBiblica}
+                      onSelect={async (reference) => {
+                        setSaving(true);
+                        const verseText = await fetchVerseText(reference, 'rv1960');
+                        const versoCompleto = `RV1960 - ${reference}\n\n${verseText}`;
+                        setDevocional(prev => prev ? { 
+                          ...prev, 
+                          citaBiblica: reference, 
+                          textoDevocional: versoCompleto, 
+                          versionCitaBiblica: 'rv1960' 
+                        } : null);
+                        setSaving(false);
+                      }}
+                      trigger={
+                        <Button
+                          variant="outline"
+                          className="bg-[#2a2a2a]/50 border-gray-700 hover:bg-[#3a3a3a]/50 shrink-0"
+                        >
+                          <Book className="h-4 w-4 mr-2" />
+                          Seleccionar
+                        </Button>
                       }
-                    }}
-                    trigger={
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="bg-[#2a2a2a]/50 border-gray-700 hover:bg-[#3a3a3a]/50 shrink-0"
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                    }
-                  />
-                )}
+                    />
+                  {devocional.citaBiblica && (
+                    <BibleViewer
+                      instanceId="main-bible-viewer"
+                      reference={devocional.citaBiblica}
+                      defaultVersion={devocional.versionCitaBiblica}
+                      onClose={async (selectedVersion) => {
+                        if (devocional) { 
+                          setSaving(true);
+                          const verseText = await fetchVerseText(devocional.citaBiblica, selectedVersion);
+                          const versoCompleto = `${selectedVersion.toUpperCase()} - ${devocional.citaBiblica}\n\n${verseText}`;
+                          handleDevocionalChange('textoDevocional', versoCompleto);
+                          handleDevocionalChange('versionCitaBiblica', selectedVersion);
+                          setSaving(false);
+                        }
+                      }}
+                      trigger={
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="bg-[#2a2a2a]/50 border-gray-700 hover:bg-[#3a3a3a]/50 shrink-0"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      }
+                    />
+                  )}
               </div>
             </div>
             <div>
@@ -486,135 +494,137 @@ const handleVersiculoChange = (index: number, field: keyof Versiculo, value: any
             </div>
 
 
-                    {devocional?.versiculos && devocional.versiculos.length > 0 ? (
-                      devocional.versiculos.map((versiculo, index) => {
-                        
-                        
-                        return (
-                          <GradientCard key={versiculo.id} gradient="blue" className="group">
-                            <CardHeader>
-                              <div className="flex items-center justify-between">
-                                <CardTitle className="text-lg text-white flex items-center gap-2">
-                                  <span className="bg-blue-500/20 text-blue-400 px-2 py-1 rounded-lg text-sm font-medium">
-                                    #{index + 1}
-                                  </span>
-                                  Versículo {index + 1}
-                                </CardTitle>
-                                <Button
-                                  variant="outline"
-                                  size="icon"
-                                  onClick={() => removeVersiculo(versiculo.id)}
-                                  className="opacity-0 group-hover:opacity-100 transition-opacity bg-red-500/20 border-red-500/30 hover:bg-red-500/30"
-                                >
-                                  <Trash2 className="h-4 w-4 text-red-400" />
-                                </Button>
-                              </div>
-                            </CardHeader>
-                            <CardContent className="space-y-6">
-                              <div>
-                                <label className="block text-sm font-medium text-gray-300 mb-3">Referencia Bíblica</label>
-                                <div className="flex gap-3 items-center">
-                                  <div className="flex-1">
-                                    <Input
-                                      value={versiculo?.referencia || ''}
-                                      onChange={(e) => {
-                                        
-                                        handleVersiculoChange(index, 'referencia', e.target.value);
-                                      }}
-                                      placeholder="Ej: Salmos 23:1"
-                                      className="bg-[#2a2a2a]/50 border-gray-700 text-white backdrop-blur-sm focus:border-blue-500 transition-colors"
-                                    />
-                                  </div>
-                                  <Badge variant="outline" className="border-gray-600 text-gray-400 shrink-0">
-                                    {versiculo?.versionTexto?.toUpperCase() || 'RV1960'}
-                                  </Badge>
-                                      <BibleSelector
-                                        key={`versiculo-${versiculo.id}-${versiculo.referencia || 'empty'}`}
-                                        instanceId={`versiculo-${versiculo.id}`}
-                                        onSelect={(reference) => handleBibleSelection(index, reference)}
-                                        currentReference={versiculo?.referencia || ''}
-                                        trigger={
-                                          <Button
-                                            variant="outline"
-                                            size="sm"
-                                            className="bg-[#2a2a2a]/50 border-gray-700 hover:bg-[#3a3a3a]/50 shrink-0"
-                                          >
-                                            <Book className="h-4 w-4" />
-                                          </Button>
-                                        }
-                                      />
-                                  {versiculo?.referencia && (
-                                    <BibleViewer
-                                      instanceId={`versiculo-viewer-${versiculo.id}`}
-                                      reference={versiculo.referencia}
-                                      defaultVersion={versiculo?.versionTexto}
-                                      onClose={async (selectedVersion) => {
-                                        try {
-                                          setSaving(true);
-                                          const verseText = await fetchVerseText(versiculo.referencia, selectedVersion);
-                                          handleVersiculoChange(index, 'texto', verseText);
-                                          handleVersiculoChange(index, 'versionTexto', selectedVersion);
-                                          setSaving(false);
-                                        } catch (error) {
-                                          console.error('Error al cambiar versión:', error);
-                                          setSaving(false);
-                                        }
-                                      }}
-                                      trigger={
-                                        <Button
-                                          variant="outline"
-                                          size="icon"
-                                          className="bg-[#2a2a2a]/50 border-gray-700 hover:bg-[#3a3a3a]/50 shrink-0"
-                                        >
-                                          <Eye className="h-4 w-4" />
-                                        </Button>
-                                      }
-                                    />
-                                  )}
-                                </div>
-                              </div>
-                              <div>
-                                <label className="block text-sm font-medium text-gray-300 mb-3">Texto del Versículo</label>
-                                <Textarea
-                                  value={versiculo?.texto || ''}
-                                  onChange={(e) => handleVersiculoChange(index, 'texto', e.target.value)}
-                                  placeholder="Texto completo del versículo..."
-                                  className="bg-[#2a2a2a]/50 border-gray-700 text-white backdrop-blur-sm focus:border-blue-500 transition-colors resize-none"
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-sm font-medium text-gray-300 mb-3">
-                                  Aprendizaje del Versículo
-                                </label>
-                                <Textarea
-                                  value={versiculo?.aprendizaje || ''}
-                                  onChange={(e) => handleVersiculoChange(index, 'aprendizaje', e.target.value)}
-                                  placeholder="¿Qué te enseña este versículo específicamente? ¿Cómo se relaciona con tu vida?"
-                                  className="bg-[#2a2a2a]/50 border-gray-700 text-white backdrop-blur-sm focus:border-blue-500 transition-colors resize-none"
-                                />
-                              </div>
-                            </CardContent>
-                          </GradientCard>
-                        );
-                      })
-                    ) : (
-                      <GradientCard>
-                        <CardContent className="text-center py-16">
-                          <div className="p-4 bg-blue-500/10 rounded-full w-fit mx-auto mb-6">
-                            <Book className="h-12 w-12 text-blue-400" />
-                          </div>
-                          <h3 className="text-xl font-semibold text-white mb-2">No hay versículos agregados</h3>
-                          <p className="text-gray-400 mb-6">Agrega versículos específicos para profundizar en tu estudio</p>
-                          <Button
-                            onClick={addVersiculo}
-                            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-                          >
-                            <Plus className="h-4 w-4 mr-2" />
-                            Agregar Primer Versículo
-                          </Button>
-                        </CardContent>
-                      </GradientCard>
-                    )}
+{devocional?.versiculos && devocional.versiculos.length > 0 ? (
+  devocional.versiculos.map((versiculo, index) => {
+    return (
+      <GradientCard key={versiculo.id} gradient="blue" className="group">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg text-white flex items-center gap-2">
+              <span className="bg-blue-500/20 text-blue-400 px-2 py-1 rounded-lg text-sm font-medium">
+                #{index + 1}
+              </span>
+              Versículo {index + 1}
+            </CardTitle>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => removeVersiculo(versiculo.id)}
+              className="opacity-0 group-hover:opacity-100 transition-opacity bg-red-500/20 border-red-500/30 hover:bg-red-500/30"
+            >
+              <Trash2 className="h-4 w-4 text-red-400" />
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-3">Referencia Bíblica</label>
+            <div className="flex gap-3 items-center">
+              <div className="flex-1">
+                <Input
+                  value={versiculo?.referencia || ''}
+                  onChange={(e) => handleVersiculoChange(index, { referencia: e.target.value })}
+                  placeholder="Ej: Salmos 23:1"
+                  className="bg-[#2a2a2a]/50 border-gray-700 text-white backdrop-blur-sm focus:border-blue-500 transition-colors"
+                />
+              </div>
+              <Badge variant="outline" className="border-gray-600 text-gray-400 shrink-0">
+                {versiculo?.versionTexto?.toUpperCase() || 'RV1960'}
+              </Badge>
+              
+              {/* BIBLE SELECTOR PARA VERSÍCULO - INSTANCIA ÚNICA */}
+              <BibleSelector
+                instanceId={`versiculo-${versiculo.id}`}
+                onSelect={(reference) => handleBibleSelection(index, reference)}
+                currentReference={versiculo?.referencia || ''}
+                trigger={
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="bg-[#2a2a2a]/50 border-gray-700 hover:bg-[#3a3a3a]/50 shrink-0"
+                  >
+                    <Book className="h-4 w-4" />
+                  </Button>
+                }
+              />
+              
+              {/* BIBLE VIEWER PARA VERSÍCULO - INSTANCIA ÚNICA */}
+              {versiculo?.referencia && (
+                <BibleViewer
+                  instanceId={`versiculo-viewer-${versiculo.id}`}
+                  reference={versiculo.referencia}
+                  defaultVersion={versiculo?.versionTexto}
+                  onClose={async (selectedVersion) => {
+                    try {
+                      setSaving(true);
+                      const verseText = await fetchVerseText(versiculo.referencia, selectedVersion);
+                      handleVersiculoChange(index, {
+                        texto: verseText,
+                        versionTexto: selectedVersion
+                      });
+                      setSaving(false);
+                    } catch (error) {
+                      console.error('Error al cambiar versión:', error);
+                      setSaving(false);
+                    }
+                  }}
+                  trigger={
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="bg-[#2a2a2a]/50 border-gray-700 hover:bg-[#3a3a3a]/50 shrink-0"
+                    >
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                  }
+                />
+              )}
+            </div>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-3">Texto del Versículo</label>
+            <Textarea
+              value={versiculo?.texto || ''}
+              onChange={(e) => handleVersiculoChange(index, { texto: e.target.value })}
+              placeholder="Texto completo del versículo..."
+              className="bg-[#2a2a2a]/50 border-gray-700 text-white backdrop-blur-sm focus:border-blue-500 transition-colors resize-none"
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-3">
+              Aprendizaje del Versículo
+            </label>
+            <Textarea
+              value={versiculo?.aprendizaje || ''}
+              onChange={(e) => handleVersiculoChange(index, { aprendizaje: e.target.value })}
+              placeholder="¿Qué te enseña este versículo específicamente? ¿Cómo se relaciona con tu vida?"
+              className="bg-[#2a2a2a]/50 border-gray-700 text-white backdrop-blur-sm focus:border-blue-500 transition-colors resize-none"
+            />
+          </div>
+        </CardContent>
+      </GradientCard>
+    );
+  })
+) : (
+  <GradientCard>
+    <CardContent className="text-center py-16">
+      <div className="p-4 bg-blue-500/10 rounded-full w-fit mx-auto mb-6">
+        <Book className="h-12 w-12 text-blue-400" />
+      </div>
+      <h3 className="text-xl font-semibold text-white mb-2">No hay versículos agregados</h3>
+      <p className="text-gray-400 mb-6">Agrega versículos específicos para profundizar en tu estudio</p>
+      <Button
+        onClick={addVersiculo}
+        className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+      >
+        <Plus className="h-4 w-4 mr-2" />
+        Agregar Primer Versículo
+      </Button>
+    </CardContent>
+  </GradientCard>
+)}
               </div>
             </TabsContent>
 

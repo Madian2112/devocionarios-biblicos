@@ -270,5 +270,4 @@ export const mobileCacheManager = new MobileCacheManager();
 
 // 🚀 Inicializar automáticamente cuando sea posible
 if (typeof window !== 'undefined') {
-  mobileCacheManager.init().catch(console.error);
 } 

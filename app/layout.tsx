@@ -62,8 +62,10 @@ export default function RootLayout({
               {children}
               <ZoomControls />
               <Toaster />
+              
               {/* Registrar Service Worker */}
               <ServiceWorkerRegistration />
+              <div id="modal-root"></div>
             </ZoomProvider>
           </ThemeProvider>
         </AuthProvider>

@@ -11,7 +11,7 @@ class CachedFirestoreService {
     
     // 📱 Primero intentar obtener del cache móvil
     const cached = await mobileCacheManager.getCachedDevocional(key);
-    console.log('Este es el cache de los devocionales: ', cached)
+    console.log('Este es el cache de los devocionales: ', cached, '\n', ' key: ', key)
     if (cached) {
       // Agregar textos cacheados al devocional
       if (cached.devocional.versiculos) {
@@ -81,7 +81,7 @@ class CachedFirestoreService {
   }
 
   // 🚀 Guardar devocional y actualizar cache
-  async saveDevocional(userId: string,email:string ,devocional: Omit<Devocional, "createdAt" | "updatedAt" | "userId">): Promise<Devocional> {
+  async saveDevocional(userId: string, devocional: Omit<Devocional, "createdAt" | "updatedAt" | "userId">): Promise<Devocional> {
     const savedDevocional = await firestoreService.saveDevocional(userId, devocional);
     
     // 🚀 Precargar versículos y actualizar cache
