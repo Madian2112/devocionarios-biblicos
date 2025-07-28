@@ -553,7 +553,7 @@ const handleVersiculoChange = (index: number, field: keyof Versiculo, value: any
                                     {versiculo?.versionTexto?.toUpperCase() || 'RV1960'}
                                   </Badge>
                                       <BibleSelector
-                                        key={`versiculo-${versiculo.id}-${versiculo.referencia || 'empty'}`}
+                                        key={instanceIds.getVersiculoId(versiculo.id)}
                                         instanceId={`versiculo-${versiculo.id}`}
                                         onSelect={(reference) => handleBibleSelection(index, reference)}
                                         currentReference={versiculo?.referencia || ''}
@@ -569,7 +569,7 @@ const handleVersiculoChange = (index: number, field: keyof Versiculo, value: any
                                       />
                                   {versiculo?.referencia && (
                                     <BibleViewer
-                                      instanceId={`versiculo-viewer-${versiculo.id}`}
+                                      instanceId={instanceIds.getVersiculoViewerId(versiculo.id)}
                                       reference={versiculo.referencia}
                                       defaultVersion={versiculo?.versionTexto}
                                       onClose={async (selectedVersion) => {
