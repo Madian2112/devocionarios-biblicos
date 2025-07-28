@@ -1,14 +1,16 @@
 // 📱 SERVICE WORKER - DEVOCIONARIOS BÍBLICOS
 // 🎯 Optimizado para notificaciones PWA nativas y caché de API
+// 🔥 SOLUCIÓN: Mejorado para manejo de DOM en PWA
 
-const CACHE_NAME = 'devocionarios-biblicos-v1';
+const CACHE_NAME = 'devocionarios-biblicos-v1.1'; // Incrementar versión
 const urlsToCache = [
   '/',
   '/home',
   '/dashboard',
   '/icons/web-app-manifest-192x192.png',
   '/icons/web-app-manifest-512x512.png',
-  'https://api.biblesupersearch.com/api/books?language=es' // Añadir URL de la API
+  'https://api.biblesupersearch.com/api/books?language=es',
+  'https://bible-api.deno.dev/api/versions' // Agregar caché para versiones
 ];
 
 // 🚀 Instalación del Service Worker
@@ -19,7 +21,6 @@ self.addEventListener('install', (event) => {
         return cache.addAll(urlsToCache);
       })
       .then(() => {
-        // Forzar activación inmediata
         return self.skipWaiting();
       })
   );
@@ -37,16 +38,49 @@ self.addEventListener('activate', (event) => {
         })
       );
     }).then(() => {
-      // Tomar control inmediato de todas las páginas
       return self.clients.claim();
     })
   );
 });
 
-// 🌐 Intercepción de requests (caché offline)
+// 🌐 Intercepción de requests (caché offline) - MEJORADO
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
+  // 🔥 SOLUCIÓN: Estrategia especial para APIs de Bible
+  if (event.request.url.includes('bible-api.deno.dev')) {
+    event.respondWith(
+      caches.open(CACHE_NAME).then(cache => {
+        return cache.match(event.request).then(cachedResponse => {
+          if (cachedResponse) {
+            // Servir desde caché pero intentar actualizar en background
+            fetch(event.request).then(networkResponse => {
+              if (networkResponse.ok) {
+                cache.put(event.request, networkResponse.clone());
+              }
+            }).catch(() => {
+              // Ignorar errores de network en background update
+            });
+            return cachedResponse;
+          }
+          
+          // No hay caché, intentar network
+          return fetch(event.request).then(networkResponse => {
+            if (networkResponse.ok) {
+              cache.put(event.request, networkResponse.clone());
+            }
+            return networkResponse;
+          }).catch(error => {
+            console.error('Error fetching Bible API:', error);
+            throw error;
+          });
+        });
+      })
+    );
+    return;
+  }
+
+  // Estrategia normal para otros recursos
   event.respondWith(
     caches.match(event.request)
       .then((response) => {
@@ -210,7 +244,7 @@ async function syncDevocionales() {
   }
 }
 
-// 🎯 Eventos personalizados para estadísticas
+// 🎯 Eventos personalizados para estadísticas - MEJORADO
 self.addEventListener('message', (event) => {
   const { action, data } = event.data;
 
@@ -228,13 +262,28 @@ self.addEventListener('message', (event) => {
         })
       );
       break;
+    // 🔥 SOLUCIÓN: Nuevo evento para limpiar DOM en PWA
+    case 'cleanup-dom':
+      event.waitUntil(
+        clients.matchAll({ type: 'window', includeUncontrolled: true })
+          .then((clientList) => {
+            clientList.forEach(client => {
+              client.postMessage({
+                action: 'cleanup-portal-elements',
+                data: { instanceId: data.instanceId }
+              });
+            });
+          })
+      );
+      break;
   }
 });
 
 // 📈 Logging mejorado para debugging
 function log(message, data = null) {
   const timestamp = new Date().toISOString();
+  console.log(`[SW ${timestamp}] ${message}`, data);
 }
 
 // 🚀 Inicialización
-log('Service Worker inicializado para Devocionarios Bíblicos');
+log('Service Worker inicializado para Devocionarios Bíblicos v1.1');

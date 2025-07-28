@@ -1,7 +1,7 @@
 "use client";
 
 import type React from "react";
-import { useState, useEffect, use } from "react";
+import { useState, useEffect, use, useCallback, useRef } from "react";
 import { Book } from "lucide-react";
 
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -38,7 +38,6 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Switch } from "@/components/ui/switch";
 
-
 interface BibleSelectorProps {
   onSelect: (reference: string) => void;
   trigger?: React.ReactNode;
@@ -50,6 +49,39 @@ const LibroApocalpsis = (libro: string) =>{
   return libro === "Revelación" ? "Apocalipsis" : libro;
 }
 
+// 🔥 SOLUCIÓN: Portal Manager para PWA
+const usePortalManager = (instanceId: string, type: 'dialog' | 'drawer') => {
+  const portalRef = useRef<HTMLDivElement | null>(null);
+  const mountedRef = useRef(false);
+
+  useEffect(() => {
+    // Crear un contenedor único para esta instancia
+    const portalId = `${type}-portal-${instanceId}`;
+    let portal = document.getElementById(portalId) as HTMLDivElement;
+    
+    if (!portal) {
+      portal = document.createElement('div');
+      portal.id = portalId;
+      portal.setAttribute('data-portal-type', type);
+      portal.setAttribute('data-instance-id', instanceId);
+      document.body.appendChild(portal);
+    }
+    
+    portalRef.current = portal;
+    mountedRef.current = true;
+
+    return () => {
+      // Cleanup: remover el portal cuando el componente se desmonte
+      if (portal && portal.parentNode) {
+        portal.parentNode.removeChild(portal);
+      }
+      mountedRef.current = false;
+    };
+  }, [instanceId, type]);
+
+  return { portalRef: portalRef.current, isMounted: mountedRef.current };
+};
+
 export function BibleSelector({
   onSelect,
   trigger,
@@ -58,22 +90,58 @@ export function BibleSelector({
 }: BibleSelectorProps) {
   const [open, setOpen] = useState(false);
   const isMobile = useIsMobile();
+  const { portalRef } = usePortalManager(instanceId, isMobile ? 'drawer' : 'dialog');
+  
+  // 🔥 SOLUCIÓN: Reset state when instanceId changes
+  const [localKey, setLocalKey] = useState(0);
   useEffect(() => {
-    
-  }, [instanceId])
+    setLocalKey(prev => prev + 1);
+    setOpen(false); // Force close when instanceId changes
+  }, [instanceId]);
+  
+  // 🔥 SOLUCIÓN: Cleanup function for PWA
+  const handleClose = useCallback(() => {
+    setOpen(false);
+    // Small delay to ensure proper cleanup in PWA
+    if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+      setTimeout(() => {
+        // Force garbage collection hint for PWA
+        if (window.gc) window.gc();
+      }, 100);
+    }
+  }, []);
+
+  const handleOpenChange = useCallback((newOpen: boolean) => {
+    if (!newOpen) {
+      handleClose();
+    } else {
+      setOpen(newOpen);
+    }
+  }, [handleClose]);
   
   const FormContent = (
     <BibleSelectorForm
-      onSelect={onSelect}
+      key={`form-${instanceId}-${localKey}`}
+      onSelect={(reference) => {
+        onSelect(reference);
+        handleClose();
+      }}
       setOpen={setOpen}
       currentReference={currentReference}
-      instanceId={instanceId} 
+      instanceId={`${instanceId}-${localKey}`}
     />
   );
   
   if (isMobile) {
     return (
-      <Drawer key={`drawer-${instanceId}`} open={open} onOpenChange={setOpen}>
+      <Drawer 
+        key={`drawer-${instanceId}-${localKey}`} 
+        open={open} 
+        onOpenChange={handleOpenChange}
+        // 🔥 SOLUCIÓN: Portal específico para PWA
+        modal={true}
+        container={portalRef}
+      >
         <DrawerTrigger asChild>{trigger}</DrawerTrigger>
         <DrawerContent className="bg-[#1a1a1a] border-gray-800 text-white">
           <DrawerHeader className="text-left">
@@ -87,9 +155,26 @@ export function BibleSelector({
   }
 
   return (
-    <Dialog key={`dialog-${instanceId}`} open={open} onOpenChange={setOpen}>
+    <Dialog 
+      key={`dialog-${instanceId}-${localKey}`} 
+      open={open} 
+      onOpenChange={handleOpenChange}
+      // 🔥 SOLUCIÓN: Portal específico para PWA
+      modal={true}
+    >
       <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent className="bg-[#1a1a1a] border-gray-800 text-white max-w-2xl">
+      <DialogContent 
+        className="bg-[#1a1a1a] border-gray-800 text-white max-w-2xl"
+        // 🔥 SOLUCIÓN: Prevent event bubbling in PWA
+        onPointerDownOutside={(e) => {
+          e.preventDefault();
+          handleClose();
+        }}
+        onEscapeKeyDown={(e) => {
+          e.preventDefault();
+          handleClose();
+        }}
+      >
         <DialogHeader>
           <DialogTitle>Seleccionar Pasaje Bíblico</DialogTitle>
           <DialogDescription>Elige el libro, capítulo y versículo(s).</DialogDescription>
@@ -99,7 +184,6 @@ export function BibleSelector({
     </Dialog>
   );
 }
-
 
 interface BibleSelectorFormProps {
   onSelect: (reference: string) => void;
@@ -117,7 +201,7 @@ function BibleSelectorForm({
     const [selectionType, setSelectionType] = useState<'verse' | 'chapter'>('verse');
     const [selectedBook, setSelectedBook] = useState('Juan');
     const [startChapter, setStartChapter] = useState(3);
-    const [endChapter, setEndChapter] = useState<number | null>(null); // Todavía necesario para parsear referencias existentes
+    const [endChapter, setEndChapter] = useState<number | null>(null);
     const [startVerse, setStartVerse] = useState(16);
     const [endVerse, setEndVerse] = useState<number | null>(null);
 
@@ -125,8 +209,8 @@ function BibleSelectorForm({
     const [versions, setVersions] = useState<BibleVersion[]>([]);
     const [loadingBooks, setLoadingBooks] = useState(true);
 
-    // Efecto #1: Rápido y síncrono para actualizar la UI principal (el Switch)
-    useEffect(() => {
+    // 🔥 SOLUCIÓN: Memoized initialization to prevent re-renders
+    const initializeState = useCallback(() => {
         const parsed = parseReference(currentReference || "");
         
         if (parsed) {
@@ -143,10 +227,14 @@ function BibleSelectorForm({
             setStartChapter(parsed.startChapter);
             setEndChapter(parsed.endChapter || null);
         }
-    }, [currentReference, instanceId]);
+    }, [currentReference]);
 
+    // Efecto #1: Inicialización del estado
+    useEffect(() => {
+        initializeState();
+    }, [initializeState, instanceId]);
 
-    // Efecto #2: Carga asíncrona de los libros y síncrona de versiones
+    // Efecto #2: Carga de datos
     useEffect(() => {
       setLoadingBooks(true);
       fetchBibleBooks().then(data => {
@@ -157,9 +245,7 @@ function BibleSelectorForm({
       setVersions(getBibleVersions());
     }, [instanceId]);
 
-    // Efecto #3: Enriquecimiento de datos (opcional, pero buena práctica)
-    // Este efecto asegura que el nombre del libro en el estado coincida con el de la lista
-    // para evitar problemas con mayúsculas/minúsculas o normalización.
+    // Efecto #3: Sincronización de libro
     useEffect(() => {
       if (books.length > 0 && selectedBook) {
         const bookMatch = books.find(b => normalizeText(b.name) === normalizeText(selectedBook));
@@ -169,14 +255,13 @@ function BibleSelectorForm({
       }
     }, [books, selectedBook, instanceId]); 
 
-
-    const handleBookChange = (bookName: string) => {
+    const handleBookChange = useCallback((bookName: string) => {
         setSelectedBook(bookName);
         setStartChapter(1);
         setEndChapter(null);
         setStartVerse(1);
         setEndVerse(null);
-    }
+    }, []);
 
     const selectedBookData = books.find(book => LibroApocalpsis(book.name) === selectedBook);
     const maxChapters = selectedBookData?.chapters || 1;
@@ -184,32 +269,27 @@ function BibleSelectorForm({
         ? selectedBookData.chapter_verses[startChapter.toString()] || 1
         : 1;
 
-    const handleSelect = () => {
+    const handleSelect = useCallback(() => {
         let reference = '';
         
-        
-
         if (selectionType === 'verse') {
             reference = bibleService.formatReference(selectedBook, startChapter, startVerse, endVerse || undefined);
-            
         } else {
-            // Para selección de capítulo, solo usamos el capítulo inicial.
             reference = `${selectedBook} ${startChapter}`;
         }
         onSelect(reference);
         setOpen(false);
-    };
+    }, [selectionType, selectedBook, startChapter, startVerse, endVerse, onSelect, setOpen]);
     
-    const generatePreviewReference = () => {
+    const generatePreviewReference = useCallback(() => {
         if (selectionType === 'verse') {
              return bibleService.formatReference(selectedBook, startChapter, startVerse, endVerse || undefined);
         }
-        // Para capítulo, solo libro y capítulo inicial.
         return `${selectedBook} ${startChapter}`;
-    }
+    }, [selectionType, selectedBook, startChapter, startVerse, endVerse]);
 
   return (
-    <div className="space-y-6 p-4" key={`form-${instanceId}`}>
+    <div className="space-y-6 p-4" key={`form-content-${instanceId}`}>
         {/* Switch para tipo de selección */}
         <div className="flex items-center justify-center space-x-2">
             <Label>Versículo</Label>
@@ -223,7 +303,12 @@ function BibleSelectorForm({
       {/* Selector de libro */}
       <div>
         <Label className="text-gray-300 mb-2 block">Libro</Label>
-        <Select key={`book-select-${instanceId}`} value={selectedBook} onValueChange={handleBookChange} disabled={loadingBooks}>
+        <Select 
+          key={`book-select-${instanceId}`} 
+          value={selectedBook} 
+          onValueChange={handleBookChange} 
+          disabled={loadingBooks}
+        >
           <SelectTrigger className="bg-[#2a2a2a]/50 border-gray-700 text-white">
             <SelectValue placeholder="Seleccione un libro" />
           </SelectTrigger>
@@ -253,38 +338,71 @@ function BibleSelectorForm({
           {/* Capítulo */}
           <div>
             <Label className="text-gray-300 mb-2 block">Capítulo</Label>
-            <Select key={`chapter-select-${instanceId}`} value={startChapter.toString()} onValueChange={(v) => setStartChapter(parseInt(v))} disabled={!selectedBook}>
+            <Select 
+              key={`chapter-select-${instanceId}`} 
+              value={startChapter.toString()} 
+              onValueChange={(v) => setStartChapter(parseInt(v))} 
+              disabled={!selectedBook}
+            >
               <SelectTrigger className="bg-[#2a2a2a]/50 border-gray-700 text-white">
                 <SelectValue placeholder="Seleccione un capítulo" />
               </SelectTrigger>
               <SelectContent className="bg-[#1a1a1a] border-gray-800 text-white max-h-60">
-                <ScrollArea className="h-60">{Array.from({ length: maxChapters }, (_, i) => i + 1).map(c => <SelectItem key={c} value={c.toString()} className="hover:bg-[#2a2a2a]">{c}</SelectItem>)}</ScrollArea>
+                <ScrollArea className="h-60">
+                  {Array.from({ length: maxChapters }, (_, i) => i + 1).map(c => 
+                    <SelectItem key={`${instanceId}-chapter-${c}`} value={c.toString()} className="hover:bg-[#2a2a2a]">
+                      {c}
+                    </SelectItem>
+                  )}
+                </ScrollArea>
               </SelectContent>
             </Select>
           </div>
           {/* Versículo Inicial */}
           <div>
             <Label className="text-gray-300 mb-2 block">Versículo</Label>
-            <Select key={`chapter-select-${instanceId}`} value={startVerse.toString()} onValueChange={(v) => setStartVerse(parseInt(v))} disabled={!selectedBook}>
+            <Select 
+              key={`verse-select-${instanceId}`} 
+              value={startVerse.toString()} 
+              onValueChange={(v) => setStartVerse(parseInt(v))} 
+              disabled={!selectedBook}
+            >
                <SelectTrigger className="bg-[#2a2a2a]/50 border-gray-700 text-white">
                  <SelectValue placeholder="Seleccione un versículo" />
                </SelectTrigger>
                <SelectContent className="bg-[#1a1a1a] border-gray-800 text-white max-h-60">
-                 <ScrollArea className="h-60">{Array.from({ length: maxVerses }, (_, i) => i + 1).map(v => <SelectItem key={`${instanceId}-verse-${v}`} value={v.toString()} className="hover:bg-[#2a2a2a]">{v}</SelectItem>)}</ScrollArea>
+                 <ScrollArea className="h-60">
+                   {Array.from({ length: maxVerses }, (_, i) => i + 1).map(v => 
+                     <SelectItem key={`${instanceId}-verse-${v}`} value={v.toString()} className="hover:bg-[#2a2a2a]">
+                       {v}
+                     </SelectItem>
+                   )}
+                 </ScrollArea>
                </SelectContent>
             </Select>
           </div>
           {/* Versículo Final */}
           <div>
             <Label className="text-gray-300 mb-2 block">Hasta (opcional)</Label>
-            <Select key={`end-verse-select-${instanceId}`} value={endVerse?.toString() || 'none'} onValueChange={(v) => setEndVerse(v === 'none' ? null : parseInt(v))} disabled={!selectedBook}>
+            <Select 
+              key={`end-verse-select-${instanceId}`} 
+              value={endVerse?.toString() || 'none'} 
+              onValueChange={(v) => setEndVerse(v === 'none' ? null : parseInt(v))} 
+              disabled={!selectedBook}
+            >
               <SelectTrigger className="bg-[#2a2a2a]/50 border-gray-700 text-white">
                 <SelectValue placeholder="Seleccionar" />
               </SelectTrigger>
               <SelectContent className="bg-[#1a1a1a] border-gray-800 text-white max-h-60">
                 <ScrollArea className="h-60">
-                    <SelectItem key={`${instanceId}-none`}  value="none" className="hover:bg-[#2a2a2a]">Solo un versículo</SelectItem>
-                    {Array.from({ length: maxVerses }, (_, i) => i + 1).filter(v => v > startVerse).map(v => <SelectItem key={`${instanceId}-end-verse-${v}`} value={v.toString()} className="hover:bg-[#2a2a2a]">{v}</SelectItem>)}
+                    <SelectItem key={`${instanceId}-none`} value="none" className="hover:bg-[#2a2a2a]">
+                      Solo un versículo
+                    </SelectItem>
+                    {Array.from({ length: maxVerses }, (_, i) => i + 1).filter(v => v > startVerse).map(v => 
+                      <SelectItem key={`${instanceId}-end-verse-${v}`} value={v.toString()} className="hover:bg-[#2a2a2a]">
+                        {v}
+                      </SelectItem>
+                    )}
                 </ScrollArea>
               </SelectContent>
             </Select>
@@ -292,15 +410,25 @@ function BibleSelectorForm({
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-1 gap-4">
-            {/* Capítulo Inicial */}
             <div>
               <Label className="text-gray-300 mb-2 block">Capítulo</Label>
-              <Select key={`chapter-only-select-${instanceId}`} value={startChapter.toString()} onValueChange={(v) => setStartChapter(parseInt(v))} disabled={!selectedBook}>
+              <Select 
+                key={`chapter-only-select-${instanceId}`} 
+                value={startChapter.toString()} 
+                onValueChange={(v) => setStartChapter(parseInt(v))} 
+                disabled={!selectedBook}
+              >
                 <SelectTrigger className="bg-[#2a2a2a]/50 border-gray-700 text-white">
                   <SelectValue placeholder="Seleccione un capítulo" />
                 </SelectTrigger>
                 <SelectContent className="bg-[#1a1a1a] border-gray-800 text-white max-h-60">
-                  <ScrollArea className="h-60">{Array.from({ length: maxChapters }, (_, i) => i + 1).map(c => <SelectItem key={`${instanceId}-chapter-only-${c}`} value={c.toString()} className="hover:bg-[#2a2a2a]">{c}</SelectItem>)}</ScrollArea>
+                  <ScrollArea className="h-60">
+                    {Array.from({ length: maxChapters }, (_, i) => i + 1).map(c => 
+                      <SelectItem key={`${instanceId}-chapter-only-${c}`} value={c.toString()} className="hover:bg-[#2a2a2a]">
+                        {c}
+                      </SelectItem>
+                    )}
+                  </ScrollArea>
                 </SelectContent>
               </Select>
             </div>

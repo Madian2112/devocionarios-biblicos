@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { Book, Eye, Copy, ExternalLink, RefreshCw } from "lucide-react";
 
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -35,7 +35,6 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { toast } from "sonner";
 import { BibleVersion } from "@/lib/bible-data";
 
-// El API de deno devuelve un campo 'version'
 interface ApiBibleVersion extends BibleVersion {
   version: string;
 }
@@ -56,12 +55,44 @@ interface ChapterData {
 }
 
 interface BibleViewerProps {
-  instanceId?: string; // Added instanceId prop
+  instanceId?: string;
   reference: string;
   trigger?: React.ReactNode;
   defaultVersion?: string;
   onClose?: (selectedVersion: string) => void;
 }
+
+// 🔥 SOLUCIÓN: Portal Manager para PWA (igual que en BibleSelector)
+const usePortalManager = (instanceId: string, type: 'dialog' | 'drawer') => {
+  const portalRef = useRef<HTMLDivElement | null>(null);
+  const mountedRef = useRef(false);
+
+  useEffect(() => {
+    const portalId = `${type}-portal-viewer-${instanceId}`;
+    let portal = document.getElementById(portalId) as HTMLDivElement;
+    
+    if (!portal) {
+      portal = document.createElement('div');
+      portal.id = portalId;
+      portal.setAttribute('data-portal-type', type);
+      portal.setAttribute('data-instance-id', instanceId);
+      portal.setAttribute('data-component', 'bible-viewer');
+      document.body.appendChild(portal);
+    }
+    
+    portalRef.current = portal;
+    mountedRef.current = true;
+
+    return () => {
+      if (portal && portal.parentNode) {
+        portal.parentNode.removeChild(portal);
+      }
+      mountedRef.current = false;
+    };
+  }, [instanceId, type]);
+
+  return { portalRef: portalRef.current, isMounted: mountedRef.current };
+};
 
 export function BibleViewer({
   instanceId = "default",
@@ -73,17 +104,65 @@ export function BibleViewer({
   const [open, setOpen] = useState(false);
   const isMobile = useIsMobile();
   const [selectedVersion, setSelectedVersion] = useState(defaultVersion);
+  const { portalRef } = usePortalManager(instanceId, isMobile ? 'drawer' : 'dialog');
+  
+  // 🔥 SOLUCIÓN: Local key para forzar re-render cuando cambie instanceId
+  const [localKey, setLocalKey] = useState(0);
+  useEffect(() => {
+    setLocalKey(prev => prev + 1);
+    setOpen(false);
+  }, [instanceId]);
 
-  const handleOpenChange = (isOpen: boolean) => {
-    setOpen(isOpen);
-    if (!isOpen && onClose) {
-      onClose(selectedVersion);
+  // 🔥 SOLUCIÓN: Cleanup mejorado para PWA
+  const handleClose = useCallback(() => {
+    const finalVersion = selectedVersion;
+    setOpen(false);
+    
+    // Llamar onClose después de cerrar
+    if (onClose) {
+      // Small delay to ensure proper state cleanup in PWA
+      setTimeout(() => {
+        onClose(finalVersion);
+      }, 50);
     }
-  };
+    
+    // PWA cleanup
+    if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+      setTimeout(() => {
+        if (window.gc) window.gc();
+      }, 100);
+    }
+  }, [selectedVersion, onClose]);
+
+  const handleOpenChange = useCallback((isOpen: boolean) => {
+    if (!isOpen) {
+      handleClose();
+    } else {
+      setOpen(isOpen);
+    }
+  }, [handleClose]);
+
+  // 🔥 SOLUCIÓN: Memoized content component
+  const ContentComponent = useCallback(() => (
+    <BibleViewerContent
+      key={`content-${instanceId}-${localKey}`}
+      instanceId={`${instanceId}-${localKey}`}
+      reference={reference}
+      open={open}
+      defaultVersion={selectedVersion}
+      onVersionChange={setSelectedVersion}
+    />
+  ), [instanceId, localKey, reference, open, selectedVersion]);
 
   if (isMobile) {
     return (
-      <Drawer open={open} onOpenChange={handleOpenChange}>
+      <Drawer 
+        key={`drawer-viewer-${instanceId}-${localKey}`}
+        open={open} 
+        onOpenChange={handleOpenChange}
+        modal={true}
+        container={portalRef}
+      >
         <DrawerTrigger asChild>
           {trigger || (
             <Button
@@ -106,20 +185,19 @@ export function BibleViewer({
               Visualiza el versículo en diferentes versiones de la Biblia.
             </DrawerDescription>
           </DrawerHeader>
-          <BibleViewerContent
-            instanceId={instanceId} // Pass instanceId to BibleViewerContent
-            reference={reference}
-            open={open}
-            defaultVersion={selectedVersion}
-            onVersionChange={setSelectedVersion}
-          />
+          <ContentComponent />
         </DrawerContent>
       </Drawer>
     );
   }
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
+    <Dialog 
+      key={`dialog-viewer-${instanceId}-${localKey}`}
+      open={open} 
+      onOpenChange={handleOpenChange}
+      modal={true}
+    >
       <DialogTrigger asChild>
         {trigger || (
           <Button
@@ -132,7 +210,17 @@ export function BibleViewer({
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="bg-[#1a1a1a] border-gray-800 text-white max-w-2xl">
+      <DialogContent 
+        className="bg-[#1a1a1a] border-gray-800 text-white max-w-2xl"
+        onPointerDownOutside={(e) => {
+          e.preventDefault();
+          handleClose();
+        }}
+        onEscapeKeyDown={(e) => {
+          e.preventDefault();
+          handleClose();
+        }}
+      >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Book className="h-5 w-5 text-blue-400" />
@@ -143,20 +231,14 @@ export function BibleViewer({
           </DialogDescription>
         </DialogHeader>
 
-        <BibleViewerContent
-          instanceId={instanceId} // Pass instanceId to BibleViewerContent
-          reference={reference}
-          open={open}
-          defaultVersion={selectedVersion}
-          onVersionChange={setSelectedVersion}
-        />
+        <ContentComponent />
       </DialogContent>
     </Dialog>
   );
 }
 
 interface BibleViewerContentProps {
-  instanceId?: string; // Added instanceId prop
+  instanceId?: string;
   reference: string;
   open: boolean;
   defaultVersion?: string;
@@ -176,6 +258,10 @@ export function BibleViewerContent({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // 🔥 SOLUCIÓN: Usar refs para evitar re-renders innecesarios
+  const loadingRef = useRef(false);
+  const currentRequestRef = useRef<string>('');
+
   useEffect(() => {
     setSelectedVersion(defaultVersion);
   }, [defaultVersion]);
@@ -184,29 +270,35 @@ export function BibleViewerContent({
     onVersionChange(selectedVersion);
   }, [selectedVersion, onVersionChange]);
 
-  // Fetch dinámico de versiones
+  // 🔥 SOLUCIÓN: Memoized version fetching
   useEffect(() => {
-    fetch("https://bible-api.deno.dev/api/versions")
-      .then((res) => res.json())
-      .then((data) => {
+    const fetchVersions = async () => {
+      if (versions.length > 0) return; // Evitar fetch duplicado
+      
+      try {
+        const response = await fetch("https://bible-api.deno.dev/api/versions");
+        const data = await response.json();
         setVersions(data);
-        if (data.length > 0 && !selectedVersion)
+        if (data.length > 0 && !selectedVersion) {
           setSelectedVersion(data[0].version);
-      })
-      .catch(() =>
-        setError("No se pudieron cargar las versiones disponibles.")
-      );
-    // eslint-disable-next-line
+        }
+      } catch (error) {
+        setError("No se pudieron cargar las versiones disponibles.");
+      }
+    };
+
+    fetchVersions();
+  }, [selectedVersion, versions.length]);
+
+  const eliminarTildes = useCallback((texto: string) => {
+    const tildes: { [key: string]: string } = { 
+      'á': 'a', 'é': 'e', 'í': 'i', 'ó': 'o', 'ú': 'u', 
+      'Á': 'A', 'É': 'E', 'Í': 'I', 'Ó': 'O', 'Ú': 'U' 
+    };
+    return texto.replace(/[áéíóúÁÉÍÓÚ]/g, letra => tildes[letra]);
   }, []);
 
-  const eliminarTildes = (texto: string) => {
-    const tildes: { [key: string]: string } = { 'á': 'a', 'é': 'e', 'í': 'i', 'ó': 'o', 'ú': 'u', 'Á': 'A', 'É': 'E', 'Í': 'I', 'Ó': 'O', 'Ú': 'U' };
-    return texto.replace(/[áéíóúÁÉÍÓÚ]/g, letra => tildes[letra]);
-  };
-
-  // Parsear referencias como "Juan 3:16" o "Juan 3:16-18" o "Génesis 1"
-  const parseReference = (ref: string) => {
-    // Intenta hacer match con formato Libro Capitulo:Versiculo-Versiculo
+  const parseReference = useCallback((ref: string) => {
     let match = ref.match(/^(.+?)\s+(\d+):(\d+)(?:-(\d+))?$/);
     if (match) {
       const [, bookName, chapter, startVerse, endVerse] = match;
@@ -218,26 +310,26 @@ export function BibleViewerContent({
       };
     }
     
-    // Intenta hacer match con formato Libro Capitulo
     match = ref.match(/^(.+?)\s+(\d+)$/);
     if (match) {
       const [, bookName, chapter] = match;
       return {
         book: eliminarTildes(bookName.trim()),
         chapter: Number.parseInt(chapter),
-        startVerse: null, // Indicador para capítulo completo
+        startVerse: null,
         endVerse: null,
       };
     }
 
     return null;
-  };
+  }, [eliminarTildes]);
 
-  // Fetch de capítulo(s) o versículo(s)
-  const loadContent = async () => {
+  // 🔥 SOLUCIÓN: Improved content loading with request cancellation
+  const loadContent = useCallback(async () => {
     const parsed = parseReference(reference);
-    if(parsed?.book)
-    parsed.book = parsed?.book.replace(' ', "-")
+    if (parsed?.book) {
+      parsed.book = parsed?.book.replace(' ', "-");
+    }
 
     if (!parsed) {
       setError("Formato de referencia inválido");
@@ -245,6 +337,13 @@ export function BibleViewerContent({
       return;
     }
 
+    // 🔥 SOLUCIÓN: Prevent concurrent requests
+    const requestId = `${selectedVersion}-${reference}-${Date.now()}`;
+    currentRequestRef.current = requestId;
+
+    if (loadingRef.current) return; // Prevent multiple simultaneous loads
+    
+    loadingRef.current = true;
     setLoading(true);
     setError(null);
 
@@ -254,32 +353,47 @@ export function BibleViewerContent({
       if (!res.ok) {
         throw new Error(`Error ${res.status}: No se pudo obtener la información.`);
       }
+      
       const data: ChapterData = await res.json();
       
-      // Filtrar versículos si es necesario
+      // Filter verses if necessary
       if (parsed.startVerse) {
         const endVerse = parsed.endVerse || parsed.startVerse;
         data.vers = data.vers.filter(v => v.number >= parsed.startVerse! && v.number <= endVerse);
       }
       
-      setVerseData(data);
+        setVerseData(data);
 
     } catch(err) {
-      setError(err instanceof Error ? err.message : "Error al cargar el contenido de la Biblia.");
-      setVerseData(null);
+      if (currentRequestRef.current === requestId) {
+        if (err instanceof Error && err.name === 'AbortError') {
+          setError("Solicitud cancelada por timeout.");
+        } else {
+          setError(err instanceof Error ? err.message : "Error al cargar el contenido de la Biblia.");
+        }
+        setVerseData(null);
+      }
     } finally {
-      setLoading(false);
+      if (currentRequestRef.current === requestId) {
+        loadingRef.current = false;
+        setLoading(false);
+      }
+        setLoading(false);
+
     }
-  };
+  }, []);
 
   useEffect(() => {
     if (open) {
       loadContent();
     }
-    // eslint-disable-next-line
+    return () => {
+      // Cleanup: cancel any pending request when component unmounts or deps change
+      currentRequestRef.current = '';
+    };
   }, [open, selectedVersion, reference]);
 
-  const copyToClipboard = () => {
+  const copyToClipboard = useCallback(() => {
     if (!verseData) return;
 
     const textToCopy = verseData.vers.map(v => `${v.number}. ${v.verse}`).join("\n");
@@ -288,19 +402,22 @@ export function BibleViewerContent({
     navigator.clipboard.writeText(`${fullReference}\n${textToCopy}`)
       .then(() => toast.success("Contenido copiado al portapapeles"))
       .catch(() => toast.error("Error al copiar"));
-  };
+  }, [verseData, reference, selectedVersion]);
 
-  const openInBibleApp = () => {
-    // Abrir en app de la Biblia o sitio web
-    const url = `https://www.bible.com/bible/149/${reference.replace(
-      /\s+/g,
-      "."
-    )}`;
+  const openInBibleApp = useCallback(() => {
+    const url = `https://www.bible.com/bible/149/${reference.replace(/\s+/g, ".")}`;
     window.open(url, "_blank");
-  };
+  }, [reference]);
+
+  // 🔥 SOLUCIÓN: Memoized version change handler
+  const handleVersionChange = useCallback((version: string) => {
+    if (version !== selectedVersion) {
+      setSelectedVersion(version);
+    }
+  }, [selectedVersion]);
 
   return (
-    <div className="space-y-6 p-4">
+    <div className="space-y-6 p-4" key={`viewer-content-${instanceId}`}>
       {/* Selector de versión */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -308,8 +425,9 @@ export function BibleViewerContent({
             Versión:
           </label>
           <Select
+            key={`version-select-${instanceId}`}
             value={selectedVersion}
-            onValueChange={setSelectedVersion}
+            onValueChange={handleVersionChange}
           >
             <SelectTrigger className="bg-[#2a2a2a]/50 border-gray-700 text-white w-48">
               <SelectValue />
@@ -317,14 +435,14 @@ export function BibleViewerContent({
             <SelectContent className="bg-[#1a1a1a] border-gray-800 text-white">
               {versions.map((version) => (
                 <SelectItem
-                  key={version.version || version.id}
+                  key={`${instanceId}-version-${version.version || version.id}`}
                   value={version.version || version.id}
                   className="hover:bg-[#2a2a2a]"
                 >
                   <div>
                     <div className="font-medium">
                       {version.abbreviation ||
-                        version.version.toLocaleUpperCase() ||
+                        version.version?.toLocaleUpperCase() ||
                         version.id}
                     </div>
                     <div className="text-xs text-gray-400">{version.name}</div>
@@ -372,7 +490,7 @@ export function BibleViewerContent({
             <ScrollArea className="h-60">
               <div className="pr-4 space-y-3">
                 {verseData.vers.map((verse) => (
-                  <div key={verse.id} className="flex gap-3 items-start">
+                  <div key={`${instanceId}-verse-${verse.id}`} className="flex gap-3 items-start">
                     <Badge
                       variant="outline"
                       className="border-blue-500/30 text-blue-400 shrink-0 mt-1"

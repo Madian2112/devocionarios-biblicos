@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, use } from "react"
+import { useState, useEffect, use, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 
@@ -39,6 +39,7 @@ import withAuth from "@/components/auth/with-auth"
 import { useToast } from "@/hooks/use-toast"
 import { notificationService } from "@/lib/notification-service"
 import { useDisableMobileZoom } from '@/hooks/use-disable-mobile-zoom';
+import { usePWACleanup, usePWADetection } from "@/hooks/use-pwa-cleanup"
 
 
 function DevocionalPage({ params }: { params: Promise<{ id: string }> }) {
@@ -46,12 +47,35 @@ function DevocionalPage({ params }: { params: Promise<{ id: string }> }) {
   const { user } = useAuthContext();
   const { toast } = useToast();
   const { id: fecha } = use(params); // El id de la ruta es la fecha
-
+  const isPWA = usePWADetection();
+  const { triggerCleanup } = usePWACleanup(`devocional-${fecha}`);
   const [devocional, setDevocional] = useState<Devocional | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
   useDisableMobileZoom()
+
+  useEffect(() => {
+    if (isPWA) {
+      // Limpiar elementos DOM al montar en PWA
+      triggerCleanup();
+    }
+    
+    return () => {
+      if (isPWA) {
+        // Limpiar al desmontar
+        setTimeout(() => triggerCleanup(), 100);
+      }
+    };
+  }, [isPWA, triggerCleanup]);
+
+  // 🔥 SOLUCIÓN: Memoized instance IDs para evitar re-renders
+  const instanceIds = useMemo(() => ({
+    mainDevocional: `main-devocional-${fecha}-${user?.uid || 'anonymous'}`,
+    mainBibleViewer: `main-bible-viewer-${fecha}-${user?.uid || 'anonymous'}`,
+    getVersiculoId: (versiculoId: string) => `versiculo-${versiculoId}-${fecha}`,
+    getVersiculoViewerId: (versiculoId: string) => `versiculo-viewer-${versiculoId}-${fecha}`
+  }), [fecha, user?.uid]);
 
   useEffect(() => {
     async function fetchOrCreateDevocional() {
@@ -348,7 +372,7 @@ const handleVersiculoChange = (index: number, field: keyof Versiculo, value: any
                     {devocional.versionCitaBiblica?.toUpperCase() || 'RV1960'}
                  </Badge>
                 <BibleSelector
-                  instanceId="main-devocional" 
+                  instanceId={instanceIds.mainDevocional} 
                   currentReference={devocional.citaBiblica}
                   onSelect={async (reference) => {
                     setSaving(true);
@@ -369,7 +393,7 @@ const handleVersiculoChange = (index: number, field: keyof Versiculo, value: any
                 />
                 {devocional.citaBiblica && (
                   <BibleViewer
-                    instanceId="main-bible-viewer"
+                    instanceId={instanceIds.mainBibleViewer}
                     reference={devocional.citaBiblica}
                     defaultVersion={devocional.versionCitaBiblica}
                     onClose={async (selectedVersion) => {
