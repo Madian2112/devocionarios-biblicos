@@ -13,6 +13,14 @@ import { Toaster } from "@/components/ui/toaster";
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import dynamic from 'next/dynamic';
 
+const inter = Inter({ 
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-inter",
+  preload: true,
+  fallback: ["system-ui", "arial"],
+});
+
 // Componente dinámico para evitar renderizado en el servidor
 const ServiceWorkerRegistration = dynamic(() => Promise.resolve(() => {
   useEffect(() => {
@@ -39,7 +47,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="es" suppressHydrationWarning>
-      <body>
+      <body className={`${inter.className} antialiased`}>
         <AuthProvider>
           <ThemeProvider
             attribute="class"

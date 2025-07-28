@@ -76,7 +76,7 @@ function DashboardPage() {
     const fetchDevocionalDelDia = async () => {
       if (user && selectedDate) {
         try {
-          const devocional = await cachedFirestoreService.getDevocionalByDate(user.uid, selectedDate);
+          const devocional = await cachedFirestoreService.getDevocionalByDate(`${selectedDate}-${user.email}`);
           setDevocionalDelDia(devocional);
         } catch (error) {
           console.error("Error al cargar devocional del día:", error);

@@ -135,7 +135,7 @@ class MobileCacheManager {
 
 
     const devData: DevocionalCache = {
-      id: devocional.fecha,
+      id: devocional.id,
       devocional,
       timestamp: Date.now()
     };
@@ -148,14 +148,14 @@ class MobileCacheManager {
     await this.cleanOldDevocionales();
   }
 
-  async getCachedDevocional(fecha: string): Promise<{devocional: any, versiculosTextos: { [referencia: string]: string }} | null> {
+  async getCachedDevocional(key: string): Promise<{devocional: any, versiculosTextos: { [referencia: string]: string }} | null> {
     if (!this.db) return null;
 
     const transaction = this.db.transaction(['recent_devocionales'], 'readonly');
     const store = transaction.objectStore('recent_devocionales');
     
     return new Promise((resolve) => {
-      const request = store.get(fecha);
+      const request = store.get(key);
       request.onsuccess = () => {
         const result = request.result as DevocionalCache;
         if (result) {

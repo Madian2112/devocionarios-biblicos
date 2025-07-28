@@ -17,6 +17,7 @@ import {
   Trash2,
   Eye,
   Download,
+  Info,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -56,14 +57,15 @@ function DevocionalPage({ params }: { params: Promise<{ id: string }> }) {
     async function fetchOrCreateDevocional() {
       if (user && fecha) {
         setLoading(true);
-        const existingDevocional = await firestoreService.getDevocionalByDate(user.uid, fecha);
+        const key = `${fecha}-${user.email}`;
+        const existingDevocional = await firestoreService.getDevocionalByDate(key);
         
         if (existingDevocional) {
           setDevocional(existingDevocional);
         } else {
           // Si no existe, creamos uno nuevo en el estado local
           const newDevocional: Devocional = {
-            id: fecha,
+            id: key,
             userId: user.uid,
             fecha: fecha,
             citaBiblica: "",
@@ -113,7 +115,7 @@ function DevocionalPage({ params }: { params: Promise<{ id: string }> }) {
       const { userId, ...devocionalData } = devocional;
       devocionalData.completado = devocional.aprendizajeGeneral.trim() !== "" ? true: false;
       console.log('Este es mi usuarios:', user);
-      await firestoreService.saveDevocional(user.uid, user.email || '', devocionalData);
+      await firestoreService.saveDevocional(user.uid, devocionalData);
       
       // 🔔 Notificación de éxito
       toast({
@@ -464,15 +466,21 @@ const handleVersiculoChange = (index: number, field: keyof Versiculo, value: any
                     <Book className="h-5 w-5 text-blue-400" />
                   </div>
                   Versículos Específicos
-                  <span className="text-xs bg-amber-500 text-amber-900 font-bold px-2 py-1 rounded-md ml-2 animate-pulse">
-                    BETA
-                  </span>
+                  <div className="relative group mr-2">
+                    <span className="text-xs bg-amber-500 text-amber-900 font-bold px-2 py-0.5 rounded-md flex items-center gap-1 animate-pulse">
+                      BETA
+                      <Info className="h-3 w-3" />
+                    </span>
+                    <div className="absolute hidden group-hover:block z-10 w-48 bg-gray-800 text-white text-sm p-2 rounded-md shadow-lg right-0 mt-1">
+                      Esta función está en desarrollo
+                    </div>
+                  </div>
                 </h3>
               <Button
                 onClick={addVersiculo}
                 className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
               >
-                <Plus className="h-4 w-4 mr-2" />
+                <Plus className="h-4 w-4 mr-1 ml-2" />
                 Agregar Versículo
               </Button>
             </div>

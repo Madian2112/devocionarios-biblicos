@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { GradientCard } from "@/components/ui/gradient-card";
-import { Lock, LogIn, User, AlertCircle, UserPlus } from "lucide-react";
+import { Lock, LogIn, User, AlertCircle, UserPlus, Info } from "lucide-react";
 import { auth } from "@/lib/firebase";
 import { 
   signInWithEmailAndPassword, 
@@ -219,16 +219,29 @@ export function LoginPage({ defaultMode = 'login' }: LoginPageProps = {}) {
             </div>
 
             {!isSignUp && (
-              <div className="text-right">
-                <Button
-                  variant="link"
-                  className="text-gray-400 hover:text-white h-auto p-0 text-sm"
-                  onClick={handlePasswordReset}
-                  disabled={loading}
-                >
-                  ¿Olvidaste tu contraseña?
-                </Button>
-              </div>
+<div className="text-right flex items-center justify-end gap-2">
+  <Button
+    variant="link"
+    className="text-gray-400 hover:text-white h-auto p-0 text-sm"
+    onClick={handlePasswordReset}
+    disabled={loading}
+  >
+    ¿Olvidaste tu contraseña? 
+  </Button>
+  
+  {/* Indicador Beta con Tooltip */}
+  <div className="relative group">
+    <span className="text-xs bg-amber-500 text-amber-900 font-bold px-2 py-0.5 rounded-md flex items-center gap-1 animate-pulse">
+      BETA
+      <Info className="h-3 w-3" />
+    </span>
+    
+    {/* Tooltip */}
+    <div className="absolute hidden group-hover:block z-10 w-48 bg-gray-800 text-white text-sm p-2 rounded-md shadow-lg right-0 mt-1">
+      Esta función está en desarrollo
+    </div>
+  </div>
+</div>
             )}
 
             {error && (

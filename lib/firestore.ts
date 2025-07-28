@@ -68,8 +68,8 @@ const TOPICS_COLLECTION = "estudios_topicos";
 
 export const firestoreService = {
   // --- DEVOCIONALES ---
-  async saveDevocional(userId: string, email: string ,devocional: Omit<Devocional, "createdAt" | "updatedAt" | "userId">) {
-    const docRef = doc(db, DEVOCIONALES_COLLECTION, `${devocional.id}-${email}`);
+  async saveDevocional(userId: string, devocional: Omit<Devocional, "createdAt" | "updatedAt" | "userId">) {
+    const docRef = doc(db, DEVOCIONALES_COLLECTION, devocional.id);
     const now = Timestamp.now();
 
     const docSnap = await getDoc(docRef);
@@ -96,11 +96,10 @@ export const firestoreService = {
     return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as Devocional);
   },
 
-  async getDevocionalByDate(userId: string, fecha: string): Promise<Devocional | null> {
+  async getDevocionalByDate(key: string): Promise<Devocional | null> {
     const q = query(
       collection(db, DEVOCIONALES_COLLECTION),
-      where("userId", "==", userId),
-      where("fecha", "==", fecha),
+      where("id", "==", key),
     );
     const querySnapshot = await getDocs(q);
     if (querySnapshot.empty) return null;

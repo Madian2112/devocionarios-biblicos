@@ -7,10 +7,11 @@ import type { Devocional, TopicalStudy } from './firestore';
 class CachedFirestoreService {
   
   // 🚀 Obtener devocional con textos bíblicos cacheados
-  async getDevocionalByDate(userId: string, fecha: string): Promise<Devocional | null> {
+  async getDevocionalByDate(key: string): Promise<Devocional | null> {
     
     // 📱 Primero intentar obtener del cache móvil
-    const cached = await mobileCacheManager.getCachedDevocional(fecha);
+    const cached = await mobileCacheManager.getCachedDevocional(key);
+    console.log('Este es el cache de los devocionales: ', cached)
     if (cached) {
       // Agregar textos cacheados al devocional
       if (cached.devocional.versiculos) {
@@ -22,7 +23,7 @@ class CachedFirestoreService {
     }
 
     // 🌐 Si no está en cache, obtener de Firestore
-    const devocional = await firestoreService.getDevocionalByDate(userId, fecha);
+    const devocional = await firestoreService.getDevocionalByDate(key);
     
     if (devocional) {
       // 🚀 Precargar versículos y cachear todo
@@ -81,7 +82,7 @@ class CachedFirestoreService {
 
   // 🚀 Guardar devocional y actualizar cache
   async saveDevocional(userId: string,email:string ,devocional: Omit<Devocional, "createdAt" | "updatedAt" | "userId">): Promise<Devocional> {
-    const savedDevocional = await firestoreService.saveDevocional(userId, email, devocional);
+    const savedDevocional = await firestoreService.saveDevocional(userId, devocional);
     
     // 🚀 Precargar versículos y actualizar cache
     const versiculosTextos = await cachedBibleService.precacheDevocionalVerses(savedDevocional);
