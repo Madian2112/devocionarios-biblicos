@@ -146,7 +146,7 @@ function SearchPage() {
                 {filteredDevocionarios.length > 0 ? (
                   filteredDevocionarios.map((devocional) => (
                     <div key={devocional.id} className="mb-6">
-                      <Link href={`/devocional/${devocional.id}`}>
+                      <Link href={`/devocional/${devocional.fecha}`}>
                         <GradientCard className="group cursor-pointer hover:scale-[1.02] transition-all duration-300">
                           <CardHeader>
                             <div className="flex items-center justify-between">

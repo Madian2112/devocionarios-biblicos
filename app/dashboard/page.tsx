@@ -264,7 +264,7 @@ function DashboardPage() {
                       {devocionalDelDia.completado ? "Completado" : "Pendiente"}
                     </Badge>
                 </Button>
-                    <Link href={`/devocional/${devocionalDelDia.id}`}>
+                    <Link href={`/devocional/${devocionalDelDia.fecha}`}>
                         <Button
                             variant="outline"
                             className="bg-[#2a2a2a]/50 border-gray-700 hover:bg-[#3a3a3a]/50 backdrop-blur-sm"

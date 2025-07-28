@@ -46,6 +46,10 @@ interface BibleSelectorProps {
   instanceId?: string;
 }
 
+const LibroApocalpsis = (libro: string) =>{
+  return libro === "Revelación" ? "Apocalipsis" : libro;
+}
+
 export function BibleSelector({
   onSelect,
   trigger,
@@ -174,7 +178,7 @@ function BibleSelectorForm({
         setEndVerse(null);
     }
 
-    const selectedBookData = books.find(book => book.name === selectedBook);
+    const selectedBookData = books.find(book => LibroApocalpsis(book.name) === selectedBook);
     const maxChapters = selectedBookData?.chapters || 1;
     const maxVerses = selectedBookData?.chapter_verses && startChapter
         ? selectedBookData.chapter_verses[startChapter.toString()] || 1
@@ -230,11 +234,11 @@ function BibleSelectorForm({
                 ) : (
                   books.map((book) => (
                     <SelectItem
-                      key={`${instanceId}-book-${book.name}`}
-                      value={book.name}
+                      key={`${instanceId}-book-${LibroApocalpsis(book.name)}`}
+                      value={LibroApocalpsis(book.name)}
                       className="hover:bg-[#2a2a2a]"
                     >
-                      {book.name}
+                      {LibroApocalpsis(book.name)}
                     </SelectItem>
                   ))
                 )}
