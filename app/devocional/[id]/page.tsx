@@ -466,7 +466,7 @@ const handleVersiculoChange = (index: number, field: keyof Versiculo, value: any
                     <Book className="h-5 w-5 text-blue-400" />
                   </div>
                   Versículos Específicos
-                  <div className="relative group mr-2">
+                  <div className="relative group mr-12">
                     <span className="text-xs bg-amber-500 text-amber-900 font-bold px-2 py-0.5 rounded-md flex items-center gap-1 animate-pulse">
                       BETA
                       <Info className="h-3 w-3" />
