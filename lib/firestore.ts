@@ -11,6 +11,7 @@ import {
   Timestamp,
 } from "firebase/firestore";
 import { db } from "./firebase";
+import {cachedFirestoreService} from "@/lib/firestore-cached"
 
 // --- Sub-colecciones y tipos anidados ---
 
@@ -80,7 +81,8 @@ export const firestoreService = {
       createdAt: docSnap.exists() ? docSnap.data().createdAt : now,
     };
     
-    console.log('DocRef: ', docRef, '\n', 'Now: ', now, '\n', 'DocSnap: ', docSnap, '\n', 'Data: ', data, '\n', 'Devocional: ', devocional)
+    // console.log('DocRef: ', docRef, '\n', 'Now: ', now, '\n', 'DocSnap: ', docSnap, '\n', 'Data: ', data, '\n', 'Devocional: ', devocional)
+    cachedFirestoreService.saveDevocional(userId, devocional);
 
     await setDoc(docRef, data, { merge: true });
     return data;
@@ -105,6 +107,7 @@ export const firestoreService = {
     if (querySnapshot.empty) return null;
 
     const doc = querySnapshot.docs[0];
+    console.log('Este es el doc: ', doc)
     return { id: doc.id, ...doc.data() } as Devocional;
   },
 
