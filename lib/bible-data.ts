@@ -22,7 +22,6 @@ export interface BibleVersion {
   abbreviation: string;
 }
 
-const BIBLE_BOOKS_CACHE_KEY = 'bible-books-data';
 const BIBLE_VERSIONS_CACHE_KEY = 'bible-versions-data';
 
 // Versiones soportadas por la API
@@ -65,38 +64,44 @@ export function getBibleVersions(): BibleVersion[] {
 // Obtener libros de la Biblia en español (con caché)
 export async function fetchBibleBooks(): Promise<BibleBook[]> {
   try {
-    const cachedBooks = localStorage.getItem(BIBLE_BOOKS_CACHE_KEY);
-    if (cachedBooks) {
-      return JSON.parse(cachedBooks);
+    // Intentar obtener desde el caché del Service Worker
+    const cacheResponse = await caches.match('https://api.biblesupersearch.com/api/books?language=es');
+    if (cacheResponse) {
+      const data = await cacheResponse.json();
+      return data.results.map((book: any) => ({
+        id: book.id,
+        name: book.name,
+        shortname: book.shortname,
+        chapters: book.chapters,
+        chapter_verses: book.chapter_verses,
+      }));
     }
   } catch (error) {
-    console.warn("No se pudo acceder a localStorage para cargar libros.");
+    console.warn('No se pudo acceder al caché para cargar libros:', error);
   }
-  
-  const res = await fetch(
-    "https://api.biblesupersearch.com/api/books?language=es"
-  );
-  if (!res.ok)
-    throw new Error("No se pudieron obtener los libros de la Biblia");
-  const data = await res.json();
-  
-  const result = data.results.map((book: any) => ({
-    id: book.id,
-    name: book.name,
-    shortname: book.shortname,
-    chapters: book.chapters,
-    chapter_verses: book.chapter_verses,
-  }));
-  
-  try {
-    localStorage.setItem(BIBLE_BOOKS_CACHE_KEY, JSON.stringify(result));
-  } catch (error) {
-    console.error("Error al guardar los libros en localStorage:", error);
-  }
-  
-  return result;
-}
 
+  // Obtener desde la API si no hay caché
+  try {
+    const res = await fetch('https://api.biblesupersearch.com/api/books?language=es');
+    if (!res.ok) {
+      throw new Error('No se新一 set of books could not be retrieved');
+    }
+    const data = await res.json();
+
+    const result: BibleBook[] = data.results.map((book: any) => ({
+      id: book.id,
+      name: book.name,
+      shortname: book.shortname,
+      chapters: book.chapters,
+      chapter_verses: book.chapter_verses,
+    }));
+
+    return result;
+  } catch (error) {
+    console.error('Error al obtener los libros de la API:', error);
+    throw error;
+  }
+}
 // Obtener un versículo específico
 export async function fetchBibleVerse(
   book: string,

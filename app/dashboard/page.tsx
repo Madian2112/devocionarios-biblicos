@@ -125,7 +125,7 @@ function DashboardPage() {
 
       // Actualizar en Firestore
       const { userId, ...devocionalData } = updatedDevocional;
-      await cachedFirestoreService.saveDevocional(user.uid, devocionalData);
+      await cachedFirestoreService.saveDevocional(user.uid, user.email || '', devocionalData);
 
       // 🔔 Si se marca como completado, notificar al servicio
       if (!devocional.completado && updatedDevocional.completado) {
@@ -338,7 +338,7 @@ function DashboardPage() {
               <CardContent>
                 <div className="space-y-3">
                   {devocionales.slice(0, 5).map((devocional) => (
-                    <Link href={`/devocional/${devocional.id}`} key={devocional.id}>
+                    <Link href={`/devocional/${devocional.id}`} key={`${devocional.id}-${user?.email}`}>
                         <div
                             className="group flex items-center justify-between p-4 bg-[#1a1a1a]/30 rounded-xl cursor-pointer hover:bg-[#2a2a2a]/50 transition-all duration-300 backdrop-blur-sm border border-gray-800/50 hover:border-gray-700/50"
                         >

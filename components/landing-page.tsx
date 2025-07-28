@@ -1,7 +1,35 @@
 import { useState } from 'react';
 import { Button } from "@/components/ui/button";
+import { Inter } from "next/font/google";
 import { BookOpen, Feather, Lock, Mail, Heart, Layers, Code, Search, Menu, ChevronsRight, Star, Users, Clock } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '@/components/ui/sheet';
+import type { Metadata } from "next";
+
+const inter = Inter({ 
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-inter",
+  preload: true,
+  fallback: ["system-ui", "arial"],
+});
+
+export const metadata: Metadata = {
+  title: "Devocionales Bíblicos con Notas",
+  description: "Tu espacio personal para la reflexión y el estudio profundo de la Biblia. Registra devocionales, organiza estudios temáticos y conecta con la Palabra de Dios.",
+  manifest: "/manifest.json",
+  metadataBase: new URL("https://devocionales-biblicos.netlify.app/"), 
+  openGraph: {
+    title: "Devocionales Bíblicos con Notas",
+    description: "Explora devocionales diarios y estudios bíblicos para tu crecimiento espiritual.",
+    type: "website",
+    url: "https://devocionales-biblicos.netlify.app/",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Devocionales Bíblicos con Notas",
+    description: "Conecta con la Palabra de Dios cada día",
+  },
+};
 
 interface LandingPageProps {
   onLoginClick: () => void;
@@ -24,6 +52,21 @@ export function LandingPage({ onLoginClick, onSignupClick }: LandingPageProps) {
   );
 
   return (
+    <html lang="es" suppressHydrationWarning>
+      <head>
+        <link rel="preload" href="/_next/static/css/app/layout.css" as="style" />
+        <link rel="dns-prefetch" href="https://fonts.gstatic.com" />
+        <link rel="dns-prefetch" href="https://firestore.googleapis.com" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+        <meta name="theme-color" content="#0a0a0a" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-title" content="Devocionales" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <link rel="icon" href="/favicon.ico" sizes="any" />
+        <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"/>
+        <link rel="manifest" href="/manifest.json" />
+      </head>
+      <body className={`${inter.className} antialiased`}>
     <div className="min-h-screen bg-gradient-to-br from-[#0a0a0a] via-[#1a1a1a] to-[#0a0a0a] text-white">
       {/* Header y Navegación */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-[#0a0a0a]/80 backdrop-blur-sm">
@@ -344,5 +387,7 @@ export function LandingPage({ onLoginClick, onSignupClick }: LandingPageProps) {
         </div>
       </footer>
     </div>
+      </body>
+    </html>
   );
 }

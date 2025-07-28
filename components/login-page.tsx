@@ -78,6 +78,8 @@ export function LoginPage({ defaultMode = 'login' }: LoginPageProps = {}) {
       } else {
         // 🔑 Iniciar sesión
         userCredential = await signInWithEmailAndPassword(auth, email, password);
+        console.log('Inicio sesion: ', userCredential);
+
         setSuccess("¡Sesión iniciada exitosamente! 🚀");
       }
 
@@ -108,10 +110,15 @@ export function LoginPage({ defaultMode = 'login' }: LoginPageProps = {}) {
         case 'auth/too-many-requests':
           errorMessage = "Demasiados intentos. Intenta más tarde";
           break;
+        case 'auth/invalid-credential':
+          errorMessage = "Correo o contraseña inválidos. Intentelo de nuevo.";
+          break;
         default:
           errorMessage = error.message || "Error de autenticación";
       }
       
+      console.log('Error de autenticación:', error.code);
+
       setError(errorMessage);
     } finally {
       setLoading(false);

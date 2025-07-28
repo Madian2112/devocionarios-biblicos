@@ -112,7 +112,8 @@ function DevocionalPage({ params }: { params: Promise<{ id: string }> }) {
       // Creamos una copia sin el userId para pasarla como segundo argumento.
       const { userId, ...devocionalData } = devocional;
       devocionalData.completado = devocional.aprendizajeGeneral.trim() !== "" ? true: false;
-      await firestoreService.saveDevocional(user.uid, devocionalData);
+      console.log('Este es mi usuarios:', user);
+      await firestoreService.saveDevocional(user.uid, user.email || '', devocionalData);
       
       // 🔔 Notificación de éxito
       toast({
@@ -457,21 +458,25 @@ const handleVersiculoChange = (index: number, field: keyof Versiculo, value: any
 
             <TabsContent value="versiculos">
               <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-xl font-semibold text-white flex items-center gap-3">
-                    <div className="p-2 bg-blue-500/20 rounded-lg">
-                      <Book className="h-5 w-5 text-blue-400" />
-                    </div>
-                    Versículos Específicos
-                  </h3>
-                  <Button
-                    onClick={addVersiculo}
-                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Agregar Versículo
-                  </Button>
-                </div>
+            <div className="flex items-center justify-between">
+                <h3 className="text-xl font-semibold text-white flex items-center gap-3">
+                  <div className="p-2 bg-blue-500/20 rounded-lg">
+                    <Book className="h-5 w-5 text-blue-400" />
+                  </div>
+                  Versículos Específicos
+                  <span className="text-xs bg-amber-500 text-amber-900 font-bold px-2 py-1 rounded-md ml-2 animate-pulse">
+                    BETA
+                  </span>
+                </h3>
+              <Button
+                onClick={addVersiculo}
+                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Agregar Versículo
+              </Button>
+            </div>
+
 
                     {devocional?.versiculos && devocional.versiculos.length > 0 ? (
                       devocional.versiculos.map((versiculo, index) => {

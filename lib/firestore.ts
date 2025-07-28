@@ -68,8 +68,8 @@ const TOPICS_COLLECTION = "estudios_topicos";
 
 export const firestoreService = {
   // --- DEVOCIONALES ---
-  async saveDevocional(userId: string, devocional: Omit<Devocional, "createdAt" | "updatedAt" | "userId">) {
-    const docRef = doc(db, DEVOCIONALES_COLLECTION, devocional.id);
+  async saveDevocional(userId: string, email: string ,devocional: Omit<Devocional, "createdAt" | "updatedAt" | "userId">) {
+    const docRef = doc(db, DEVOCIONALES_COLLECTION, `${devocional.id}-${email}`);
     const now = Timestamp.now();
 
     const docSnap = await getDoc(docRef);
@@ -79,12 +79,14 @@ export const firestoreService = {
       updatedAt: now,
       createdAt: docSnap.exists() ? docSnap.data().createdAt : now,
     };
+    
+    console.log('DocRef: ', docRef, '\n', 'Now: ', now, '\n', 'DocSnap: ', docSnap, '\n', 'Data: ', data, '\n', 'Devocional: ', devocional)
 
     await setDoc(docRef, data, { merge: true });
     return data;
   },
 
-  async getDevocionarios(userId: string): Promise<Devocional[]> {
+  async   getDevocionarios(userId: string): Promise<Devocional[]> {
     const q = query(
       collection(db, DEVOCIONALES_COLLECTION),
       where("userId", "==", userId),

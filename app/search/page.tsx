@@ -251,7 +251,7 @@ function SearchPage() {
             <GradientCard>
               <CardContent className="text-center py-16">
                 <div className="p-4 bg-gray-500/10 rounded-full w-fit mx-auto mb-6">
-                  <Search className="h-12 w-12 text-gray-500" />
+                    <Search className="h-12 w-12 text-gray-500" />
                 </div>
                 <h3 className="text-xl font-semibold text-white mb-2">
                   Busca en todo tu historial

@@ -1,5 +1,5 @@
 // 📱 SERVICE WORKER - DEVOCIONARIOS BÍBLICOS
-// 🎯 Optimizado para notificaciones PWA nativas
+// 🎯 Optimizado para notificaciones PWA nativas y caché de API
 
 const CACHE_NAME = 'devocionarios-biblicos-v1';
 const urlsToCache = [
@@ -7,21 +7,18 @@ const urlsToCache = [
   '/home',
   '/dashboard',
   '/icons/web-app-manifest-192x192.png',
-  '/icons/web-app-manifest-512x512.png'
+  '/icons/web-app-manifest-512x512.png',
+  'https://api.biblesupersearch.com/api/books?language=es' // Añadir URL de la API
 ];
 
 // 🚀 Instalación del Service Worker
 self.addEventListener('install', (event) => {
-  
-  
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
-        
         return cache.addAll(urlsToCache);
       })
       .then(() => {
-        
         // Forzar activación inmediata
         return self.skipWaiting();
       })
@@ -30,20 +27,16 @@ self.addEventListener('install', (event) => {
 
 // ⚡ Activación del Service Worker
 self.addEventListener('activate', (event) => {
-  
-  
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
           if (cacheName !== CACHE_NAME) {
-            
             return caches.delete(cacheName);
           }
         })
       );
     }).then(() => {
-      
       // Tomar control inmediato de todas las páginas
       return self.clients.claim();
     })
@@ -52,59 +45,51 @@ self.addEventListener('activate', (event) => {
 
 // 🌐 Intercepción de requests (caché offline)
 self.addEventListener('fetch', (event) => {
-  // Solo cachear requests GET
   if (event.request.method !== 'GET') return;
-  
+
   event.respondWith(
     caches.match(event.request)
       .then((response) => {
-        // Devolver desde caché si existe
         if (response) {
           return response;
         }
-        
-        // Fetch desde la red
-        return fetch(event.request);
-      }
-    )
+        return fetch(event.request).then((networkResponse) => {
+          if (!networkResponse.ok) {
+            throw new Error('No se pudieron obtener los recursos');
+          }
+          return caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, networkResponse.clone());
+            return networkResponse;
+          });
+        }).catch((error) => {
+          console.error('Error en fetch:', error);
+          throw error;
+        });
+      })
   );
 });
 
 // 🔔 MANEJO DE NOTIFICACIONES
-
-// Mostrar notificación
 self.addEventListener('notificationclick', (event) => {
-  
-  
-  // Cerrar la notificación
   event.notification.close();
-  
   const { url, type, action } = event.notification.data || {};
-  
+
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true })
       .then((clientList) => {
-        // Si hay una ventana abierta, enfocarla
         for (const client of clientList) {
           if (client.url.includes(self.location.origin) && 'focus' in client) {
             client.focus();
-            
-            // Enviar mensaje al cliente sobre el clic
             client.postMessage({
               action: 'notification-click',
               data: { url, type, action }
             });
-            
-            // Navegar a la URL específica si se proporcionó
             if (url) {
               client.navigate(url);
             }
-            
             return;
           }
         }
-        
-        // Si no hay ventana abierta, abrir una nueva
         if (clients.openWindow) {
           const targetUrl = url || '/home';
           return clients.openWindow(targetUrl);
@@ -117,29 +102,23 @@ self.addEventListener('notificationclick', (event) => {
 self.addEventListener('notificationclick', (event) => {
   const { action } = event;
   const notificationData = event.notification.data || {};
-  
-  
-  
+
   event.notification.close();
-  
+
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true })
       .then((clientList) => {
-        // Buscar ventana existente
         const client = clientList.find(c => 
           c.url.includes(self.location.origin) && 'focus' in c
         );
-        
+
         if (client) {
           client.focus();
-          
-          // Enviar acción al cliente
           client.postMessage({
             action: 'notification-action',
             data: { action, notificationData }
           });
-          
-          // Manejar acciones específicas
+
           switch (action) {
             case 'start-study':
               client.navigate('/dashboard');
@@ -155,7 +134,6 @@ self.addEventListener('notificationclick', (event) => {
               client.navigate(notificationData.url || '/home');
               break;
             case 'remind-1hour':
-              // Programar recordatorio en 1 hora
               setTimeout(() => {
                 self.registration.showNotification('⏰ Recordatorio de Estudio', {
                   body: 'Es hora de dedicar tiempo a tu crecimiento espiritual.',
@@ -174,9 +152,7 @@ self.addEventListener('notificationclick', (event) => {
               break;
           }
         } else if (clients.openWindow) {
-          // Abrir nueva ventana si no existe
           let targetUrl = '/home';
-          
           switch (action) {
             case 'start-study':
             case 'continue-streak':
@@ -190,19 +166,16 @@ self.addEventListener('notificationclick', (event) => {
               targetUrl = notificationData.url || '/home';
               break;
           }
-          
           return clients.openWindow(targetUrl);
         }
       })
   );
 });
 
-// 📱 Push messages (para futuras expansiones con servidor)
+// 📱 Push messages
 self.addEventListener('push', (event) => {
-  
-  
   if (!event.data) return;
-  
+
   const data = event.data.json();
   const options = {
     body: data.body,
@@ -212,19 +185,16 @@ self.addEventListener('push', (event) => {
     data: data.data || {},
     actions: data.actions || []
   };
-  
+
   event.waitUntil(
     self.registration.showNotification(data.title, options)
   );
 });
 
-// 🔄 Sincronización en background (para futuras funcionalidades)
+// 🔄 Sincronización en background
 self.addEventListener('sync', (event) => {
-  
-  
   if (event.tag === 'background-sync-devocionales') {
     event.waitUntil(
-      // Aquí podrías sincronizar datos cuando haya conexión
       syncDevocionales()
     );
   }
@@ -233,8 +203,6 @@ self.addEventListener('sync', (event) => {
 // 📊 Función para sincronizar devocionarios (placeholder)
 async function syncDevocionales() {
   try {
-    
-    // Implementar lógica de sincronización
     return Promise.resolve();
   } catch (error) {
     console.error('❌ Error sincronizando:', error);
@@ -245,9 +213,7 @@ async function syncDevocionales() {
 // 🎯 Eventos personalizados para estadísticas
 self.addEventListener('message', (event) => {
   const { action, data } = event.data;
-  
-  
-  
+
   switch (action) {
     case 'skip-waiting':
       self.skipWaiting();
@@ -268,32 +234,7 @@ self.addEventListener('message', (event) => {
 // 📈 Logging mejorado para debugging
 function log(message, data = null) {
   const timestamp = new Date().toISOString();
-  
 }
 
 // 🚀 Inicialización
 log('Service Worker inicializado para Devocionarios Bíblicos');
-
-/**
- * 🔧 CARACTERÍSTICAS DE ESTE SERVICE WORKER:
- * 
- * ✅ Notificaciones ricas con acciones
- * ✅ Navegación inteligente según la acción
- * ✅ Manejo de ventanas existentes vs nuevas
- * ✅ Caché offline para recursos críticos
- * ✅ Comunicación bidireccional con la app
- * ✅ Programación de recordatorios
- * ✅ Soporte para push messages futuras
- * ✅ Background sync preparado
- * ✅ Logging detallado para debugging
- * ✅ Manejo robusto de errores
- * 
- * 📱 FUNCIONALIDAD ESPECÍFICA PARA DEVOCIONARIOS:
- * 
- * 🔔 Recordatorios inteligentes por hora del día
- * 📖 Acciones específicas (estudiar, ver progreso)
- * ⏰ Snooze de 1 hora para recordatorios
- * 🔥 Manejo especial de rachas
- * 📊 Navegación contextual según tipo de notificación
- * 🎯 Optimizado para engagement espiritual
- */ 

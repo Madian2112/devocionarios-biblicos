@@ -9,9 +9,10 @@ export default function LandingPage() {
     const router = useRouter();
     const { user, loading } = useAuthContext();
 
-    // 🚀 Redirigir usuarios autenticados directamente a /home
+    // 🚀 Redirección instantánea para usuarios autenticados
     useEffect(() => {
-        if (!loading && user) {
+        if (user && !loading) {
+            // Usar replace para navegación limpia
             router.replace('/home');
         }
     }, [user, loading, router]);
@@ -20,20 +21,22 @@ export default function LandingPage() {
         router.push('/login');
     }
 
-    // 🚀 Nueva función para ir directo al registro
     const handleSignupClick = () => {
         router.push('/login?mode=signup');
     }
 
-    // Mostrar loading mientras verifica autenticación para evitar parpadeo
-    if (loading) {
-        return null;
+    // 🚀 Si hay usuario, no renderizar nada (redirección en curso)
+    if (user) {
+        return (
+            <div className="flex h-screen w-full items-center justify-center bg-gradient-to-br from-[#0a0a0a] to-[#0f0f0f]">
+                <div className="flex flex-col items-center space-y-4">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
+                    <p className="text-gray-400 text-xs">Redirigiendo...</p>
+                </div>
+            </div>
+        );
     }
 
-    // Solo mostrar landing page si no hay usuario autenticado
-    if (!user) {
-        return <LandingPageComponent onLoginClick={handleLoginClick} onSignupClick={handleSignupClick} />
-    }
-
-    return null; // No debería llegar aquí, pero por seguridad
+    // 🚀 Renderizar landing page inmediatamente para usuarios no autenticados
+    return <LandingPageComponent onLoginClick={handleLoginClick} onSignupClick={handleSignupClick} />
 }

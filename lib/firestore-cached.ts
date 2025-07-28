@@ -80,8 +80,8 @@ class CachedFirestoreService {
   }
 
   // 🚀 Guardar devocional y actualizar cache
-  async saveDevocional(userId: string, devocional: Omit<Devocional, "createdAt" | "updatedAt" | "userId">): Promise<Devocional> {
-    const savedDevocional = await firestoreService.saveDevocional(userId, devocional);
+  async saveDevocional(userId: string,email:string ,devocional: Omit<Devocional, "createdAt" | "updatedAt" | "userId">): Promise<Devocional> {
+    const savedDevocional = await firestoreService.saveDevocional(userId, email, devocional);
     
     // 🚀 Precargar versículos y actualizar cache
     const versiculosTextos = await cachedBibleService.precacheDevocionalVerses(savedDevocional);
