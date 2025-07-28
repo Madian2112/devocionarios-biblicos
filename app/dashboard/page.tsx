@@ -125,7 +125,7 @@ function DashboardPage() {
 
       // Actualizar en Firestore
       const { userId, ...devocionalData } = updatedDevocional;
-      await cachedFirestoreService.saveDevocional(user.uid, devocionalData);
+      await cachedFirestoreService.saveDevocional(user.uid, user.email || '', devocionalData);
 
       // 🔔 Si se marca como completado, notificar al servicio
       if (!devocional.completado && updatedDevocional.completado) {
