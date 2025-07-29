@@ -355,7 +355,7 @@ function DashboardPage() {
               <CardContent>
                 <div className="space-y-3">
                   {devocionales.slice(0, 5).map((devocional) => (
-                    <Link href={`/devocional/${devocional.id}`} key={devocional.id}>
+                    <Link href={`/devocional/${devocional.fecha}`} key={`${devocional.id}-${user?.email}`}>
                         <div
                             className="group flex items-center justify-between p-4 bg-[#1a1a1a]/30 rounded-xl cursor-pointer hover:bg-[#2a2a2a]/50 transition-all duration-300 backdrop-blur-sm border border-gray-800/50 hover:border-gray-700/50"
                         >
