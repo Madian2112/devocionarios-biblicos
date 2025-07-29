@@ -34,14 +34,15 @@ import { BibleViewer } from "@/components/bible/bible-viewer"
 import { BibleSelector } from "@/components/bible/bible-selector"
 import { exportTopicalStudyToPDF } from "@/lib/pdf-exporter"
 import type { TopicalStudy, StudyEntry } from "@/lib/firestore"
-import { firestoreService } from "@/lib/firestore"
+// import { firestoreService } from "@/lib/firestore"
 import { useAuthContext } from "@/context/auth-context"
 import { Timestamp } from "firebase/firestore"
 import { fetchVerseText } from "@/lib/bible-api"
 import withAuth from "@/components/auth/with-auth"
 import { useToast } from "@/hooks/use-toast"
 import { useDisableMobileZoom } from '@/hooks/use-disable-mobile-zoom';
-
+import {useTopicalStudies} from '@/hooks/use-sincronizar-temas';
+import { smartSyncFirestoreService } from '@/lib/services/sincronizacion-inteligente-firestore';
 
 function TopicalStudyPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
@@ -57,6 +58,8 @@ function TopicalStudyPage({ params }: { params: Promise<{ id: string }> }) {
   const hasChangesRef = useRef(false);
   const [deleteEntryDialogOpen, setDeleteEntryDialogOpen] = useState(false);
   const [entryToDelete, setEntryToDelete] = useState<{ id: string; referencia: string } | null>(null);
+
+  const {  saveStudy, deleteStudy } = useTopicalStudies();
   
   useDisableMobileZoom()
 
@@ -75,7 +78,7 @@ function TopicalStudyPage({ params }: { params: Promise<{ id: string }> }) {
                 updatedAt: Timestamp.now(),
             });
         } else {
-            const fetchedStudy = await firestoreService.getTopicalStudyById(user.uid, id);
+            const fetchedStudy = await smartSyncFirestoreService.getTopicalStudyById(user.uid, id);
             setStudy(fetchedStudy);
         }
         setLoading(false);
@@ -161,7 +164,7 @@ function TopicalStudyPage({ params }: { params: Promise<{ id: string }> }) {
     setSaving(true);
     try {
         const { userId, ...studyData } = study;
-        const savedStudy = await firestoreService.saveTopicalStudy(user.uid, studyData);
+        const savedStudy = await saveStudy(studyData);
         
         // 🔔 Notificación de éxito
         toast({
@@ -172,7 +175,7 @@ function TopicalStudyPage({ params }: { params: Promise<{ id: string }> }) {
         
         if(isNew) {
             // Si era un nuevo estudio, reemplaza la URL para que el ID sea el correcto
-            router.replace(`/topical/${savedStudy.id}`);
+            router.replace(`/topical/${savedStudy?.id}`);
         }
     } catch (error) {
         console.error("Error guardando estudio:", error);
@@ -196,7 +199,7 @@ function TopicalStudyPage({ params }: { params: Promise<{ id: string }> }) {
     try {
       setSaving(true);
       const { userId, ...studyData } = study;
-      await firestoreService.saveTopicalStudy(user.uid, studyData);
+      await saveStudy(studyData);
       
       hasChangesRef.current = false;
       
@@ -236,7 +239,7 @@ function TopicalStudyPage({ params }: { params: Promise<{ id: string }> }) {
       if (hasChangesRef.current && study && user) {
         // Guardado síncrono al salir
         const { userId, ...studyData } = study;
-        firestoreService.saveTopicalStudy(user.uid, studyData);
+        saveStudy(studyData);
       }
     };
 
@@ -247,7 +250,7 @@ function TopicalStudyPage({ params }: { params: Promise<{ id: string }> }) {
       window.removeEventListener('beforeunload', handleBeforeUnload);
       if (hasChangesRef.current && study && user) {
         const { userId, ...studyData } = study;
-        firestoreService.saveTopicalStudy(user.uid, studyData);
+        saveStudy(studyData);
       }
       if (autoSaveTimeoutRef.current) {
         clearTimeout(autoSaveTimeoutRef.current);

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, use } from "react"
 import Link from "next/link"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
@@ -27,12 +27,14 @@ import { GradientCard } from "@/components/ui/gradient-card"
 import type { Devocional } from "@/lib/firestore"
 import { useAuthContext } from "@/context/auth-context"
 // 🚀 Usar el servicio con cache móvil automático
-import { cachedFirestoreService } from "@/lib/firestore-cached"
+// import { cachedFirestoreService } from "@/lib/firestore-cached"
 import { notificationService } from "@/lib/notification-service"
 import { Timestamp } from "firebase/firestore"
 import { BibleViewer } from "@/components/bible/bible-viewer"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import withAuth from "@/components/auth/with-auth"
+import {SmartSyncButton} from '@/components/cache/boton-inteligente'
+import {useDevocionales } from '@/hooks/use-sincronizar-devocionales'
 
 function DashboardPage() {
   const { user } = useAuthContext();
@@ -47,36 +49,43 @@ function DashboardPage() {
   };
   
   const [selectedDate, setSelectedDate] = useState(getLocalDateString())
-  const [devocionales, setDevocionales] = useState<Devocional[]>([])
+  // const [devocionales, setDevocionales] = useState<Devocional[]>([])
   const [loading, setLoading] = useState(true);
   const [devocionalDelDia, setDevocionalDelDia] = useState<Devocional | null>(null);
 
-  // 🚀 Efecto para cargar devocionales con cache automático
+  const { devocionales, loadingSincronizado, error, getDevocionalByKey } = useDevocionales ();
+
   useEffect(() => {
-    const fetchDevocionales = async () => {
-      if (user) {
-        setLoading(true);
-        try {
-          const userDevocionarios = await cachedFirestoreService.getDevocionarios(user.uid);
-          setDevocionales(userDevocionarios);
-        } catch (error) {
-            console.error("Error al cargar devocionales:", error);
-        } finally {
-            setLoading(false);
-        }
-      } else {
-        setLoading(false);
-      }
-    };
-    fetchDevocionales();
-  }, [user]);
+    setLoading(loadingSincronizado);
+  }, [loadingSincronizado])
+  
+
+  // 🚀 Efecto para cargar devocionales con cache automático
+  // useEffect(() => {
+  //   const fetchDevocionales = async () => {
+  //     if (user) {
+  //       setLoading(true);
+  //       try {
+  //         const userDevocionarios = await cachedFirestoreService.getDevocionarios(user.uid);
+  //         setDevocionales(userDevocionarios);
+  //       } catch (error) {
+  //           console.error("Error al cargar devocionales:", error);
+  //       } finally {
+  //           setLoading(false);
+  //       }
+  //     } else {
+  //       setLoading(false);
+  //     }
+  //   };
+  //   fetchDevocionales();
+  // }, [user]);
 
   // 🚀 Efecto para cargar devocional del día con cache móvil
   useEffect(() => {
     const fetchDevocionalDelDia = async () => {
       if (user && selectedDate) {
         try {
-          const devocional = await cachedFirestoreService.getDevocionalByDate(`${selectedDate}-${user.email}`);
+          const devocional = await getDevocionalByKey(`${selectedDate}-${user.email}`);
           setDevocionalDelDia(devocional);
         } catch (error) {
           console.error("Error al cargar devocional del día:", error);
@@ -117,30 +126,30 @@ function DashboardPage() {
     if (!user) return;
 
     try {
-      const updatedDevocional: Devocional = {
-        ...devocional,
-        completado: !devocional.completado,
-        updatedAt: Timestamp.now(),
-      };
+      // const updatedDevocional: Devocional = {
+      //   ...devocional,
+      //   completado: !devocional.completado,
+      //   updatedAt: Timestamp.now(),
+      // };
 
-      // Actualizar en Firestore
-      const { userId, ...devocionalData } = updatedDevocional;
-      await cachedFirestoreService.saveDevocional(user.uid, devocionalData);
+      // // Actualizar en Firestore
+      // const { userId, ...devocionalData } = updatedDevocional;
+      // await cachedFirestoreService.saveDevocional(user.uid, devocionalData);
 
-      // 🔔 Si se marca como completado, notificar al servicio
-      if (!devocional.completado && updatedDevocional.completado) {
-        notificationService.markDevocionalCompleted();
-      }
+      // // 🔔 Si se marca como completado, notificar al servicio
+      // if (!devocional.completado && updatedDevocional.completado) {
+      //   notificationService.markDevocionalCompleted();
+      // }
 
-      // Actualizar estado local
-      if (devocionalDelDia && devocionalDelDia.id === devocional.id) {
-        setDevocionalDelDia(updatedDevocional);
-      }
+      // // Actualizar estado local
+      // if (devocionalDelDia && devocionalDelDia.id === devocional.id) {
+      //   setDevocionalDelDia(updatedDevocional);
+      // }
 
-      // Actualizar lista de devocionales
-      setDevocionales(prev => 
-        prev.map(d => d.id === devocional.id ? updatedDevocional : d)
-      );
+      // // Actualizar lista de devocionales
+      // setDevocionales(prev => 
+      //   prev.map(d => d.id === devocional.id ? updatedDevocional : d)
+      // );
 
     } catch (error) {
       console.error('Error actualizando devocional:', error);
@@ -153,11 +162,19 @@ function DashboardPage() {
     return <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#0a0a0a] to-[#0f0f0f]"><LoadingSpinner size="lg" /></div>
   }
 
+  if(error){
+    return <div className="bg-red-50 border border-red-200 rounded-lg p-4"> <p className="text-red-600">{error}</p></div>
+  }
+
   return (
      <div className="min-h-screen bg-gradient-to-br from-[#0a0a0a] via-[#0f0f0f] to-[#0a0a0a] text-white">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 max-w-7xl">
          {/* Header del Dashboard */}
         <div className="flex flex-col gap-4 mb-8">
+              <SmartSyncButton 
+                className="shadow-lg" 
+                showText={false}
+              />
             <div className="flex flex-wrap items-center justify-between gap-4">
                 {/* Botón Home */}
                 <Link href="/home" className="order-first">

@@ -27,12 +27,11 @@ import {
 } from "@/components/ui/alert-dialog"
 import type { TopicalStudy } from "@/lib/firestore"
 import { useAuthContext } from "@/context/auth-context"
-import { firestoreService } from "@/lib/firestore"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import withAuth from "@/components/auth/with-auth"
 import { Timestamp } from "firebase/firestore"
 // 🚀 Usar el hook optimizado con cache
-import { useTopicalStudies } from "@/hooks/use-firestore"
+import { useTopicalStudies } from "@/hooks/use-sincronizar-temas"
 import { useToast } from "@/hooks/use-toast"
 import { useDisableMobileZoom } from '@/hooks/use-disable-mobile-zoom';
 
@@ -49,7 +48,7 @@ function TopicalStudiesPage() {
   useDisableMobileZoom()
 
   // 🚀 Usar hook optimizado con cache y mejor manejo de estados
-  const { studies: topicalStudies, loading, error, invalidateCache } = useTopicalStudies();
+  const { studies: topicalStudies, loading, saveStudy, deleteStudy } = useTopicalStudies();
 
   // 🔄 Invalidar cache automáticamente cuando se regresa de página individual
   useEffect(() => {
@@ -64,7 +63,6 @@ function TopicalStudiesPage() {
         if (currentPath === '/topical' && referrer.includes('/topical/')) {
           
           setTimeout(() => {
-            invalidateCache();
             
             // Marcar todos los topics como "refrescando entradas" brevemente
             if (topicalStudies.length > 0) {
@@ -86,17 +84,16 @@ function TopicalStudiesPage() {
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [invalidateCache, topicalStudies]);
+  }, [ topicalStudies]);
 
   // 🔄 También invalidar cache cuando el componente se monta
-  useEffect(() => {
-    const sessionKey = 'topical-return-flag';
-    if (sessionStorage.getItem(sessionKey)) {
+  // useEffect(() => {
+  //   const sessionKey = 'topical-return-flag';
+  //   if (sessionStorage.getItem(sessionKey)) {
       
-      sessionStorage.removeItem(sessionKey);
-      invalidateCache();
-    }
-  }, [invalidateCache]);
+  //     sessionStorage.removeItem(sessionKey);
+  //   }
+  // }, [invalidateCache]);
 
   
 
@@ -160,7 +157,7 @@ function TopicalStudiesPage() {
         });
         
         
-        const savedStudy = await firestoreService.saveTopicalStudy(user.uid, topicDataWithoutUserId);
+        const savedStudyPage = await saveStudy(topicDataWithoutUserId);
         
         
         
@@ -173,8 +170,7 @@ function TopicalStudiesPage() {
         });
         
         // Replace the temporary object with the real one and redirect
-        invalidateCache(); // Invalidate cache to refetch with the new data
-        router.push(`/topical/${savedStudy.id}`);
+        router.push(`/topical/${savedStudyPage?.id}`);
     } catch (error: any) {
         console.error("❌ Error creando tema:", error);
         console.error("❌ Detalles del error:", {
@@ -219,10 +215,9 @@ function TopicalStudiesPage() {
     
     try {
         // 4. Eliminar de la base de datos
-        await firestoreService.deleteTopicalStudy(topicToDelete.id);
+        await deleteStudy(topicToDelete.id);
         
         // 5. Invalidar cache y forzar refetch
-        invalidateCache();
         
         
         
@@ -237,7 +232,6 @@ function TopicalStudiesPage() {
         console.error("❌ Error eliminando tema:", error);
         
         // 7. Si falla, recargar datos para revertir UI
-        invalidateCache();
         
         // 8. Notificación de error
         toast({
@@ -274,8 +268,7 @@ function TopicalStudiesPage() {
 
     try {
         const { userId, ...studyData } = updatedStudy;
-        await firestoreService.saveTopicalStudy(user.uid, studyData);
-        invalidateCache(); // Invalidate cache to refetch with the updated data
+        await saveStudy(studyData);
     } catch(error) {
         console.error("Error updating topic name:", error);
         // setTopicalStudies(originalStudies); // Rollback // This line is removed

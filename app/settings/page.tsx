@@ -23,6 +23,7 @@ import { useAuthContext } from "@/context/auth-context"
 import { notificationSystem } from "@/lib/hybrid-notification-system"
 import { nativeNotificationSystem } from "@/lib/native-notification-system"
 import { useToast } from "@/hooks/use-toast"
+import { CacheSettingsPanel } from "@/components/cache/panel-config-cache"
 
 interface NotificationSettings {
   enabled: boolean;
@@ -376,25 +377,7 @@ export default function SettingsPage() {
 
             </CardContent>
           </GradientCard>
-
-          {/* Info sobre PWA */}
-          <div className="p-4 rounded-xl bg-green-900/10 border border-green-500/30">
-            <div className="flex items-start gap-3">
-              <div className="p-2 bg-green-500/20 rounded-lg">
-                <Check className="h-4 w-4 text-green-400" />
-              </div>
-              <div>
-                <p className="text-sm text-green-300 font-medium">📱 Notificaciones Nativas PWA</p>
-                <p className="text-xs text-green-200/80 mt-1">
-                  100% gratuito • Funciona offline • Aparece en barra de notificaciones
-                </p>
-                <p className="text-xs text-green-200/60 mt-1">
-                  Sin servicios externos • Privacidad garantizada
-                </p>
-              </div>
-            </div>
-          </div>
-
+          <CacheSettingsPanel />
         </div>
       </div>
     </div>

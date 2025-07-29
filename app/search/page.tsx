@@ -23,9 +23,11 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import type { Devocional, TopicalStudy } from "@/lib/firestore"
 import { BibleViewer } from "@/components/bible/bible-viewer"
 import { useAuthContext } from "@/context/auth-context"
-import { firestoreService } from "@/lib/firestore"
+// import { firestoreService } from "@/lib/firestore"
 import withAuth from "@/components/auth/with-auth"
 import { useDisableMobileZoom } from '@/hooks/use-disable-mobile-zoom';
+import {useDevocionales} from '@/hooks/use-sincronizar-devocionales'
+import {smartSyncFirestoreService} from '@/lib/services/sincronizacion-inteligente-firestore'
 
 function SearchPage() {
   const { user } = useAuthContext();
@@ -33,6 +35,7 @@ function SearchPage() {
   const [loading, setLoading] = useState(true)
   const [devocionales, setDevocionarios] = useState<Devocional[]>([]);
   const [topicalStudies, setTopicalStudies] = useState<TopicalStudy[]>([]);
+  const { saveDevocional, getDevocionalByKey } = useDevocionales();
   
   useDisableMobileZoom()
 
@@ -42,8 +45,8 @@ function SearchPage() {
             setLoading(true);
             try {
                 const [devos, topics] = await Promise.all([
-                    firestoreService.getDevocionarios(user.uid),
-                    firestoreService.getTopicalStudies(user.uid)
+                    (await smartSyncFirestoreService.getDevocionarios(user.uid)).data,
+                    (await smartSyncFirestoreService.getTopicalStudies(user.uid)).data
                 ]);
                 setDevocionarios(devos);
                 setTopicalStudies(topics);

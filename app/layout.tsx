@@ -13,6 +13,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import dynamic from 'next/dynamic';
 
+
 const inter = Inter({ 
   subsets: ["latin"],
   display: "swap",

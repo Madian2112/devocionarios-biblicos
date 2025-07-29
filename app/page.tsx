@@ -4,10 +4,15 @@ import { LandingPage as LandingPageComponent } from "@/components/landing-page";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { useAuthContext } from "@/context/auth-context";
+import { enhancedIndexedDBCache } from '@/lib/cache/indexdDB-avanzado';
 
 export default function LandingPage() {
     const router = useRouter();
     const { user, loading } = useAuthContext();
+
+    useEffect(() => {
+        enhancedIndexedDBCache.init();
+    }, []);
 
     // 🚀 Redirección instantánea para usuarios autenticados
     useEffect(() => {

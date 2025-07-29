@@ -31,7 +31,6 @@ import { BibleSelector } from "@/components/bible/bible-selector"
 import { BibleViewer } from "@/components/bible/bible-viewer"
 import { exportDevocionalToPDF } from "@/lib/pdf-exporter"
 import type { Devocional, Versiculo, Referencia } from "@/lib/firestore"
-import { firestoreService } from "@/lib/firestore";
 import { useAuthContext } from "@/context/auth-context"
 import { Timestamp } from "firebase/firestore"
 import { fetchVerseText } from "@/lib/bible-api"
@@ -40,6 +39,7 @@ import { useToast } from "@/hooks/use-toast"
 import { notificationService } from "@/lib/notification-service"
 import { useDisableMobileZoom } from '@/hooks/use-disable-mobile-zoom';
 import { usePWACleanup, usePWADetection } from "@/hooks/use-pwa-cleanup"
+import {useDevocionales} from '@/hooks/use-sincronizar-devocionales'
 
 
 function DevocionalPage({ params }: { params: Promise<{ id: string }> }) {
@@ -52,6 +52,7 @@ function DevocionalPage({ params }: { params: Promise<{ id: string }> }) {
   const [devocional, setDevocional] = useState<Devocional | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const { saveDevocional, getDevocionalByKey } = useDevocionales ();
 
   useDisableMobileZoom()
 
@@ -82,7 +83,7 @@ function DevocionalPage({ params }: { params: Promise<{ id: string }> }) {
       if (user && fecha) {
         setLoading(true);
         const key = `${fecha}-${user.email}`;
-        const existingDevocional = await firestoreService.getDevocionalByDate(key);
+        const existingDevocional = await getDevocionalByKey(key);
         
         if (existingDevocional) {
           setDevocional(existingDevocional);
@@ -139,7 +140,7 @@ function DevocionalPage({ params }: { params: Promise<{ id: string }> }) {
       const { userId, ...devocionalData } = devocional;
       devocionalData.completado = devocional.aprendizajeGeneral.trim() !== "" ? true: false;
       console.log('Este es mi usuarios:', user);
-      await firestoreService.saveDevocional(user.uid, devocionalData);
+      await saveDevocional(devocionalData);
       
       // 🔔 Notificación de éxito
       toast({

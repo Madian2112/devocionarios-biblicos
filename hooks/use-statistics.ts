@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuthContext } from '@/context/auth-context';
-import { cachedFirestoreService } from '@/lib/firestore-cached';
 import type { Devocional, TopicalStudy } from '@/lib/firestore';
+import { smartSyncFirestoreService, SyncResult } from '@/lib/services/sincronizacion-inteligente-firestore';
 
 interface UserStatistics {
   completados: number;      // Devocionales completados
@@ -87,8 +87,8 @@ export function useStatistics(): UserStatistics {
       setTimeout(async () => {
         try {
           const [devocionales, estudios] = await Promise.all([
-            cachedFirestoreService.getDevocionarios(user.uid),
-            cachedFirestoreService.getTopicalStudies(user.uid)
+            (await smartSyncFirestoreService.getDevocionarios(user.uid)).data,
+            (await smartSyncFirestoreService.getTopicalStudies(user.uid)).data
           ]);
 
           const newStats = computeStats(devocionales, estudios);
@@ -104,8 +104,8 @@ export function useStatistics(): UserStatistics {
     try {
       // 📊 Obtener datos con Promise.all para paralelismo
       const [devocionales, estudios] = await Promise.all([
-        cachedFirestoreService.getDevocionarios(user.uid),
-        cachedFirestoreService.getTopicalStudies(user.uid)
+        (await smartSyncFirestoreService.getDevocionarios(user.uid)).data,
+        (await smartSyncFirestoreService.getTopicalStudies(user.uid)).data
       ]);
 
       
