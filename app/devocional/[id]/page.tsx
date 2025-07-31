@@ -40,6 +40,9 @@ import { notificationService } from "@/lib/notification-service"
 import { useDisableMobileZoom } from '@/hooks/use-disable-mobile-zoom';
 import { usePWACleanup, usePWADetection } from "@/hooks/use-pwa-cleanup"
 import {useDevocionales} from '@/hooks/use-sincronizar-devocionales'
+import { createBibleSelector } from "@/components/bible/create-bible-selector"
+import { VersiculoBibleSelector } from "@/components/bible/versiculo-bbible-selector"
+
 
 
 function DevocionalPage({ params }: { params: Promise<{ id: string }> }) {
@@ -53,6 +56,22 @@ function DevocionalPage({ params }: { params: Promise<{ id: string }> }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const { saveDevocional, getDevocionalByKey } = useDevocionales ();
+
+  const bible = BibleSelector
+
+  const instanceIds = useMemo(() => ({
+    mainDevocional: `main-devocional-${fecha}-${user?.uid || 'anonymous'}`,
+    mainBibleViewer: `main-bible-viewer-${fecha}-${user?.uid || 'anonymous'}`,
+    getVersiculoId: (versiculoId: string) => `versiculo-${versiculoId}-${fecha}`,
+    getVersiculoViewerId: (versiculoId: string) => `versiculo-viewer-${versiculoId}-${fecha}`
+  }), [fecha, user?.uid]);
+
+  const MainBibleSelector = createBibleSelector({
+    instanceId: instanceIds.mainDevocional,
+    defaultReference: devocional?.citaBiblica,
+    triggerText: "Seleccionar"
+  });
+
 
   useDisableMobileZoom()
 
@@ -71,12 +90,7 @@ function DevocionalPage({ params }: { params: Promise<{ id: string }> }) {
   }, [isPWA, triggerCleanup]);
 
   // 🔥 SOLUCIÓN: Memoized instance IDs para evitar re-renders
-  const instanceIds = useMemo(() => ({
-    mainDevocional: `main-devocional-${fecha}-${user?.uid || 'anonymous'}`,
-    mainBibleViewer: `main-bible-viewer-${fecha}-${user?.uid || 'anonymous'}`,
-    getVersiculoId: (versiculoId: string) => `versiculo-${versiculoId}-${fecha}`,
-    getVersiculoViewerId: (versiculoId: string) => `versiculo-viewer-${versiculoId}-${fecha}`
-  }), [fecha, user?.uid]);
+
 
   useEffect(() => {
     async function fetchOrCreateDevocional() {
@@ -185,7 +199,7 @@ function DevocionalPage({ params }: { params: Promise<{ id: string }> }) {
       updatedVersiculos[index] = {
         ...updatedVersiculos[index],
         referencia: reference,
-        texto: verseText,
+        texto: `RV196 - ${reference}\n\n ${verseText}`,
         versionTexto: 'rv1960'
       };
       
@@ -227,28 +241,27 @@ const addVersiculo = () => {
     if (!devocional) return
     handleDevocionalChange('versiculos', devocional.versiculos.filter((v) => v.id !== versiculoId));
   }
-  
-const handleVersiculoChange = (index: number, field: keyof Versiculo, value: any) => {
-  if (!devocional) return;
-  
-  
-  
-  
-  const updatedVersiculos = [...devocional.versiculos];
-  
-  // ✅ VERIFICACIÓN CRÍTICA: Asegurar que el versículo existe
-  if (index < 0 || index >= updatedVersiculos.length || !updatedVersiculos[index]) {
-    console.error(`❌ Versículo en índice ${index} no existe. Array length: ${updatedVersiculos.length}`);
-    console.error('Versículos disponibles:', updatedVersiculos.map((v, i) => ({ index: i, id: v.id, referencia: v.referencia })));
-    return;
-  }
-  
-  // ✅ Ahora es seguro hacer el spread
-  updatedVersiculos[index] = { ...updatedVersiculos[index], [field]: value };
-  
-  
-  handleDevocionalChange('versiculos', updatedVersiculos);
-};
+
+  const handleVersiculoChange = (index: number, updates: Partial<Versiculo>) => {
+    if (!devocional) return;
+    
+    const updatedVersiculos = [...devocional.versiculos];
+    
+    // ✅ VERIFICACIÓN CRÍTICA: Asegurar que el versículo existe
+    if (index < 0 || index >= updatedVersiculos.length || !updatedVersiculos[index]) {
+      console.error(`❌ Versículo en índice ${index} no existe. Array length: ${updatedVersiculos.length}`);
+      console.error('Versículos disponibles:', updatedVersiculos.map((v, i) => ({ index: i, id: v.id, referencia: v.referencia })));
+      return;
+    }
+    
+    // ✅ Actualizar múltiples campos de una vez
+    updatedVersiculos[index] = { 
+      ...updatedVersiculos[index], 
+      ...updates 
+    };
+    
+    handleDevocionalChange('versiculos', updatedVersiculos);
+  };
 
   const addReferencia = () => {
     if (!devocional) return
@@ -372,26 +385,30 @@ const handleVersiculoChange = (index: number, field: keyof Versiculo, value: any
                  <Badge variant="outline" className="border-gray-600 text-gray-400 shrink-0">
                     {devocional.versionCitaBiblica?.toUpperCase() || 'RV1960'}
                  </Badge>
-                <BibleSelector
-                  instanceId={instanceIds.mainDevocional} 
-                  currentReference={devocional.citaBiblica}
-                  onSelect={async (reference) => {
-                    setSaving(true);
-                    const verseText = await fetchVerseText(reference, 'rv1960');
-                    const versoCompleto = `RV1960 - ${reference}\n\n${verseText}`;
-                    setDevocional(prev => prev ? { ...prev, citaBiblica: reference, textoDevocional: versoCompleto, versionCitaBiblica: 'rv1960' } : null);
-                    setSaving(false);
-                  }}
-                  trigger={
-                    <Button
-                      variant="outline"
-                      className="bg-[#2a2a2a]/50 border-gray-700 hover:bg-[#3a3a3a]/50 shrink-0"
-                    >
-                      <Book className="h-4 w-4 mr-2" />
-                      Seleccionar
-                    </Button>
-                  }
-                />
+                    <MainBibleSelector
+                      currentReference={devocional.citaBiblica}
+                      onSelect={async (reference) => {
+                        setSaving(true);
+                        const verseText = await fetchVerseText(reference, 'rv1960');
+                        const versoCompleto = `RV1960 - ${reference}\n\n${verseText}`;
+                        setDevocional(prev => prev ? { 
+                          ...prev, 
+                          citaBiblica: reference, 
+                          textoDevocional: versoCompleto, 
+                          versionCitaBiblica: 'rv1960' 
+                        } : null);
+                        setSaving(false);
+                      }}
+                      trigger={
+                        <Button
+                          variant="outline"
+                          className="bg-[#2a2a2a]/50 border-gray-700 hover:bg-[#3a3a3a]/50 shrink-0"
+                        >
+                          <Book className="h-4 w-4 mr-2" />
+                          Seleccionar
+                        </Button>
+                      }
+                    />
                 {devocional.citaBiblica && (
                   <BibleViewer
                     instanceId={instanceIds.mainBibleViewer}
@@ -544,7 +561,7 @@ const handleVersiculoChange = (index: number, field: keyof Versiculo, value: any
                                       value={versiculo?.referencia || ''}
                                       onChange={(e) => {
                                         
-                                        handleVersiculoChange(index, 'referencia', e.target.value);
+                                        handleVersiculoChange(index, {referencia: e.target.value});
                                       }}
                                       placeholder="Ej: Salmos 23:1"
                                       className="bg-[#2a2a2a]/50 border-gray-700 text-white backdrop-blur-sm focus:border-blue-500 transition-colors"
@@ -553,8 +570,7 @@ const handleVersiculoChange = (index: number, field: keyof Versiculo, value: any
                                   <Badge variant="outline" className="border-gray-600 text-gray-400 shrink-0">
                                     {versiculo?.versionTexto?.toUpperCase() || 'RV1960'}
                                   </Badge>
-                                      <BibleSelector
-                                        key={instanceIds.getVersiculoId(versiculo.id)}
+                                      <VersiculoBibleSelector
                                         instanceId={`versiculo-${versiculo.id}`}
                                         onSelect={(reference) => handleBibleSelection(index, reference)}
                                         currentReference={versiculo?.referencia || ''}
@@ -577,8 +593,10 @@ const handleVersiculoChange = (index: number, field: keyof Versiculo, value: any
                                         try {
                                           setSaving(true);
                                           const verseText = await fetchVerseText(versiculo.referencia, selectedVersion);
-                                          handleVersiculoChange(index, 'texto', verseText);
-                                          handleVersiculoChange(index, 'versionTexto', selectedVersion);
+                                          handleVersiculoChange(index, {
+                                            texto: `${selectedVersion.toLocaleUpperCase()} - ${versiculo.referencia}\n\n${verseText}`,
+                                            versionTexto: selectedVersion
+                                          });
                                           setSaving(false);
                                         } catch (error) {
                                           console.error('Error al cambiar versión:', error);
@@ -602,7 +620,7 @@ const handleVersiculoChange = (index: number, field: keyof Versiculo, value: any
                                 <label className="block text-sm font-medium text-gray-300 mb-3">Texto del Versículo</label>
                                 <Textarea
                                   value={versiculo?.texto || ''}
-                                  onChange={(e) => handleVersiculoChange(index, 'texto', e.target.value)}
+                                  onChange={(e) => handleVersiculoChange(index, {texto: e.target.value})}
                                   placeholder="Texto completo del versículo..."
                                   className="bg-[#2a2a2a]/50 border-gray-700 text-white backdrop-blur-sm focus:border-blue-500 transition-colors resize-none"
                                 />
@@ -613,7 +631,7 @@ const handleVersiculoChange = (index: number, field: keyof Versiculo, value: any
                                 </label>
                                 <Textarea
                                   value={versiculo?.aprendizaje || ''}
-                                  onChange={(e) => handleVersiculoChange(index, 'aprendizaje', e.target.value)}
+                                  onChange={(e) => handleVersiculoChange(index, {aprendizaje: e.target.value})}
                                   placeholder="¿Qué te enseña este versículo específicamente? ¿Cómo se relaciona con tu vida?"
                                   className="bg-[#2a2a2a]/50 border-gray-700 text-white backdrop-blur-sm focus:border-blue-500 transition-colors resize-none"
                                 />

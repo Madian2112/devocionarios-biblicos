@@ -38,7 +38,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Switch } from "@/components/ui/switch";
 
-interface BibleSelectorProps {
+export interface BibleSelectorProps {
   onSelect: (reference: string) => void;
   trigger?: React.ReactNode;
   currentReference?: string;
