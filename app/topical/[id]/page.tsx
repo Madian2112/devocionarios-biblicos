@@ -65,133 +65,94 @@ import { CSS } from "@dnd-kit/utilities"
 // Componente sorteable para drag & drop
 function SortableItem({ id, children }: { id: string; children: React.ReactNode }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
-  const [isLongPressing, setIsLongPressing] = useState(false)
-  const [isDragEnabled, setIsDragEnabled] = useState(false)
+  const [isLongPressActive, setIsLongPressActive] = useState(false)
   const longPressTimerRef = useRef<NodeJS.Timeout | null>(null)
-  const touchStartRef = useRef<{ x: number; y: number } | null>(null)
-  const elementRef = useRef<HTMLDivElement>(null)
+  const touchStartTimeRef = useRef<number>(0)
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.5 : 1,
+    opacity: isDragging ? 0.7 : 1,
+    zIndex: isDragging ? 1000 : 1,
   }
 
   // Detectar si es dispositivo móvil
   const isMobile = typeof window !== "undefined" && window.innerWidth <= 768
 
-  // Prevenir selección de texto y comportamientos por defecto
-  const preventDefaults = (e: Event) => {
-    e.preventDefault()
-    e.stopPropagation()
-  }
-
-  // Handlers mejorados para long press en móviles
-  const handleTouchStart = (e: React.TouchEvent) => {
+  // Handler simplificado para long press
+  const handlePointerDown = (e: React.PointerEvent) => {
     if (!isMobile) return
 
-    // Prevenir selección de texto y menú contextual
+    touchStartTimeRef.current = Date.now()
+
+    // Prevenir comportamientos por defecto
     e.preventDefault()
-    document.body.style.userSelect = "none"
-    document.body.style.webkitUserSelect = "none"
-
-    const touch = e.touches[0]
-    touchStartRef.current = { x: touch.clientX, y: touch.clientY }
-
-    // Agregar listeners para prevenir comportamientos por defecto
-    document.addEventListener("selectstart", preventDefaults)
-    document.addEventListener("contextmenu", preventDefaults)
+    e.stopPropagation()
 
     longPressTimerRef.current = setTimeout(() => {
-      setIsLongPressing(true)
-      setIsDragEnabled(true)
+      setIsLongPressActive(true)
 
-      // Vibración táctil más suave
+      // Vibración táctil
       if (navigator.vibrate) {
-        navigator.vibrate([50, 50, 50])
+        navigator.vibrate(100)
       }
 
       toast({
-        title: "🔄 Listo para reordenar",
-        description: "Arrastra para cambiar la posición",
-        duration: 2000,
+        title: "🔄 Listo para mover",
+        description: "Arrastra el elemento",
+        duration: 1500,
       })
-    }, 600) // Reducido a 600ms para mejor respuesta
+
+      // Auto-desactivar después de 8 segundos
+      setTimeout(() => {
+        setIsLongPressActive(false)
+      }, 8000)
+    }, 500) // 500ms para activar
   }
 
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (!touchStartRef.current || !longPressTimerRef.current) return
-
-    const touch = e.touches[0]
-    const deltaX = Math.abs(touch.clientX - touchStartRef.current.x)
-    const deltaY = Math.abs(touch.clientY - touchStartRef.current.y)
-
-    // Tolerancia más pequeña para mejor precisión
-    if (deltaX > 5 || deltaY > 5) {
-      clearTimeout(longPressTimerRef.current)
-      longPressTimerRef.current = null
-      cleanupTouchHandlers()
-    }
-  }
-
-  const handleTouchEnd = () => {
-    cleanupTouchHandlers()
-
+  const handlePointerUp = () => {
     if (longPressTimerRef.current) {
       clearTimeout(longPressTimerRef.current)
       longPressTimerRef.current = null
     }
-    touchStartRef.current = null
+  }
 
-    // Desactivar drag después de un tiempo más corto
-    if (isDragEnabled && !isDragging) {
-      setTimeout(() => {
-        setIsDragEnabled(false)
-        setIsLongPressing(false)
-      }, 3000) // Reducido a 3 segundos
+  const handlePointerMove = (e: React.PointerEvent) => {
+    // Si se mueve antes del long press, cancelar
+    if (longPressTimerRef.current && Date.now() - touchStartTimeRef.current < 500) {
+      clearTimeout(longPressTimerRef.current)
+      longPressTimerRef.current = null
     }
   }
 
-  const cleanupTouchHandlers = () => {
-    // Restaurar selección de texto
-    document.body.style.userSelect = ""
-    document.body.style.webkitUserSelect = ""
-
-    // Remover listeners
-    document.removeEventListener("selectstart", preventDefaults)
-    document.removeEventListener("contextmenu", preventDefaults)
-  }
-
-  // Limpiar timers y handlers al desmontar
+  // Cleanup al desmontar
   useEffect(() => {
     return () => {
       if (longPressTimerRef.current) {
         clearTimeout(longPressTimerRef.current)
       }
-      cleanupTouchHandlers()
     }
   }, [])
 
-  // Combinar listeners para desktop y móvil
-  const dragListeners = isMobile ? (isDragEnabled ? listeners : {}) : listeners
+  // Listeners condicionales
+  const dragListeners = isMobile ? (isLongPressActive ? listeners : {}) : listeners
 
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className={`relative group ${isMobile ? "touch-none select-none" : ""}`}
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
-      onTouchCancel={handleTouchEnd}
+      className={`relative group ${isMobile ? "touch-manipulation" : ""}`}
+      onPointerDown={handlePointerDown}
+      onPointerUp={handlePointerUp}
+      onPointerMove={handlePointerMove}
+      onPointerCancel={handlePointerUp}
+      {...(isMobile && isLongPressActive ? attributes : {})}
+      {...dragListeners}
     >
-      {/* Indicador visual mejorado para móviles */}
-      {isMobile && isLongPressing && (
-        <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-purple-500/20 border-2 border-blue-400/60 rounded-lg pointer-events-none z-20">
-          <div className="absolute inset-0 bg-blue-500/10 animate-pulse rounded-lg" />
-          <div className="absolute top-2 right-2 bg-gradient-to-r from-blue-500 to-purple-500 text-white text-xs px-2 py-1 rounded-full shadow-lg">
-            ✋ Arrastra ahora
-          </div>
+      {/* Indicador visual para móviles cuando está activo */}
+      {isMobile && isLongPressActive && (
+        <div className="absolute inset-0 bg-blue-500/20 border-2 border-blue-400/60 rounded-lg pointer-events-none z-10 animate-pulse">
+          <div className="absolute top-2 right-2 bg-blue-500 text-white text-xs px-2 py-1 rounded-full">↕️ Arrastra</div>
         </div>
       )}
 
@@ -208,33 +169,25 @@ function SortableItem({ id, children }: { id: string; children: React.ReactNode 
         </div>
       )}
 
-      {/* Área invisible para drag en móviles con mejor handling */}
-      {isMobile && isDragEnabled && (
-        <div
-          {...attributes}
-          {...dragListeners}
-          className="absolute inset-0 z-10 touch-none"
-          style={{ touchAction: "none" }}
-        />
-      )}
-
-      {/* Contenido con padding condicional y prevención de selección */}
+      {/* Contenido */}
       <div
-        className={`${isMobile ? "px-2" : "pl-8"} ${isMobile ? "select-none touch-none" : ""}`}
-        style={isMobile ? { touchAction: "manipulation" } : {}}
+        className={`${isMobile ? "px-2" : "pl-8"} ${isMobile ? "select-none" : ""}`}
+        style={
+          isMobile
+            ? {
+                userSelect: "none",
+                WebkitUserSelect: "none",
+                touchAction: "manipulation",
+              }
+            : {}
+        }
       >
         {children}
       </div>
-
-      {/* Hint sutil para móviles cuando no está activo */}
-      {isMobile && !isDragEnabled && (
-        <div className="absolute top-2 right-2 opacity-30 pointer-events-none">
-          <div className="text-xs text-gray-400 bg-gray-800/50 px-2 py-1 rounded">Mantén presionado</div>
-        </div>
-      )}
     </div>
   )
 }
+
 
 function TopicalStudyPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter()
@@ -259,8 +212,7 @@ function TopicalStudyPage({ params }: { params: Promise<{ id: string }> }) {
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 3, // Distancia más pequeña para mejor respuesta
-        tolerance: 5,
+        distance: 1, // Distancia mínima muy pequeña
       },
     }),
     useSensor(KeyboardSensor, {
@@ -530,6 +482,24 @@ function TopicalStudyPage({ params }: { params: Promise<{ id: string }> }) {
                       }
                     }}
                   >
+                  <style jsx global>{`
+                  .dndkit-sortable-item {
+                    transform-origin: center;
+                    will-change: transform;
+                  }
+                  
+                  @media (max-width: 768px) {
+                    * {
+                      -webkit-touch-callout: none;
+                      -webkit-tap-highlight-color: transparent;
+                    }
+                    
+                    .dndkit-sortable-item {
+                      backface-visibility: hidden;
+                      -webkit-backface-visibility: hidden;
+                    }
+                  }
+                `}</style>
                     <GradientCard gradient="blue">
                       <div className="flex w-full items-center p-4">
                         <CollapsibleTrigger className="flex flex-1 text-left min-w-0 items-center justify-between">

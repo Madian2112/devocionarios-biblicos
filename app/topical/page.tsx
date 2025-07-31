@@ -108,7 +108,7 @@ function QuickPreview({ study }: { study: TopicalStudy }) {
         <DialogHeader>
           <div className="flex items-center justify-between">
             <DialogTitle className="text-white text-lg">{study.name}</DialogTitle>
-            <Badge variant="outline" className="text-xs">
+            <Badge variant="outline" className="text-xs mr-3">
               {study.entries.length} {study.entries.length === 1 ? "entrada" : "entradas"}
             </Badge>
           </div>
