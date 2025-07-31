@@ -43,7 +43,7 @@ import { useAuthContext } from "@/context/auth-context"
 import { Timestamp } from "firebase/firestore"
 import { fetchVerseText } from "@/lib/bible-api"
 import withAuth from "@/components/auth/with-auth"
-import { useToast } from "@/hooks/use-toast"
+import { toast, useToast } from "@/hooks/use-toast"
 import { useDisableMobileZoom } from "@/hooks/use-disable-mobile-zoom"
 import { useTopicalStudies } from "@/hooks/use-sincronizar-temas"
 import { smartSyncFirestoreService } from "@/lib/services/sincronizacion-inteligente-firestore"
@@ -65,6 +65,10 @@ import { CSS } from "@dnd-kit/utilities"
 // Componente sorteable para drag & drop
 function SortableItem({ id, children }: { id: string; children: React.ReactNode }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
+  const [isLongPressing, setIsLongPressing] = useState(false)
+  const [isDragEnabled, setIsDragEnabled] = useState(false)
+  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null)
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -72,18 +76,119 @@ function SortableItem({ id, children }: { id: string; children: React.ReactNode 
     opacity: isDragging ? 0.5 : 1,
   }
 
+  // Detectar si es dispositivo móvil
+  const isMobile = typeof window !== "undefined" && window.innerWidth <= 768
+
+  // Handlers para long press en móviles
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (!isMobile) return
+
+    const touch = e.touches[0]
+    touchStartRef.current = { x: touch.clientX, y: touch.clientY }
+
+    longPressTimerRef.current = setTimeout(() => {
+      setIsLongPressing(true)
+      setIsDragEnabled(true)
+      // Vibración táctil si está disponible
+      if (navigator.vibrate) {
+        navigator.vibrate(50)
+      }
+      toast({
+        title: "🔄 Modo arrastrar activado",
+        description: "Ahora puedes reordenar este elemento",
+        duration: 2000,
+      })
+    }, 800) // 800ms para activar el drag
+  }
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!touchStartRef.current || !longPressTimerRef.current) return
+
+    const touch = e.touches[0]
+    const deltaX = Math.abs(touch.clientX - touchStartRef.current.x)
+    const deltaY = Math.abs(touch.clientY - touchStartRef.current.y)
+
+    // Si se mueve mucho, cancelar el long press
+    if (deltaX > 10 || deltaY > 10) {
+      clearTimeout(longPressTimerRef.current)
+      longPressTimerRef.current = null
+    }
+  }
+
+  const handleTouchEnd = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current)
+      longPressTimerRef.current = null
+    }
+    touchStartRef.current = null
+
+    // Desactivar drag después de un tiempo si no se está arrastrando
+    if (isDragEnabled && !isDragging) {
+      setTimeout(() => {
+        setIsDragEnabled(false)
+        setIsLongPressing(false)
+      }, 5000) // 5 segundos para usar el drag
+    }
+  }
+
+  // Limpiar timers al desmontar
+  useEffect(() => {
+    return () => {
+      if (longPressTimerRef.current) {
+        clearTimeout(longPressTimerRef.current)
+      }
+    }
+  }, [])
+
+  // Combinar listeners para desktop y móvil
+  const dragListeners = isMobile ? (isDragEnabled ? listeners : {}) : listeners
+
   return (
-    <div ref={setNodeRef} style={style} className="relative group">
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="relative group"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
+      {/* Indicador visual para long press en móviles */}
+      {isMobile && isLongPressing && (
+        <div className="absolute inset-0 bg-blue-500/20 border-2 border-blue-500/50 rounded-lg pointer-events-none z-20 animate-pulse">
+          <div className="absolute top-2 right-2 bg-blue-500 text-white text-xs px-2 py-1 rounded">
+            Modo arrastrar activo
+          </div>
+        </div>
+      )}
+
+      {/* Icono de drag mejorado */}
       <div
         {...attributes}
-        {...listeners}
-        className="absolute left-2 top-1/2 transform -translate-y-1/2 z-10 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity"
+        {...dragListeners}
+        className={`absolute left-1 top-1/2 transform -translate-y-1/2 z-10 cursor-grab active:cursor-grabbing transition-all duration-200 ${
+          isMobile ? (isDragEnabled ? "opacity-100 scale-110" : "opacity-60") : "opacity-0 group-hover:opacity-100"
+        }`}
       >
-        <div className="p-1 bg-gray-700/80 rounded hover:bg-gray-600/80">
-          <GripVertical className="h-4 w-4 text-gray-300" />
+        <div
+          className={`p-2 rounded-lg transition-all duration-200 ${
+            isDragEnabled ? "bg-blue-600/90 shadow-lg" : "bg-gray-700/80 hover:bg-gray-600/80"
+          }`}
+        >
+          <GripVertical
+            className={`h-5 w-5 transition-colors duration-200 ${isDragEnabled ? "text-white" : "text-gray-300"}`}
+          />
         </div>
       </div>
-      <div className="pl-8">{children}</div>
+
+      {/* Contenido con mejor espaciado */}
+      <div className="pl-12 pr-2">{children}</div>
+
+      {/* Instrucciones para móviles */}
+      {isMobile && !isDragEnabled && (
+        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-active:opacity-100 pointer-events-none z-15">
+          <div className="bg-black/80 text-white text-xs px-3 py-2 rounded-lg">Mantén presionado para arrastrar</div>
+        </div>
+      )}
     </div>
   )
 }
@@ -114,6 +219,17 @@ function TopicalStudyPage({ params }: { params: Promise<{ id: string }> }) {
       coordinateGetter: sortableKeyboardCoordinates,
     }),
   )
+
+//   const sensors = useSensors(
+//   useSensor(PointerSensor, {
+//     activationConstraint: {
+//       distance: 8, // Requiere mover 8px antes de activar
+//     },
+//   }),
+//   useSensor(KeyboardSensor, {
+//     coordinateGetter: sortableKeyboardCoordinates,
+//   }),
+// )
 
   useEffect(() => {
     async function fetchOrCreateStudy() {
@@ -332,25 +448,6 @@ function TopicalStudyPage({ params }: { params: Promise<{ id: string }> }) {
           </div>
 
           <div className="flex gap-2 w-full sm:w-auto order-last">
-            {/* Indicador de estado mejorado */}
-            {saving && (
-              <div className="flex items-center gap-2 text-blue-400 text-sm bg-blue-900/20 px-3 py-2 rounded-lg border border-blue-500/30">
-                <LoadingSpinner size="sm" />
-                <span className="hidden sm:inline">Auto-guardando...</span>
-              </div>
-            )}
-            {!saving && hasChangesRef.current && (
-              <div className="flex items-center gap-2 text-yellow-400 text-sm bg-yellow-900/20 px-3 py-2 rounded-lg border border-yellow-500/30">
-                <Clock className="h-4 w-4" />
-                <span className="hidden sm:inline">Cambios pendientes</span>
-              </div>
-            )}
-            {!saving && !hasChangesRef.current && study.entries.length > 0 && (
-              <div className="flex items-center gap-2 text-green-400 text-sm bg-green-900/20 px-3 py-2 rounded-lg border border-green-500/30">
-                <CheckCircle className="h-4 w-4" />
-                <span className="hidden sm:inline">Todo guardado</span>
-              </div>
-            )}
 
             <Button
               onClick={() => exportTopicalStudyToPDF(study)}

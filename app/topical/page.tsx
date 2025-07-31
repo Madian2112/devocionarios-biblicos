@@ -97,13 +97,14 @@ function QuickPreview({ study }: { study: TopicalStudy }) {
   const [open, setOpen] = useState(false)
 
   return (
+    <GradientCard className="group" gradient="blue">
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-white">
           <Eye className="h-4 w-4" />
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-[95vw] max-h-[85vh] bg-gray-900 border-gray-700">
+      <DialogContent className="max-w-[95vw] max-h-[85vh] bg-[#2a2a2a]/50 border-gray-700">
         <DialogHeader>
           <div className="flex items-center justify-between">
             <DialogTitle className="text-white text-lg">{study.name}</DialogTitle>
@@ -143,7 +144,7 @@ function QuickPreview({ study }: { study: TopicalStudy }) {
 
         <div className="flex gap-2 pt-4">
           <Link href={`/topical/${study.id}`} className="flex-1">
-            <Button className="w-full bg-blue-600 hover:bg-blue-700" onClick={() => setOpen(false)}>
+            <Button className="w-full bg-gradient-to-r from-blue-800 to-purple-800" onClick={() => setOpen(false)}>
               <Pencil className="h-4 w-4 mr-2" />
               Abrir Tema
             </Button>
@@ -151,6 +152,7 @@ function QuickPreview({ study }: { study: TopicalStudy }) {
         </div>
       </DialogContent>
     </Dialog>
+    </GradientCard>
   )
 }
 
@@ -159,15 +161,16 @@ function StudyTemplates({ onSelectTemplate }: { onSelectTemplate: (template: any
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button variant="outline" className="w-full bg-purple-500/20 border-purple-500/30 hover:bg-purple-500/30">
+        <Button variant="outline" className="w-full bg-blue-500/20 text-blue-300 border-blue-500/30 hover:bg-blue-500/30 flex-1 sm:flex-none">
           <Sparkles className="h-4 w-4 mr-2" />
           Usar Plantilla
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-[95vw] max-h-[85vh] bg-gray-900 border-gray-700">
+      <DialogContent className="max-w-[95vw] max-h-[85vh] bg-[#2a2a2a]/50 border-gray-700">
         <DialogHeader>
           <DialogTitle className="text-white flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-purple-400" />
+              <Sparkles className="h-5 w-5 text-blue-500/50 drop-shadow-[0_0_8px_rgba(59,130,246,0.7)]" />
+
             Plantillas
           </DialogTitle>
           <DialogDescription className="text-gray-400">Comienza con plantillas predefinidas</DialogDescription>
@@ -183,7 +186,7 @@ function StudyTemplates({ onSelectTemplate }: { onSelectTemplate: (template: any
               >
                 <CardContent className="p-4">
                   <div className="flex items-center gap-3 mb-2">
-                    <div className="p-2 bg-purple-500/20 rounded-lg text-purple-400">{template.icon}</div>
+                    <div className="p-2rounded-lg text-blue-500/50">{template.icon}</div>
                     <div className="flex-1">
                       <h3 className="text-white font-medium">{template.name}</h3>
                       <p className="text-gray-400 text-sm">{template.description}</p>
@@ -191,7 +194,7 @@ function StudyTemplates({ onSelectTemplate }: { onSelectTemplate: (template: any
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-gray-500">{template.entries.length} versículos</span>
-                    <Button size="sm" className="bg-purple-600 hover:bg-purple-700">
+                    <Button size="sm" className="bg-gradient-to-r from-blue-800 to-purple-800">
                       Usar
                     </Button>
                   </div>
