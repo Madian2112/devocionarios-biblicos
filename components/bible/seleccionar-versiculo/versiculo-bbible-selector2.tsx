@@ -1,6 +1,6 @@
-import { BibleSelector } from "./bible-selector";
+import { BibleSelector } from "../bible-selector";
 
-export function VersiculoBibleSelector({ 
+export function VersiculoBibleSelector2({ 
   instanceId,
   onSelect, 
   currentReference, 
