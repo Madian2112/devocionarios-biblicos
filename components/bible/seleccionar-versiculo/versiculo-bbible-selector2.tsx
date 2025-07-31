@@ -1,4 +1,4 @@
-import { BibleSelector } from "../bible-selector";
+import { BibleSelector2 } from "../bible-selector2";
 
 export function VersiculoBibleSelector2({ 
   instanceId,
@@ -12,7 +12,7 @@ export function VersiculoBibleSelector2({
   trigger?: React.ReactNode;
 }) {
   return (
-    <BibleSelector
+    <BibleSelector2
       instanceId={instanceId}
       onSelect={onSelect ?? (() => {})}
       currentReference={currentReference}
