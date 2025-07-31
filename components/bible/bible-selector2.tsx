@@ -52,13 +52,12 @@ const LibroApocalpsis = (libro: string) => {
   return libro === "Revelación" ? "Apocalipsis" : libro;
 }
 
-// 🔥 SOLUCIÓN: Portal Manager para PWA
+// 🔥 SOLUCIÓN: Portal Manager para PWA con limpieza robusta
 const usePortalManager = (instanceId: string, type: 'dialog' | 'drawer') => {
   const portalRef = useRef<HTMLDivElement | null>(null);
   const mountedRef = useRef(false);
 
   useEffect(() => {
-    // Crear un contenedor único para esta instancia
     const portalId = `${type}-portal-${instanceId}`;
     let portal = document.getElementById(portalId) as HTMLDivElement;
     
@@ -74,10 +73,10 @@ const usePortalManager = (instanceId: string, type: 'dialog' | 'drawer') => {
     mountedRef.current = true;
 
     return () => {
-      // Cleanup: remover el portal cuando el componente se desmonte
       if (portal && portal.parentNode) {
         portal.parentNode.removeChild(portal);
       }
+      portalRef.current = null;
       mountedRef.current = false;
     };
   }, [instanceId, type]);
@@ -90,12 +89,12 @@ export function BibleSelector2({
   trigger,
   currentReference = "Juan 3:16",
   instanceId = "default",
-  isOpen,
+  isOpen = false,
   onOpen,
   onClose,
 }: BibleSelector2Props) {
   const isMobile = useIsMobile();
-  const { portalRef } = usePortalManager(instanceId, isMobile ? 'drawer' : 'dialog');
+  const { portalRef, isMounted } = usePortalManager(instanceId, isMobile ? 'drawer' : 'dialog');
   
   // 🔥 SOLUCIÓN: Reset state when instanceId changes
   const [localKey, setLocalKey] = useState(0);
@@ -108,30 +107,36 @@ export function BibleSelector2({
     onClose?.();
     if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
       setTimeout(() => {
-        // Force garbage collection hint for PWA
         if (window.gc) window.gc();
-      }, 100);
+      }, 200); // Aumentado el delay para asegurar limpieza en PWA
     }
   }, [onClose]);
 
   const handleOpenChange = useCallback((newOpen: boolean) => {
     if (newOpen) {
+      console.log(`Opening selector: ${instanceId}`); // Depuración
       onOpen?.();
     } else {
+      console.log(`Closing selector: ${instanceId}`); // Depuración
       handleClose();
     }
-  }, [onOpen, handleClose]);
-  
+  }, [onOpen, handleClose, instanceId]);
+
+  // 🔥 SOLUCIÓN: Prevenir renderizado si el portal no está listo
+  if (!isMounted || !portalRef) {
+    console.log(`Portal not mounted for ${instanceId}`); // Depuración
+    return null;
+  }
+
   const FormContent = (
     <BibleSelector2Form
       key={`form-${instanceId}-${localKey}`}
       onSelect={(reference) => {
+        console.log(`Selected reference: ${reference} for ${instanceId}`); // Depuración
         onSelect(reference);
         handleClose();
       }}
-      setOpen={() => {
-        handleClose();
-      }}
+      setOpen={handleClose}
       currentReference={currentReference}
       instanceId={`${instanceId}-${localKey}`}
     />
@@ -145,6 +150,7 @@ export function BibleSelector2({
         onOpenChange={handleOpenChange}
         modal={true}
         container={portalRef}
+        disablePreventScroll // 🔥 SOLUCIÓN: Evitar problemas de scroll en PWA
       >
         <DrawerTrigger asChild>{trigger}</DrawerTrigger>
         <DrawerContent className="bg-[#1a1a1a] border-gray-800 text-white">
@@ -170,10 +176,12 @@ export function BibleSelector2({
         className="bg-[#1a1a1a] border-gray-800 text-white max-w-2xl"
         onPointerDownOutside={(e) => {
           e.preventDefault();
+          console.log(`Pointer down outside for ${instanceId}`); // Depuración
           handleClose();
         }}
         onEscapeKeyDown={(e) => {
           e.preventDefault();
+          console.log(`Escape key pressed for ${instanceId}`); // Depuración
           handleClose();
         }}
       >
@@ -189,7 +197,7 @@ export function BibleSelector2({
 
 interface BibleSelector2FormProps {
   onSelect: (reference: string) => void;
-  setOpen: (open: boolean) => void;
+  setOpen: () => void;
   currentReference?: string;
   instanceId?: string;
 }
@@ -280,7 +288,7 @@ function BibleSelector2Form({
       reference = `${selectedBook} ${startChapter}`;
     }
     onSelect(reference);
-    setOpen(false);
+    setOpen();
   }, [selectionType, selectedBook, startChapter, startVerse, endVerse, onSelect, setOpen]);
   
   const generatePreviewReference = useCallback(() => {
