@@ -89,7 +89,7 @@ self.addEventListener('fetch', (event) => {
         }
         return fetch(event.request).then((networkResponse) => {
           if (!networkResponse.ok) {
-            throw new Error('No se pudieron obtener los recursos');
+            console.error('Network response was not ok:', networkResponse.statusText);
           }
           return caches.open(CACHE_NAME).then((cache) => {
             cache.put(event.request, networkResponse.clone());

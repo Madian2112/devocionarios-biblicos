@@ -1,35 +1,9 @@
+'use client';
+
 import { useState } from 'react';
 import { Button } from "@/components/ui/button";
-import { Inter } from "next/font/google";
-import { BookOpen, Feather, Lock, Mail, Heart, Layers, Code, Search, Menu, ChevronsRight, Star, Users, Clock } from "lucide-react";
+import { BookOpen, Feather, Lock, Mail, Layers, Code, Search, Menu, Users, Clock } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '@/components/ui/sheet';
-import type { Metadata } from "next";
-
-const inter = Inter({ 
-  subsets: ["latin"],
-  display: "swap",
-  variable: "--font-inter",
-  preload: true,
-  fallback: ["system-ui", "arial"],
-});
-
-export const metadata: Metadata = {
-  title: "Devocionales Bíblicos con Notas",
-  description: "Tu espacio personal para la reflexión y el estudio profundo de la Biblia. Registra devocionales, organiza estudios temáticos y conecta con la Palabra de Dios.",
-  manifest: "/manifest.json",
-  metadataBase: new URL("https://devocionales-biblicos.netlify.app/"), 
-  openGraph: {
-    title: "Devocionales Bíblicos con Notas",
-    description: "Explora devocionales diarios y estudios bíblicos para tu crecimiento espiritual.",
-    type: "website",
-    url: "https://devocionales-biblicos.netlify.app/",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Devocionales Bíblicos con Notas",
-    description: "Conecta con la Palabra de Dios cada día",
-  },
-};
 
 interface LandingPageProps {
   onLoginClick: () => void;
@@ -52,21 +26,6 @@ export function LandingPage({ onLoginClick, onSignupClick }: LandingPageProps) {
   );
 
   return (
-    <html lang="es" suppressHydrationWarning>
-      <head>
-        <link rel="preload" href="/_next/static/css/app/layout.css" as="style" />
-        <link rel="dns-prefetch" href="https://fonts.gstatic.com" />
-        <link rel="dns-prefetch" href="https://firestore.googleapis.com" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-        <meta name="theme-color" content="#0a0a0a" />
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-title" content="Devocionales" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        <link rel="icon" href="/favicon.ico" sizes="any" />
-        <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"/>
-        <link rel="manifest" href="/manifest.json" />
-      </head>
-      <body className={`${inter.className} antialiased`}>
     <div className="min-h-screen bg-gradient-to-br from-[#0a0a0a] via-[#1a1a1a] to-[#0a0a0a] text-white">
       {/* Header y Navegación */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-[#0a0a0a]/80 backdrop-blur-sm">
@@ -125,7 +84,7 @@ export function LandingPage({ onLoginClick, onSignupClick }: LandingPageProps) {
       </header>
 
       <main className="pt-28 sm:pt-24">
-        {/* Sección Hero Optimizada */}
+        {/* Sección Hero */}
         <section id="hero" className="text-center pt-16 pb-24 px-6">
           <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent mb-6">
             Tu Devocional Diario Digital
@@ -163,7 +122,7 @@ export function LandingPage({ onLoginClick, onSignupClick }: LandingPageProps) {
           </Button>
         </section>
 
-        {/* Sección de Funcionalidades Optimizada */}
+        {/* Sección de Funcionalidades */}
         <section id="features" className="py-20 bg-[#111111]/50">
           <div className="container mx-auto px-6 text-center">
             <h2 className="text-3xl sm:text-4xl font-bold mb-4">Herramientas Diseñadas para tu Crecimiento Espiritual</h2>
@@ -204,7 +163,7 @@ export function LandingPage({ onLoginClick, onSignupClick }: LandingPageProps) {
           </div>
         </section>
 
-        {/* Sección de Guías Simplificada */}
+        {/* Sección de Guías */}
         <section id="how-to" className="py-20 bg-[#111111]/50">
           <div className="container mx-auto px-6">
             <div className="text-center mb-16">
@@ -253,7 +212,7 @@ export function LandingPage({ onLoginClick, onSignupClick }: LandingPageProps) {
           </div>
         </section>
 
-        {/* Sección de Contacto Optimizada */}
+        {/* Sección de Contacto */}
         <section id="contact" className="py-20 bg-[#111111]/50">
           <div className="container mx-auto px-6 text-center max-w-6xl">
             <div className="flex justify-center">
@@ -264,9 +223,7 @@ export function LandingPage({ onLoginClick, onSignupClick }: LandingPageProps) {
               El acceso a nuestra plataforma es completamente gratuito. Tenemos dos formas fáciles para que comiences tu crecimiento espiritual hoy mismo.
             </p>
 
-            {/* Dos opciones lado a lado */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-5xl mx-auto">
-              
               {/* Opción 1: Registrarse Directamente */}
               <div className="bg-gradient-to-br from-blue-900/50 to-indigo-900/50 p-8 rounded-xl border border-blue-500/30 hover:border-blue-400/50 transition-colors">
                 <div className="flex justify-center mb-4">
@@ -327,7 +284,7 @@ export function LandingPage({ onLoginClick, onSignupClick }: LandingPageProps) {
           </div>
         </section>
         
-        {/* Sección para Desarrolladores Simplificada */}
+        {/* Sección para Desarrolladores */}
         <section id="developers" className="py-20">
           <div className="container mx-auto px-6 text-center max-w-4xl">
             <div className="flex justify-center">
@@ -387,7 +344,5 @@ export function LandingPage({ onLoginClick, onSignupClick }: LandingPageProps) {
         </div>
       </footer>
     </div>
-      </body>
-    </html>
   );
 }
