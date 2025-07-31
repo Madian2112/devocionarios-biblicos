@@ -223,7 +223,7 @@ export function LoginPage({ defaultMode = 'login' }: LoginPageProps = {}) {
   <Button
     variant="link"
     className="text-gray-400 hover:text-white h-auto p-0 text-sm"
-    onClick={handlePasswordReset}
+    onClick={() => {}}
     disabled={loading}
   >
     ¿Olvidaste tu contraseña? 
@@ -231,14 +231,14 @@ export function LoginPage({ defaultMode = 'login' }: LoginPageProps = {}) {
   
   {/* Indicador Beta con Tooltip */}
   <div className="relative group">
-    <span className="text-xs bg-amber-500 text-amber-900 font-bold px-2 py-0.5 rounded-md flex items-center gap-1 animate-pulse">
-      BETA
+    <span className="text-xs bg-blue-500/20 text-blue-400 font-bold px-2 py-0.5 rounded-md flex items-center gap-1">
+      INFO
       <Info className="h-3 w-3" />
     </span>
     
     {/* Tooltip */}
-    <div className="absolute hidden group-hover:block z-10 w-48 bg-gray-800 text-white text-sm p-2 rounded-md shadow-lg right-0 mt-1">
-      Esta función está en desarrollo
+    <div className="absolute hidden group-hover:block z-10 w-58 bg-gray-800 text-white text-sm p-2 rounded-md shadow-lg right-0 mt-1">
+      Para reestablecer tu contraseña, comuniquese con el correo devocionales.biblicos.rv@gmail.com
     </div>
   </div>
 </div>
