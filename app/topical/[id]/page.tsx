@@ -152,7 +152,7 @@ function SortableItem({ id, children }: { id: string; children: React.ReactNode 
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
-      {/* Indicador visual para long press en móviles */}
+      {/* Indicador visual para long press en móviles (solo cuando está activo) */}
       {isMobile && isLongPressing && (
         <div className="absolute inset-0 bg-blue-500/20 border-2 border-blue-500/50 rounded-lg pointer-events-none z-20 animate-pulse">
           <div className="absolute top-2 right-2 bg-blue-500 text-white text-xs px-2 py-1 rounded">
@@ -161,34 +161,26 @@ function SortableItem({ id, children }: { id: string; children: React.ReactNode 
         </div>
       )}
 
-      {/* Icono de drag mejorado */}
-      <div
-        {...attributes}
-        {...dragListeners}
-        className={`absolute left-1 top-1/2 transform -translate-y-1/2 z-10 cursor-grab active:cursor-grabbing transition-all duration-200 ${
-          isMobile ? (isDragEnabled ? "opacity-100 scale-110" : "opacity-60") : "opacity-0 group-hover:opacity-100"
-        }`}
-      >
+      {/* Icono de drag - SOLO EN DESKTOP */}
+      {!isMobile && (
         <div
-          className={`p-2 rounded-lg transition-all duration-200 ${
-            isDragEnabled ? "bg-blue-600/90 shadow-lg" : "bg-gray-700/80 hover:bg-gray-600/80"
-          }`}
+          {...attributes}
+          {...dragListeners}
+          className="absolute left-2 top-1/2 transform -translate-y-1/2 z-10 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity"
         >
-          <GripVertical
-            className={`h-5 w-5 transition-colors duration-200 ${isDragEnabled ? "text-white" : "text-gray-300"}`}
-          />
-        </div>
-      </div>
-
-      {/* Contenido con mejor espaciado */}
-      <div className="pl-12 pr-2">{children}</div>
-
-      {/* Instrucciones para móviles */}
-      {isMobile && !isDragEnabled && (
-        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-active:opacity-100 pointer-events-none z-15">
-          <div className="bg-black/80 text-white text-xs px-3 py-2 rounded-lg">Mantén presionado para arrastrar</div>
+          <div className="p-1 bg-gray-700/80 rounded hover:bg-gray-600/80">
+            <GripVertical className="h-4 w-4 text-gray-300" />
+          </div>
         </div>
       )}
+
+      {/* Área invisible para drag en móviles */}
+      {isMobile && isDragEnabled && (
+        <div {...attributes} {...dragListeners} className="absolute inset-0 z-10 cursor-grab active:cursor-grabbing" />
+      )}
+
+      {/* Contenido con padding condicional */}
+      <div className={isMobile ? "px-2" : "pl-8"}>{children}</div>
     </div>
   )
 }
