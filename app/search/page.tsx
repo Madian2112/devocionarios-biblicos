@@ -60,17 +60,31 @@ function SearchPage() {
     loadAllData();
   }, [user]);
 
-  const filteredDevocionarios = useMemo(() => {
-    if (!searchTerm.trim()) return [];
-    const lowerCaseSearch = searchTerm.toLowerCase();
-    return devocionales.filter(
-        (d) =>
-        d.citaBiblica.toLowerCase().includes(lowerCaseSearch) ||
-        d.textoDevocional.toLowerCase().includes(lowerCaseSearch) ||
-        d.aprendizajeGeneral.toLowerCase().includes(lowerCaseSearch) ||
-        d.tags?.some(tag => tag.toLowerCase().includes(lowerCaseSearch)),
-    )
-  }, [searchTerm, devocionales]);
+const filteredDevocionarios = useMemo(() => {
+  if (!searchTerm.trim()) return [];
+  const lowerCaseSearch = searchTerm.toLowerCase();
+  
+  return devocionales.filter((d) => {
+    // Convertir la fecha (YYYY-MM-DD) a un objeto Date
+    const fechaParts = d.fecha.split('-');
+    const fechaObj = new Date(
+      parseInt(fechaParts[0]), // Año
+      parseInt(fechaParts[1]) - 1, // Mes (0-indexado)
+      parseInt(fechaParts[2]) // Día
+    );
+    
+    // Obtener el nombre del día (ej. "Lunes", "Martes")
+    const nombreDia = fechaObj.toLocaleDateString('es-ES', { weekday: 'long' }).toLowerCase();
+    
+    return (
+      d.citaBiblica.toLowerCase().includes(lowerCaseSearch) ||
+      d.textoDevocional.toLowerCase().includes(lowerCaseSearch) ||
+      d.aprendizajeGeneral.toLowerCase().includes(lowerCaseSearch) ||
+      nombreDia.includes(lowerCaseSearch) || // Buscar por nombre del día
+      d.tags?.some(tag => tag.toLowerCase().includes(lowerCaseSearch))
+    );
+  });
+}, [searchTerm, devocionales]);
 
   const filteredTopicalStudies = useMemo(() => {
     if (!searchTerm.trim()) return [];
@@ -215,9 +229,39 @@ function SearchPage() {
                               <div>
                                 <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Aprendizaje:</span>
                                 <p className="text-gray-400 text-sm line-clamp-2 mt-1 leading-relaxed">
+                                  {devocional.aprendizajeGeneral + devocional.tags}
+                                </p>
+                              </div>
+                            </div>
+                          </CardContent>
+                          <CardContent>
+                            <div className="bg-[#1a1a1a]/30 rounded-lg p-4 mb-4">
+                              <p className="text-gray-300 text-sm line-clamp-2 leading-relaxed">{devocional.textoDevocional}</p>
+                            </div>
+                            <Separator className="my-4 bg-gray-700/50" />
+                            <div className="space-y-3">
+                              <div>
+                                <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Aprendizaje:</span>
+                                <p className="text-gray-400 text-sm line-clamp-2 mt-1 leading-relaxed">
                                   {devocional.aprendizajeGeneral}
                                 </p>
                               </div>
+                              {devocional.tags && devocional.tags.length > 0 && (
+                                <div>
+                                  <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Etiquetas:</span>
+                                  <div className="flex flex-wrap gap-2 mt-2">
+                                    {devocional.tags.map((tag, index) => (
+                                      <Badge
+                                        key={index}
+                                        variant="secondary"
+                                        className="bg-amber-700/20 text-amber-300 border-amber-700/30 text-xs hover:bg-amber-700/30 transition-colors"
+                                      >
+                                        {tag}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           </CardContent>
                         </GradientCard>

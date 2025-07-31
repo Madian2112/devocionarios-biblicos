@@ -4,12 +4,18 @@ export function VersiculoBibleSelector3({
   instanceId,
   onSelect, 
   currentReference, 
-  trigger 
+  trigger,
+  isOpen,
+  onOpen,
+  onClose
 }: {
   instanceId: string;
   onSelect?: (reference: string) => void;
   currentReference?: string;
   trigger?: React.ReactNode;
+  isOpen?: boolean;
+  onOpen?: () => void;
+  onClose?: () => void;
 }) {
   return (
     <BibleSelector3
@@ -17,6 +23,9 @@ export function VersiculoBibleSelector3({
       onSelect={onSelect ?? (() => {})}
       currentReference={currentReference}
       trigger={trigger}
+      isOpen={isOpen}
+      onOpen={onOpen}
+      onClose={onClose}
     />
   );
 }

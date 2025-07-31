@@ -41,7 +41,7 @@ import { useDisableMobileZoom } from '@/hooks/use-disable-mobile-zoom'
 import { usePWACleanup, usePWADetection } from "@/hooks/use-pwa-cleanup"
 import { useDevocionales } from '@/hooks/use-sincronizar-devocionales'
 import { createBibleSelector } from "@/components/bible/create-bible-selector"
-import { VersiculoBibleSelector} from "@/components/bible/seleccionar-versiculo/versiculo-bbible-selector"
+import { VersiculoBibleSelector } from "@/components/bible/seleccionar-versiculo/versiculo-bbible-selector"
 import { VersiculoBibleSelector2 } from "@/components/bible/seleccionar-versiculo/versiculo-bbible-selector2"
 import { VersiculoBibleSelector3 } from "@/components/bible/seleccionar-versiculo/versiculo-bbible-selector3"
 
@@ -55,6 +55,7 @@ function DevocionalPage({ params }: { params: Promise<{ id: string }> }) {
   const [devocional, setDevocional] = useState<Devocional | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [openSelectorId, setOpenSelectorId] = useState<string | null>(null); // Track open selector
   const { saveDevocional, getDevocionalByKey } = useDevocionales();
 
   const bible = BibleSelector
@@ -202,6 +203,7 @@ function DevocionalPage({ params }: { params: Promise<{ id: string }> }) {
       console.error('❌ Error al obtener el texto del versículo:', error);
     } finally {
       setSaving(false);
+      setOpenSelectorId(null); // Close selector after selection
     }
   };
 
@@ -230,6 +232,7 @@ function DevocionalPage({ params }: { params: Promise<{ id: string }> }) {
   const removeVersiculo = (versiculoId: string) => {
     if (!devocional) return;
     handleDevocionalChange('versiculos', devocional.versiculos.filter((v) => v.id !== versiculoId));
+    setOpenSelectorId(null); // Close any open selector when removing a verse
   };
 
   const handleVersiculoChange = (index: number, updates: Partial<Versiculo>) => {
@@ -497,13 +500,12 @@ function DevocionalPage({ params }: { params: Promise<{ id: string }> }) {
                   </div>
                   Versículos Específicos
                   <div className="relative group mr-12">
-                    <span className="text-xs bg-blue-500/20 text-blue-400 font-bold px-2 py-0.5 rounded-md flex items-center gap-1">
-                      INFO
+                    <span className="text-xs bg-amber-500 text-amber-900 font-bold px-2 py-0.5 rounded-md flex items-center gap-1 animate-pulse">
+                      BETA
                       <Info className="h-3 w-3" />
                     </span>
                     <div className="absolute hidden group-hover:block z-10 w-48 bg-gray-800 text-white text-sm p-2 rounded-md shadow-lg right-0 mt-1">
-                      Solo se permiten 3 versículos.
-                      <div className="absolute -top-1 right-2 w-2 h-2 bg-gray-800 transform rotate-45"></div>
+                      Esta función está en desarrollo
                     </div>
                   </div>
                 </h3>
@@ -574,13 +576,17 @@ function DevocionalPage({ params }: { params: Promise<{ id: string }> }) {
                             </Badge>
                             <VersiculoBibleSelector
                               instanceId={`versiculo-${devocional.versiculos[0].id}`}
-                              onSelect={(reference:any) => handleBibleSelection(0, reference)}
+                              onSelect={(reference) => handleBibleSelection(0, reference)}
                               currentReference={devocional.versiculos[0]?.referencia || ''}
+                              isOpen={openSelectorId === `versiculo-${devocional.versiculos[0].id}`}
+                              onOpen={() => setOpenSelectorId(`versiculo-${devocional.versiculos[0].id}`)}
+                              onClose={() => setOpenSelectorId(null)}
                               trigger={
                                 <Button
                                   variant="outline"
                                   size="sm"
                                   className="bg-[#2a2a2a]/50 border-gray-700 hover:bg-[#3a3a3a]/50 shrink-0"
+                                  onClick={() => setOpenSelectorId(`versiculo-${devocional.versiculos[0].id}`)}
                                 >
                                   <Book className="h-4 w-4" />
                                 </Button>
@@ -676,13 +682,17 @@ function DevocionalPage({ params }: { params: Promise<{ id: string }> }) {
                             </Badge>
                             <VersiculoBibleSelector2
                               instanceId={`versiculo-${devocional.versiculos[1].id}`}
-                              onSelect={(reference:any) => handleBibleSelection(1, reference)}
+                              onSelect={(reference) => handleBibleSelection(1, reference)}
                               currentReference={devocional.versiculos[1]?.referencia || ''}
+                              isOpen={openSelectorId === `versiculo-${devocional.versiculos[1].id}`}
+                              onOpen={() => setOpenSelectorId(`versiculo-${devocional.versiculos[1].id}`)}
+                              onClose={() => setOpenSelectorId(null)}  
                               trigger={
                                 <Button
                                   variant="outline"
                                   size="sm"
                                   className="bg-[#2a2a2a]/50 border-gray-700 hover:bg-[#3a3a3a]/50 shrink-0"
+                                  onClick={() => setOpenSelectorId(`versiculo-${devocional.versiculos[1].id}`)}
                                 >
                                   <Book className="h-4 w-4" />
                                 </Button>
@@ -778,13 +788,17 @@ function DevocionalPage({ params }: { params: Promise<{ id: string }> }) {
                             </Badge>
                             <VersiculoBibleSelector3
                               instanceId={`versiculo-${devocional.versiculos[2].id}`}
-                              onSelect={(reference:any) => handleBibleSelection(2, reference)}
+                              onSelect={(reference) => handleBibleSelection(2, reference)}
                               currentReference={devocional.versiculos[2]?.referencia || ''}
+                              isOpen={openSelectorId === `versiculo-${devocional.versiculos[2].id}`}
+                              onOpen={() => setOpenSelectorId(`versiculo-${devocional.versiculos[2].id}`)}
+                              onClose={() => setOpenSelectorId(null)}
                               trigger={
                                 <Button
                                   variant="outline"
                                   size="sm"
                                   className="bg-[#2a2a2a]/50 border-gray-700 hover:bg-[#3a3a3a]/50 shrink-0"
+                                  onClick={() => setOpenSelectorId(`versiculo-${devocional.versiculos[2].id}`)}
                                 >
                                   <Book className="h-4 w-4" />
                                 </Button>
