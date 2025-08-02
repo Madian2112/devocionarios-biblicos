@@ -62,6 +62,7 @@ export interface TopicalStudy {
   entries: StudyEntry[]; // Array de citas y aprendizajes sobre el tema
   createdAt: Timestamp;
   updatedAt: Timestamp;
+  orderIndex: number
 }
 
 const DEVOCIONALES_COLLECTION = "devocionales";

@@ -229,20 +229,6 @@ const filteredDevocionarios = useMemo(() => {
                               <div>
                                 <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Aprendizaje:</span>
                                 <p className="text-gray-400 text-sm line-clamp-2 mt-1 leading-relaxed">
-                                  {devocional.aprendizajeGeneral + devocional.tags}
-                                </p>
-                              </div>
-                            </div>
-                          </CardContent>
-                          <CardContent>
-                            <div className="bg-[#1a1a1a]/30 rounded-lg p-4 mb-4">
-                              <p className="text-gray-300 text-sm line-clamp-2 leading-relaxed">{devocional.textoDevocional}</p>
-                            </div>
-                            <Separator className="my-4 bg-gray-700/50" />
-                            <div className="space-y-3">
-                              <div>
-                                <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Aprendizaje:</span>
-                                <p className="text-gray-400 text-sm line-clamp-2 mt-1 leading-relaxed">
                                   {devocional.aprendizajeGeneral}
                                 </p>
                               </div>

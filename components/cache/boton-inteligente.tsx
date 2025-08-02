@@ -2,24 +2,27 @@ import React, { useEffect, useState } from 'react';
 import { useSmartSyncManager } from '@/hooks/use-manejador-smart';
 import { Button } from '../ui/button';
 import { AlertCircle, Check, RefreshCw } from 'lucide-react';
+import { SyncType } from '@/lib/enums/SyncType';
 
-interface SmartSyncButtonProps {
+export interface SmartSyncButtonProps {
   className?: string;
   iconSize?: number;
   showText?: boolean;
+  syncType?: SyncType; // 🚀 NUEVA PROP
 }
 
-export function SmartSyncButton({ 
-  className = '', 
-  iconSize = 20, 
-  showText = false 
+export function SmartSyncButton({
+  className = '',
+  iconSize = 20,
+  showText = false,
+  syncType = SyncType.ALL, // 🚀 Valor por defecto 
 }: SmartSyncButtonProps): JSX.Element {
   const [showStatusMessage, setShowStatusMessage] = useState(false)
   const { globalSmartSync, syncLoading, lastSyncResults, lastGlobalSync } = useSmartSyncManager();
 
   const handleSync = async () => {
     try {
-      await globalSmartSync();
+      await globalSmartSync(syncType);
     } catch (error) {
       console.error('Error en sincronización:', error);
       // Aquí puedes agregar tu sistema de notificaciones/toast

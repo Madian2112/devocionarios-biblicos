@@ -35,6 +35,7 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import withAuth from "@/components/auth/with-auth"
 import {SmartSyncButton} from '@/components/cache/boton-inteligente'
 import {useDevocionales } from '@/hooks/use-sincronizar-devocionales'
+import { SyncType } from "@/lib/enums/SyncType"
 
 function DashboardPage() {
   const { user } = useAuthContext();
@@ -174,6 +175,7 @@ function DashboardPage() {
               <SmartSyncButton 
                 className="shadow-lg" 
                 showText={false}
+                syncType={SyncType.DEVOCIONALES} // 📖 Solo devocionales
               />
             <div className="flex flex-wrap items-center justify-between gap-4">
                 {/* Botón Home */}

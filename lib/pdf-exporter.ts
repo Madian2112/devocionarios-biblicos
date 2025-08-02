@@ -11,7 +11,60 @@ const formatDate = (dateString: string) => {
   });
 };
 
-// Función principal para exportar a PDF
+// Función auxiliar para manejar múltiples páginas cortando el contenido
+const addImageToPDF = (pdf: jsPDF, canvas: HTMLCanvasElement) => {
+  const pageHeight = pdf.internal.pageSize.getHeight();
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  
+  // Calcular el ancho escalado manteniendo la proporción
+  const imgWidth = canvas.width;
+  const imgHeight = canvas.height;
+  const ratio = pageWidth / imgWidth;
+  const scaledWidth = pageWidth;
+  const scaledHeight = imgHeight * ratio;
+  
+  // Calcular cuánta altura de la imagen cabe en una página
+  const pageContentHeight = pageHeight;
+  const imgHeightPerPage = pageContentHeight / ratio; // Altura en píxeles de la imagen original que cabe en una página
+  
+  let srcY = 0; // Posición Y de donde empezar a cortar en la imagen original
+  let pageNumber = 0;
+  
+  while (srcY < imgHeight) {
+    if (pageNumber > 0) {
+      pdf.addPage();
+    }
+    
+    // Calcular cuánta altura tomar de la imagen original para esta página
+    const remainingHeight = imgHeight - srcY;
+    const heightToTake = Math.min(imgHeightPerPage, remainingHeight);
+    
+    // Crear un canvas temporal para la porción de esta página
+    const tempCanvas = document.createElement('canvas');
+    const tempCtx = tempCanvas.getContext('2d');
+    
+    tempCanvas.width = imgWidth;
+    tempCanvas.height = heightToTake;
+    
+    // Copiar la porción correspondiente de la imagen original
+    tempCtx.drawImage(
+      canvas,
+      0, srcY, imgWidth, heightToTake, // Fuente: x, y, width, height
+      0, 0, imgWidth, heightToTake     // Destino: x, y, width, height
+    );
+    
+    // Convertir a imagen y añadir al PDF
+    const pageImgData = tempCanvas.toDataURL('image/png');
+    const scaledHeightForThisPage = heightToTake * ratio;
+    
+    pdf.addImage(pageImgData, 'PNG', 0, 0, scaledWidth, scaledHeightForThisPage);
+    
+    srcY += heightToTake;
+    pageNumber++;
+  }
+};
+
+// Función principal para exportar a PDF (versión mejorada)
 export const exportDevocionalToPDF = async (devocional: Devocional) => {
   // 1. Crear un contenedor temporal para el contenido del PDF
   const pdfContainer = document.createElement("div");
@@ -96,31 +149,36 @@ export const exportDevocionalToPDF = async (devocional: Devocional) => {
   pdfContainer.innerHTML = contentHTML;
   document.body.appendChild(pdfContainer);
 
-  // 6. Usar html2canvas para capturar el contenido
-  const canvas = await html2canvas(pdfContainer, {
-    scale: 2, // Aumenta la resolución para mejor calidad
-    useCORS: true,
-  });
+  try {
+    // 6. Usar html2canvas para capturar el contenido
+    const canvas = await html2canvas(pdfContainer, {
+      scale: 2,
+      useCORS: true,
+      allowTaint: true,
+      backgroundColor: '#ffffff'
+    });
 
-  document.body.removeChild(pdfContainer); // Limpiar el DOM
+    // 7. Crear el PDF con jspdf
+    const pdf = new jsPDF({
+      orientation: "portrait",
+      unit: "pt",
+      format: "a4",
+    });
 
-  // 7. Crear el PDF con jspdf
-  const imgData = canvas.toDataURL("image/png");
-  const pdf = new jsPDF({
-    orientation: "portrait",
-    unit: "pt",
-    format: "a4",
-  });
+    // 8. Usar la función auxiliar para manejar múltiples páginas
+    addImageToPDF(pdf, canvas);
 
-  const pdfWidth = pdf.internal.pageSize.getWidth();
-  const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-  pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
-
-  // 8. Descargar el PDF
-  pdf.save(`Devocional-${devocional.fecha}-${devocional.citaBiblica}.pdf`);
+    // 9. Descargar el PDF
+    pdf.save(`Devocional-${devocional.fecha}-${devocional.citaBiblica}.pdf`);
+  } catch (error) {
+    console.error('Error generando PDF:', error);
+  } finally {
+    // Limpiar el DOM
+    document.body.removeChild(pdfContainer);
+  }
 };
 
-// --- Nueva Función para Exportar Estudio por Tema a PDF ---
+// Función mejorada para exportar Estudio por Tema a PDF
 export const exportTopicalStudyToPDF = async (topic: TopicalStudy) => {
   // 1. Crear contenedor temporal
   const pdfContainer = document.createElement("div");
@@ -144,11 +202,12 @@ export const exportTopicalStudyToPDF = async (topic: TopicalStudy) => {
 
   // 3. Añadir entradas de estudio
   if (topic.entries && topic.entries.length > 0) {
+    console.log('Esta es mi referencia: ', topic.entries)
     topic.entries.forEach((entry, index) => {
       contentHTML += `
         <div style="margin-bottom: 20px; padding-left: 15px; border-left: 3px solid #1a73e8;">
           <h3 style="font-size: 20px; margin-bottom: 5px;">${
-            entry.reference
+            entry.referencia
           }</h3>
           <p style="font-size: 16px; line-height: 1.6; font-style: italic;">${
             entry.learning
@@ -163,20 +222,108 @@ export const exportTopicalStudyToPDF = async (topic: TopicalStudy) => {
   pdfContainer.innerHTML = contentHTML;
   document.body.appendChild(pdfContainer);
 
-  // 4. Usar html2canvas y jspdf para crear y descargar el PDF
-  const canvas = await html2canvas(pdfContainer, { scale: 2, useCORS: true });
-  document.body.removeChild(pdfContainer);
+  try {
+    // 4. Usar html2canvas y jspdf para crear y descargar el PDF
+    const canvas = await html2canvas(pdfContainer, { 
+      scale: 2, 
+      useCORS: true,
+      allowTaint: true,
+      backgroundColor: '#ffffff'
+    });
 
-  const imgData = canvas.toDataURL("image/png");
+    const pdf = new jsPDF({
+      orientation: "portrait",
+      unit: "pt",
+      format: "a4",
+    });
+
+    // Usar la función auxiliar para manejar múltiples páginas
+    addImageToPDF(pdf, canvas);
+
+    pdf.save(`Estudio-${topic.name}.pdf`);
+  } catch (error) {
+    console.error('Error generando PDF:', error);
+  } finally {
+    // Limpiar el DOM
+    document.body.removeChild(pdfContainer);
+  }
+};
+
+// Alternativa usando jsPDF directamente (sin html2canvas) - MÁS EFICIENTE
+export const exportDevocionalToPDFAlternative = async (devocional: Devocional) => {
   const pdf = new jsPDF({
     orientation: "portrait",
     unit: "pt",
     format: "a4",
   });
 
-  const pdfWidth = pdf.internal.pageSize.getWidth();
-  const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-  pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
+  const margin = 40;
+  const maxWidth = pageWidth - 2 * margin;
+  
+  let yPosition = margin;
 
-  pdf.save(`Estudio-${topic.name}.pdf`);
-}; 
+  // Función auxiliar para añadir texto con salto de página automático
+  const addText = (text: string, fontSize: number, fontStyle: 'normal' | 'bold' = 'normal', color: string = '#000000') => {
+    pdf.setFontSize(fontSize);
+    pdf.setFont('helvetica', fontStyle);
+    pdf.setTextColor(color);
+    
+    const lines = pdf.splitTextToSize(text, maxWidth);
+    const lineHeight = fontSize * 1.2;
+    
+    // Verificar si necesitamos nueva página
+    if (yPosition + (lines.length * lineHeight) > pageHeight - margin) {
+      pdf.addPage();
+      yPosition = margin;
+    }
+    
+    pdf.text(lines, margin, yPosition);
+    yPosition += lines.length * lineHeight + 10;
+  };
+
+  // Contenido del PDF
+  addText('Devocional Bíblico', 24, 'bold', '#1a73e8');
+  addText(formatDate(devocional.fecha), 14);
+  yPosition += 10;
+  
+  addText(`Cita Principal: ${devocional.citaBiblica}`, 18, 'bold');
+  addText(devocional.textoDevocional, 12);
+  yPosition += 10;
+  
+  addText('Aprendizaje General', 16, 'bold', '#1a73e8');
+  addText(devocional.aprendizajeGeneral, 12);
+  
+  // Versículos
+  if (devocional.versiculos && devocional.versiculos.length > 0) {
+    yPosition += 10;
+    addText('Versículos Clave', 16, 'bold', '#1a73e8');
+    
+    devocional.versiculos.forEach(v => {
+      addText(v.referencia, 14, 'bold');
+      addText(v.texto ?? '', 12);
+      addText(`Aprendizaje: ${v.aprendizaje}`, 11);
+      yPosition += 5;
+    });
+  }
+  
+  // Referencias
+  if (devocional.referencias && devocional.referencias.length > 0) {
+    yPosition += 10;
+    addText('Referencias Adicionales', 16, 'bold', '#1a73e8');
+    
+    devocional.referencias.forEach(r => {
+      addText(r.url, 11, 'normal', '#1a73e8');
+      addText(r.descripcion, 11);
+    });
+  }
+  
+  // Tags
+  if (devocional.tags && devocional.tags.length > 0) {
+    yPosition += 10;
+    addText(`Temas: ${devocional.tags.join(', ')}`, 12);
+  }
+
+  pdf.save(`Devocional-${devocional.fecha}-${devocional.citaBiblica}.pdf`);
+};

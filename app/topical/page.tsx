@@ -18,6 +18,9 @@ import {
   Shield,
   Lightbulb,
   ChevronRight,
+  ChevronUp,
+  ChevronDown,
+  ListOrdered,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -47,10 +50,12 @@ import type { TopicalStudy } from "@/lib/firestore"
 import { useAuthContext } from "@/context/auth-context"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import withAuth from "@/components/auth/with-auth"
-import { Timestamp } from "firebase/firestore"
 import { useTopicalStudies } from "@/hooks/use-sincronizar-temas"
 import { useToast } from "@/hooks/use-toast"
 import { useDisableMobileZoom } from "@/hooks/use-disable-mobile-zoom"
+import { SmartSyncButton } from "@/components/cache/boton-inteligente"
+import { SyncType } from "@/lib/enums/SyncType"
+import NProgress from '@/lib/nprogress'
 
 // Plantillas básicas
 const STUDY_TEMPLATES = [
@@ -97,10 +102,9 @@ function QuickPreview({ study }: { study: TopicalStudy }) {
   const [open, setOpen] = useState(false)
 
   return (
-    <GradientCard className="group" gradient="blue">
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-white">
+        <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-white focus:outline-none focus:ring-0">
           <Eye className="h-4 w-4" />
         </Button>
       </DialogTrigger>
@@ -144,7 +148,7 @@ function QuickPreview({ study }: { study: TopicalStudy }) {
 
         <div className="flex gap-2 pt-4">
           <Link href={`/topical/${study.id}`} className="flex-1">
-            <Button className="w-full bg-gradient-to-r from-blue-800 to-purple-800" onClick={() => setOpen(false)}>
+            <Button className="w-full bg-gradient-to-r from-blue-800 to-purple-800 focus:outline-none focus:ring-0" onClick={() => setOpen(false)}>
               <Pencil className="h-4 w-4 mr-2" />
               Abrir Tema
             </Button>
@@ -152,7 +156,6 @@ function QuickPreview({ study }: { study: TopicalStudy }) {
         </div>
       </DialogContent>
     </Dialog>
-    </GradientCard>
   )
 }
 
@@ -161,7 +164,10 @@ function StudyTemplates({ onSelectTemplate }: { onSelectTemplate: (template: any
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button variant="outline" className="w-full bg-blue-500/20 text-blue-300 border-blue-500/30 hover:bg-blue-500/30 flex-1 sm:flex-none">
+        <Button
+          variant="outline"
+          className="w-full bg-blue-500/20 text-blue-300 border-blue-500/30 hover:bg-blue-500/30 flex-1 sm:flex-none"
+        >
           <Sparkles className="h-4 w-4 mr-2" />
           Usar Plantilla
         </Button>
@@ -169,8 +175,7 @@ function StudyTemplates({ onSelectTemplate }: { onSelectTemplate: (template: any
       <DialogContent className="max-w-[95vw] max-h-[85vh] bg-[#2a2a2a]/50 border-gray-700">
         <DialogHeader>
           <DialogTitle className="text-white flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-blue-500/50 drop-shadow-[0_0_8px_rgba(59,130,246,0.7)]" />
-
+            <Sparkles className="h-5 w-5 text-blue-500/50 drop-shadow-[0_0_8px_rgba(59,130,246,0.7)]" />
             Plantillas
           </DialogTitle>
           <DialogDescription className="text-gray-400">Comienza con plantillas predefinidas</DialogDescription>
@@ -221,17 +226,74 @@ function TopicalStudiesPage() {
   const [topicToDelete, setTopicToDelete] = useState<{ id: string; name: string } | null>(null)
   const [refreshingEntries, setRefreshingEntries] = useState<Set<string>>(new Set())
   const [searchTerm, setSearchTerm] = useState("")
+  const [isOrderingMode, setIsOrderingMode] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
+  const [isReordering, setIsReordering] = useState(false)
+
+  // Estado local para la visualización y reordenamiento inmediato
+  const [displayStudies, setDisplayStudies] = useState<TopicalStudy[]>([])
 
   useDisableMobileZoom()
 
   // Hook existente
   const { studies: topicalStudies, loading, saveStudy, deleteStudy } = useTopicalStudies()
 
+  // Sincronizar displayStudies con topicalStudies del hook
+useEffect(() => {
+  if (topicalStudies && !isReordering) {
+    // Solo sincronizar cuando NO estamos reordenando
+    if (displayStudies.length === 0) {
+      // Primera carga: ordenar por orderIndex si existe
+      const sortedStudies = [...topicalStudies].sort((a, b) => {
+        const aIndex = a.orderIndex ?? 999999
+        const bIndex = b.orderIndex ?? 999999
+        return aIndex - bIndex
+      })
+      setDisplayStudies(sortedStudies)
+    } else if (displayStudies.length !== topicalStudies.length) {
+      // Cambio en cantidad: sincronizar pero mantener orden si es posible
+      const sortedStudies = [...topicalStudies].sort((a, b) => {
+        const aIndex = a.orderIndex ?? 999999
+        const bIndex = b.orderIndex ?? 999999
+        return aIndex - bIndex
+      })
+      setDisplayStudies(sortedStudies)
+    }
+    // Si el número es igual y estamos reordenando, NO sincronizar
+  }
+}, [topicalStudies, isReordering]) 
+
+  // const migrateStudiesWithoutOrderIndex = async () => {
+  //   const studiesToMigrate = displayStudies.filter(study => study.orderIndex === 0)
+  //   console.log('Este es display studie: ', displayStudies)
+  //   console.log('Migrando estudios sin orderIndex:', studiesToMigrate)
+    
+  //   if (studiesToMigrate.length > 0) {
+  //     const savePromises = studiesToMigrate.map((study, index) => {
+  //       const updatedStudy = { ...study, orderIndex: index }
+  //       const { userId, createdAt, updatedAt, ...studyData } = updatedStudy
+  //       console.log('Asi me lleva la studyData: ', studyData)
+  //       return saveStudy(studyData)
+  //     })
+      
+  //     await Promise.all(savePromises)
+  //   }
+  // }
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 768)
+    }
+    checkMobile()
+    window.addEventListener("resize", checkMobile)
+    return () => window.removeEventListener("resize", checkMobile)
+  }, [])
+
   // Búsqueda simple
   const filteredStudies = useMemo(() => {
-    if (!searchTerm) return topicalStudies
+    if (!searchTerm) return displayStudies // Usar displayStudies para filtrar
 
-    return topicalStudies.filter(
+    return displayStudies.filter(
       (study) =>
         study.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         study.entries.some(
@@ -240,7 +302,7 @@ function TopicalStudiesPage() {
             entry.learning?.toLowerCase().includes(searchTerm.toLowerCase()),
         ),
     )
-  }, [topicalStudies, searchTerm])
+  }, [displayStudies, searchTerm]) // Depender de displayStudies
 
   // Efecto para refrescar
   useEffect(() => {
@@ -287,33 +349,39 @@ function TopicalStudiesPage() {
       return
     }
 
-    const newTopic: Omit<TopicalStudy, "id" | "userId" | "createdAt" | "updatedAt"> = {
+    const nextOrderIndex = displayStudies.length > 0 
+    ? Math.max(...displayStudies.map(s => s.orderIndex || 0)) + 1 
+    : 0
+    const newTopic: Omit<TopicalStudy, "userId" | "createdAt" | "updatedAt"> = {
+      id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`,
       name: newTopicName,
       entries: [],
-    }
-
-    const newStudyForState: TopicalStudy = {
-      ...newTopic,
-      id: Date.now().toString(),
-      userId: user.uid,
-      createdAt: Timestamp.now(),
-      updatedAt: Timestamp.now(),
+      orderIndex: nextOrderIndex
     }
 
     setNewTopicName("")
 
     try {
-      const { userId, ...topicDataWithoutUserId } = newStudyForState
-      const savedStudy = await saveStudy(topicDataWithoutUserId)
+      NProgress.start()
+      const savedStudy = await saveStudy(newTopic)
 
-      toast({
-        title: "✅ Tema creado",
-        description: `"${newTopic.name}" listo para usar.`,
-        duration: 2000,
-      })
-
-      router.push(`/topical/${savedStudy?.id}`)
+      if (savedStudy) {
+        toast({
+          title: "✅ Tema creado",
+          description: `"${newTopic.name}" listo para usar.`,
+          duration: 2000,
+        })
+        router.push(`/topical/${savedStudy.id}`)
+      } else {
+        toast({
+          title: "❌ Error",
+          description: "No se pudo crear el tema.",
+          variant: "destructive",
+          duration: 3000,
+        })
+      }
     } catch (error: any) {
+      NProgress.done()
       toast({
         title: "❌ Error",
         description: "No se pudo crear el tema.",
@@ -334,34 +402,37 @@ function TopicalStudiesPage() {
       })
       return
     }
-
-    const newTopic: Omit<TopicalStudy, "id" | "userId" | "createdAt" | "updatedAt"> = {
+    const nextOrderIndex = displayStudies.length > 0 
+    ? Math.max(...displayStudies.map(s => s.orderIndex || 0)) + 1 
+    : 0
+    const newTopic: Omit<TopicalStudy, "userId" | "createdAt" | "updatedAt"> = {
+      id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`,
       name: template.name,
       entries: template.entries.map((entry: any, index: number) => ({
         ...entry,
-        id: `${Date.now()}-${index}`,
+        id: `${Date.now()}-${index}`, // Asegurar IDs únicos para las entradas
       })),
-    }
-
-    const newStudyForState: TopicalStudy = {
-      ...newTopic,
-      id: Date.now().toString(),
-      userId: user.uid,
-      createdAt: Timestamp.now(),
-      updatedAt: Timestamp.now(),
+      orderIndex: nextOrderIndex, // Agregar orderIndex
     }
 
     try {
-      const { userId, ...topicDataWithoutUserId } = newStudyForState
-      const savedStudy = await saveStudy(topicDataWithoutUserId)
+      const savedStudy = await saveStudy(newTopic)
 
-      toast({
-        title: "✅ Plantilla aplicada",
-        description: `"${template.name}" creado con ${template.entries.length} versículos.`,
-        duration: 2000,
-      })
-
-      router.push(`/topical/${savedStudy?.id}`)
+      if (savedStudy) {
+        toast({
+          title: "✅ Plantilla aplicada",
+          description: `"${template.name}" creado con ${template.entries.length} versículos.`,
+          duration: 2000,
+        })
+        router.push(`/topical/${savedStudy.id}`)
+      } else {
+        toast({
+          title: "❌ Error",
+          description: "No se pudo crear desde plantilla.",
+          variant: "destructive",
+          duration: 3000,
+        })
+      }
     } catch (error: any) {
       toast({
         title: "❌ Error",
@@ -385,7 +456,7 @@ function TopicalStudiesPage() {
     setRefreshingEntries(new Set([topicToDelete.id]))
 
     try {
-      await deleteStudy(topicToDelete.id)
+      await deleteStudy(topicToDelete.id) // Usar deleteStudy del hook
       toast({
         title: "✅ Eliminado",
         description: `"${topicToDelete.name}" eliminado.`,
@@ -412,20 +483,105 @@ function TopicalStudiesPage() {
   const handleUpdateTopicName = async (topicId: string) => {
     if (!editingTopicName.trim() || !user) return
 
-    const studyToUpdate = topicalStudies.find((s) => s.id === topicId)
+    const studyToUpdate = displayStudies.find((s) => s.id === topicId) // Usar displayStudies
     if (!studyToUpdate) return
 
-    const updatedStudy = { ...studyToUpdate, name: editingTopicName, updatedAt: Timestamp.now() }
+    const updatedStudyData: Omit<TopicalStudy, "createdAt" | "updatedAt" | "userId"> = {
+      ...studyToUpdate,
+      name: editingTopicName,
+    }
 
     setEditingTopicId(null)
     setEditingTopicName("")
 
     try {
-      const { userId, ...studyData } = updatedStudy
-      await saveStudy(studyData)
+      await saveStudy(updatedStudyData) // Usar saveStudy del hook
     } catch (error) {
       console.error("Error updating topic name:", error)
+      toast({
+        title: "❌ Error",
+        description: "No se pudo actualizar el nombre del tema.",
+        variant: "destructive",
+        duration: 3000,
+      })
     }
+  }
+
+const handleMoveStudy = async (studyId: string, direction: "up" | "down") => {
+  const currentIndex = displayStudies.findIndex((study) => study.id === studyId)
+  if (currentIndex === -1) return
+
+  let newIndex = currentIndex
+  if (direction === "up") {
+    newIndex = Math.max(0, currentIndex - 1)
+  } else if (direction === "down") {
+    newIndex = Math.min(displayStudies.length - 1, currentIndex + 1)
+  }
+
+  if (newIndex === currentIndex) return
+
+  // Marcar que estamos reordenando para evitar sincronización
+  setIsReordering(true)
+
+  const newDisplayStudies = [...displayStudies]
+  const [movedStudy] = newDisplayStudies.splice(currentIndex, 1)
+  newDisplayStudies.splice(newIndex, 0, movedStudy)
+
+  // Actualizar inmediatamente la UI
+  setDisplayStudies(newDisplayStudies)
+
+  // Recalcular orderIndex para TODOS los elementos
+  const reorderedStudies = newDisplayStudies.map((study, index) => ({
+    ...study,
+    orderIndex: index
+  }))
+
+  // Actualizar displayStudies con los nuevos orderIndex
+  setDisplayStudies(reorderedStudies)
+
+  try {
+    // Guardar todos los estudios con batch o secuencialmente
+    const savePromises = reorderedStudies.map(async (study, index) => {
+      // Pequeño delay para evitar sobrecarga
+      await new Promise(resolve => setTimeout(resolve, index * 50))
+      
+      const { userId, createdAt, updatedAt, ...studyDataWithoutTimestamps } = study
+      return await saveStudy(studyDataWithoutTimestamps)
+    })
+
+    await Promise.all(savePromises)
+
+    // Esperar un poco antes de permitir sincronización
+    setTimeout(() => {
+      setIsReordering(false)
+    }, 2000) // 2 segundos de gracia
+
+    toast({
+      title: "✅ Orden actualizado",
+      description: "Los temas han sido reordenados",
+      duration: 2000,
+    })
+
+  } catch (error) {
+    console.error("Error saving reordered studies:", error)
+    
+    // En caso de error, revertir y permitir sincronización
+    setIsReordering(false)
+    
+    // Recargar desde el backend
+    setDisplayStudies([])
+    
+    toast({
+      title: "❌ Error",
+      description: "No se pudo guardar el nuevo orden. Se recargó la lista.",
+      variant: "destructive",
+      duration: 3000,
+    })
+  }
+}
+
+  const handleToggleOrderingMode = () => {
+    setIsOrderingMode((prev) => !prev)
   }
 
   if (loading) {
@@ -440,7 +596,12 @@ function TopicalStudiesPage() {
     <div className="min-h-screen bg-gradient-to-br from-[#0a0a0a] via-[#0f0f0f] to-[#0a0a0a] text-white">
       <div className="container mx-auto px-4 py-6 max-w-4xl">
         {/* Header móvil-friendly */}
-        <div className="flex items-center justify-between mb-6">
+        <SmartSyncButton
+          className="shadow-lg"
+          showText={false}
+          syncType={SyncType.TOPICALS} // 📖 Solo devocionales
+        />
+        <div className="flex items-center justify-between mb-6 mt-1">
           <div className="flex items-center gap-3">
             <Link href="/home">
               <Button variant="outline" size="icon" className="bg-[#1a1a1a]/50 border-gray-700 hover:bg-[#2a2a2a]/50">
@@ -473,14 +634,27 @@ function TopicalStudiesPage() {
                     <Plus className="h-4 w-4" />
                   </Button>
                 </div>
-                <StudyTemplates onSelectTemplate={handleCreateFromTemplate} />
+                <div className="flex gap-2">
+                  {isMobile && (
+                    <Button
+                      onClick={handleToggleOrderingMode}
+                      variant="outline"
+                      className={`w-full focus:outline-none focus:ring-0 ${isOrderingMode ? "bg-purple-500/20 text-purple-300 border-purple-500/30 hover:bg-purple-500/30 focus:outline-none focus:ring-0" : "bg-gray-700/20 text-gray-300 border-gray-700/30 hover:bg-gray-700/30 focus:outline-none focus:ring-0"}`}
+                      tabIndex={-1}
+                    >
+                      <ListOrdered className="h-4 w-4 mr-2 focus:outline-none focus:ring-0" />
+                      {isOrderingMode ? "Terminar Orden" : "Ordenar"}
+                    </Button>
+                  )}
+                  {/* <StudyTemplates onSelectTemplate={handleCreateFromTemplate} /> */}
+                </div>
               </div>
             </CardContent>
           </GradientCard>
         </div>
 
         {/* Búsqueda simple */}
-        {topicalStudies.length > 0 && (
+        {displayStudies.length > 0 && (
           <div className="mb-6">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -506,7 +680,7 @@ function TopicalStudiesPage() {
 
         {/* Lista de temas - OPTIMIZADA PARA MÓVIL */}
         <div className="space-y-3">
-          {filteredStudies.length === 0 && topicalStudies.length === 0 && (
+          {filteredStudies.length === 0 && displayStudies.length === 0 && (
             <div className="text-center py-12 text-gray-400">
               <BookOpen className="h-16 w-16 mx-auto mb-4 opacity-50" />
               <p className="text-lg mb-2">¡Comienza tu primer tema!</p>
@@ -514,16 +688,42 @@ function TopicalStudiesPage() {
             </div>
           )}
 
-          {filteredStudies.length === 0 && topicalStudies.length > 0 && (
+          {filteredStudies.length === 0 && displayStudies.length > 0 && (
             <div className="text-center py-8 text-gray-400">
               <p>No se encontraron temas con "{searchTerm}"</p>
             </div>
           )}
 
-          {filteredStudies.map((topic) => (
+          {filteredStudies.map((topic, index) => (
             <GradientCard key={topic.id} className="group" gradient="blue">
               <CardContent className="p-0">
                 <div className="flex items-center">
+                  {/* Botones de reordenamiento */}
+                  {(isOrderingMode || !isMobile) && (
+                    <div className="flex flex-col gap-1 ml-2 mr-2 sm:mr-4">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleMoveStudy(topic.id, "up")}
+                        disabled={index === 0}
+                        className="h-6 w-6 text-gray-300 hover:bg-gray-700/50 disabled:opacity-30 disabled:cursor-not-allowed focus:outline-none focus:ring-0"
+                        tabIndex={-1}
+                      >
+                        <ChevronUp className="h-4 w-4 focus:outline-none focus:ring-0" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleMoveStudy(topic.id, "down")}
+                        disabled={index === filteredStudies.length - 1}
+                        className="h-6 w-6 text-gray-300 hover:bg-gray-700/50 disabled:opacity-30 disabled:cursor-not-allowed focus:outline-none focus:ring-0"
+                        tabIndex={-1}
+                      >
+                        <ChevronDown className="h-4 w-4 focus:outline-none focus:ring-0" />
+                      </Button>
+                    </div>
+                  )}
+
                   {/* Contenido principal - CLICKEABLE */}
                   <Link href={`/topical/${topic.id}`} className="flex-1 min-w-0 p-4">
                     <div className="flex items-center justify-between">
@@ -598,16 +798,16 @@ function TopicalStudiesPage() {
         </div>
 
         {/* Resumen al final */}
-        {topicalStudies.length > 0 && (
+        {displayStudies.length > 0 && (
           <div className="mt-8 text-center text-gray-400 text-sm">
-            {filteredStudies.length !== topicalStudies.length && (
+            {filteredStudies.length !== displayStudies.length && (
               <p>
-                Mostrando {filteredStudies.length} de {topicalStudies.length} temas
+                Mostrando {filteredStudies.length} de {displayStudies.length} temas
               </p>
             )}
-            {filteredStudies.length === topicalStudies.length && (
+            {filteredStudies.length === displayStudies.length && (
               <p>
-                Total: {topicalStudies.length} {topicalStudies.length === 1 ? "tema" : "temas"}
+                Total: {displayStudies.length} {displayStudies.length === 1 ? "tema" : "temas"}
               </p>
             )}
           </div>
@@ -624,7 +824,7 @@ function TopicalStudiesPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col sm:flex-row gap-2">
-            <AlertDialogCancel className="bg-gray-800 border-gray-700 text-white hover:bg-gray-700 w-full sm:w-auto">
+            <AlertDialogCancel className="bg-gray-800 border-gray-700 text-white hover:bg-gray-700 w-full sm:w-auto focus:outline-none focus:ring-0">
               Cancelar
             </AlertDialogCancel>
             <AlertDialogAction

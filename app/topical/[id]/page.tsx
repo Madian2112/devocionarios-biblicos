@@ -1,8 +1,5 @@
 "use client"
-
-import type React from "react"
-
-import { useState, useEffect, use, useCallback, useRef } from "react"
+import { useState, useEffect, useCallback, useRef, use } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import {
@@ -10,12 +7,13 @@ import {
   Download,
   Plus,
   ChevronDown,
+  ChevronUp,
   Eye,
   Trash2,
   Book,
-  GripVertical,
   Clock,
   CheckCircle,
+  ListOrdered,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { CardContent } from "@/components/ui/card"
@@ -41,159 +39,177 @@ import { exportTopicalStudyToPDF } from "@/lib/pdf-exporter"
 import type { TopicalStudy, StudyEntry } from "@/lib/firestore"
 import { useAuthContext } from "@/context/auth-context"
 import { Timestamp } from "firebase/firestore"
-import { fetchVerseText } from "@/lib/bible-api"
 import withAuth from "@/components/auth/with-auth"
-import { toast, useToast } from "@/hooks/use-toast"
+import { useToast } from "@/hooks/use-toast"
 import { useDisableMobileZoom } from "@/hooks/use-disable-mobile-zoom"
 import { useTopicalStudies } from "@/hooks/use-sincronizar-temas"
 import { smartSyncFirestoreService } from "@/lib/services/sincronizacion-inteligente-firestore"
 
-// Drag and Drop imports
-import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from "@dnd-kit/core"
-import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from "@dnd-kit/sortable"
-import { useSortable } from "@dnd-kit/sortable"
-import { CSS } from "@dnd-kit/utilities"
+// Componente para cada entrada del estudio
+interface StudyEntryItemProps {
+  entry: StudyEntry
+  onUpdate: (updatedEntry: StudyEntry) => void
+  onRemove: (entryId: string) => void
+  onMoveUp: (entryId: string) => void
+  onMoveDown: (entryId: string) => void
+  isFirst: boolean
+  isLast: boolean
+  isOrderingMode: boolean
+}
 
-// Componente sorteable para drag & drop
-function SortableItem({ id, children }: { id: string; children: React.ReactNode }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
-  const [isLongPressActive, setIsLongPressActive] = useState(false)
-  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null)
-  const touchStartTimeRef = useRef<number>(0)
+function StudyEntryItem({
+  entry,
+  onUpdate,
+  onRemove,
+  onMoveUp,
+  onMoveDown,
+  isFirst,
+  isLast,
+  isOrderingMode,
+}: StudyEntryItemProps) {
+  const [isMobile, setIsMobile] = useState(false)
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.7 : 1,
-    zIndex: isDragging ? 1000 : 1,
-  }
-
-  // Detectar si es dispositivo móvil
-  const isMobile = typeof window !== "undefined" && window.innerWidth <= 768
-
-  // Handler simplificado para long press
-  const handlePointerDown = (e: React.PointerEvent) => {
-    if (!isMobile) return
-
-    touchStartTimeRef.current = Date.now()
-
-    // Prevenir comportamientos por defecto
-    e.preventDefault()
-    e.stopPropagation()
-
-    longPressTimerRef.current = setTimeout(() => {
-      setIsLongPressActive(true)
-
-      // Vibración táctil
-      if (navigator.vibrate) {
-        navigator.vibrate(100)
-      }
-
-      toast({
-        title: "🔄 Listo para mover",
-        description: "Arrastra el elemento",
-        duration: 1500,
-      })
-
-      // Auto-desactivar después de 8 segundos
-      setTimeout(() => {
-        setIsLongPressActive(false)
-      }, 8000)
-    }, 500) // 500ms para activar
-  }
-
-  const handlePointerUp = () => {
-    if (longPressTimerRef.current) {
-      clearTimeout(longPressTimerRef.current)
-      longPressTimerRef.current = null
-    }
-  }
-
-  const handlePointerMove = (e: React.PointerEvent) => {
-    // Si se mueve antes del long press, cancelar
-    if (longPressTimerRef.current && Date.now() - touchStartTimeRef.current < 500) {
-      clearTimeout(longPressTimerRef.current)
-      longPressTimerRef.current = null
-    }
-  }
-
-  // Cleanup al desmontar
   useEffect(() => {
-    return () => {
-      if (longPressTimerRef.current) {
-        clearTimeout(longPressTimerRef.current)
-      }
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 768)
     }
+    checkMobile()
+    window.addEventListener("resize", checkMobile)
+    return () => window.removeEventListener("resize", checkMobile)
   }, [])
 
-  // Listeners condicionales
-  const dragListeners = isMobile ? (isLongPressActive ? listeners : {}) : listeners
-
   return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className={`relative group ${isMobile ? "touch-manipulation" : ""}`}
-      onPointerDown={handlePointerDown}
-      onPointerUp={handlePointerUp}
-      onPointerMove={handlePointerMove}
-      onPointerCancel={handlePointerUp}
-      {...(isMobile && isLongPressActive ? attributes : {})}
-      {...dragListeners}
-    >
-      {/* Indicador visual para móviles cuando está activo */}
-      {isMobile && isLongPressActive && (
-        <div className="absolute inset-0 bg-blue-500/20 border-2 border-blue-400/60 rounded-lg pointer-events-none z-10 animate-pulse">
-          <div className="absolute top-2 right-2 bg-blue-500 text-white text-xs px-2 py-1 rounded-full">↕️ Arrastra</div>
-        </div>
-      )}
-
-      {/* Icono de drag - SOLO EN DESKTOP */}
-      {!isMobile && (
-        <div
-          {...attributes}
-          {...dragListeners}
-          className="absolute left-2 top-1/2 transform -translate-y-1/2 z-10 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-        >
-          <div className="p-1 bg-gray-700/80 rounded hover:bg-gray-600/80 transition-colors">
-            <GripVertical className="h-4 w-4 text-gray-300" />
-          </div>
-        </div>
-      )}
-
-      {/* Contenido */}
-      <div
-        className={`${isMobile ? "px-2" : "pl-8"} ${isMobile ? "select-none" : ""}`}
-        style={
-          isMobile
-            ? {
-                userSelect: "none",
-                WebkitUserSelect: "none",
-                touchAction: "manipulation",
-              }
-            : {}
+    <Collapsible
+      className="group"
+      onOpenChange={(isOpen) => {
+        if (!isOpen) {
+          // Trigger auto-save when collapsible closes
+          // This is handled by the parent component now, but keeping the structure
         }
-      >
-        {children}
-      </div>
-    </div>
+      }}
+    >
+      <GradientCard gradient="blue">
+        <div className="flex w-full items-center p-4">
+          {/* Botones de reordenamiento */}
+          {(isOrderingMode || !isMobile) && (
+            <div className="flex flex-col gap-1 mr-2 sm:mr-4">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => onMoveUp(entry.id)}
+                disabled={isFirst}
+                className="h-6 w-6 text-gray-300 hover:bg-gray-700/50 disabled:opacity-30 disabled:cursor-not-allowed focus:outline-none focus:ring-0"
+                tabIndex={-1}
+              >
+                <ChevronUp className="h-4 w-4 focus:outline-none focus:ring-0" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => onMoveDown(entry.id)}
+                disabled={isLast}
+                className="h-6 w-6 text-gray-300 hover:bg-gray-700/50 disabled:opacity-30 disabled:cursor-not-allowed focus:outline-none focus:ring-0"
+                tabIndex={-1}
+              >
+                <ChevronDown className="h-4 w-4 focus:outline-none focus:ring-0" />
+              </Button>
+            </div>
+          )}
+
+          <CollapsibleTrigger className="flex flex-1 text-left min-w-0 items-center justify-between focus:outline-none focus:ring-0">
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold text-white truncate">{entry.referencia || "Sin referencia"}</p>
+              <p className="text-sm text-gray-400 truncate mt-1">{entry.learning || "Sin aprendizaje"}</p>
+            </div>
+            <ChevronDown className="h-5 w-5 text-white transition-transform duration-300 group-data-[state=open]:rotate-180 ml-2 flex-shrink-0 focus:outline-none focus:ring-0" />
+          </CollapsibleTrigger>
+          {entry.referencia && (
+            <div className="ml-2 flex-shrink-0">
+              <BibleViewer
+                reference={entry.referencia}
+                defaultVersion={entry.versionTexto}
+                onClose={async (selectedVersion) => {
+                  // This part might need to be handled by the parent if saving state is critical
+                  // For now, it updates the entry directly
+                  onUpdate({ ...entry, versionTexto: selectedVersion })
+                }}
+                trigger={
+                  <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-400 hover:text-blue-300 focus:outline-none focus:ring-0">
+                    <Eye className="h-4 w-4" />
+                  </Button>
+                }
+              />
+            </div>
+          )}
+        </div>
+        <CollapsibleContent>
+          <CardContent className="pt-4 space-y-6 border-t border-blue-500/20">
+            <div>
+              <label htmlFor={`reference-${entry.id}`} className="block text-sm font-medium text-gray-300 mb-3">
+                Referencia(s) Bíblica(s)
+              </label>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="flex-1">
+                  <Input
+                    id={`reference-${entry.id}`}
+                    value={entry.referencia}
+                    onChange={(e) => onUpdate({ ...entry, referencia: e.target.value })}
+                    placeholder="Ej: Juan 3:16 o 1 Corintios 13:4-7"
+                    className="bg-[#2a2a2a]/50 border-gray-700 text-white"
+                  />
+                </div>
+                <Badge variant="outline" className="border-gray-600 text-gray-400 shrink-0">
+                  {entry.versionTexto?.toUpperCase() || "RV1960"}
+                </Badge>
+                <BibleSelector
+                  onSelect={(ref) => {
+                    onUpdate({ ...entry, referencia: ref, versionTexto: "rv1960" })
+                  }}
+                  currentReference={entry.referencia}
+                  trigger={
+                    <Button
+                      variant="outline"
+                      className="bg-[#2a2a2a]/50 border-gray-700 hover:bg-[#3a3a3a]/50 shrink-0"
+                    >
+                      <Book className="h-4 w-4 mr-2" />
+                      Seleccionar
+                    </Button>
+                  }
+                />
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => onRemove(entry.id)}
+                  className="bg-red-500/20 border-red-500/30 hover:bg-red-500/30"
+                >
+                  <Trash2 className="h-4 w-4 text-red-400" />
+                </Button>
+              </div>
+            </div>
+            <div>
+              <label htmlFor={`learning-${entry.id}`} className="block text-sm font-medium text-gray-300 mb-3 mt-6">
+                Apuntes y Aprendizaje
+              </label>
+              <Textarea
+                id={`learning-${entry.id}`}
+                value={entry.learning}
+                onChange={(e) => onUpdate({ ...entry, learning: e.target.value })}
+                placeholder="Escribe aquí tus reflexiones sobre este pasaje..."
+                className="bg-[#2a2a2a]/50 border-gray-700 text-white min-h-[150px]"
+              />
+            </div>
+          </CardContent>
+        </CollapsibleContent>
+      </GradientCard>
+    </Collapsible>
   )
 }
 
-
-function TopicalStudyPage({ params }: { params: Promise<{ id: string }> }) {
+function TopicalStudyPage({ params }: { params: { id: string } }) {
   const router = useRouter()
   const { user } = useAuthContext()
   const { toast } = useToast()
-  const { id } = use(params)
+  const { id } = use(params) // params is directly an object
   const isNew = id === "new"
 
   const [study, setStudy] = useState<TopicalStudy | null>(null)
@@ -203,34 +219,21 @@ function TopicalStudyPage({ params }: { params: Promise<{ id: string }> }) {
   const hasChangesRef = useRef(false)
   const [deleteEntryDialogOpen, setDeleteEntryDialogOpen] = useState(false)
   const [entryToDelete, setEntryToDelete] = useState<{ id: string; referencia: string } | null>(null)
+  const [isOrderingMode, setIsOrderingMode] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
 
   const { saveStudy } = useTopicalStudies()
 
   useDisableMobileZoom()
 
-  // Sensores para drag & drop
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 1, // Distancia mínima muy pequeña
-      },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    }),
-  )
-
-
-//   const sensors = useSensors(
-//   useSensor(PointerSensor, {
-//     activationConstraint: {
-//       distance: 8, // Requiere mover 8px antes de activar
-//     },
-//   }),
-//   useSensor(KeyboardSensor, {
-//     coordinateGetter: sortableKeyboardCoordinates,
-//   }),
-// )
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 768)
+    }
+    checkMobile()
+    window.addEventListener("resize", checkMobile)
+    return () => window.removeEventListener("resize", checkMobile)
+  }, [])
 
   useEffect(() => {
     async function fetchOrCreateStudy() {
@@ -324,23 +327,42 @@ function TopicalStudyPage({ params }: { params: Promise<{ id: string }> }) {
     setEntryToDelete(null)
   }
 
-  // Función para reordenar entradas con drag & drop
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event
+  const handleMoveEntry = (entryId: string, direction: "up" | "down") => {
+    if (!study) return
 
-    if (over && active.id !== over.id && study) {
-      const oldIndex = study.entries.findIndex((entry) => entry.id === active.id)
-      const newIndex = study.entries.findIndex((entry) => entry.id === over.id)
+    const currentIndex = study.entries.findIndex((entry) => entry.id === entryId)
+    if (currentIndex === -1) return
 
-      const reorderedEntries = arrayMove(study.entries, oldIndex, newIndex)
-      handleStudyChange("entries", reorderedEntries)
-
-      toast({
-        title: "✅ Orden actualizado",
-        description: "Las entradas han sido reordenadas",
-        duration: 2000,
-      })
+    let newIndex = currentIndex
+    if (direction === "up") {
+      newIndex = Math.max(0, currentIndex - 1)
+    } else if (direction === "down") {
+      newIndex = Math.min(study.entries.length - 1, currentIndex + 1)
     }
+
+    if (newIndex === currentIndex) return // No change needed
+
+    const newEntries = [...study.entries]
+    const [movedEntry] = newEntries.splice(currentIndex, 1)
+    newEntries.splice(newIndex, 0, movedEntry)
+
+    handleStudyChange("entries", newEntries)
+    toast({
+      title: "✅ Orden actualizado",
+      description: "Las entradas han sido reordenadas",
+      duration: 2000,
+    })
+  }
+
+  const handleToggleOrderingMode = () => {
+    setIsOrderingMode((prev) => {
+      const newState = !prev
+      if (!newState) {
+        // If turning off ordering mode, trigger auto-save
+        autoSave()
+      }
+      return newState
+    })
   }
 
   const autoSave = useCallback(async () => {
@@ -449,7 +471,17 @@ function TopicalStudyPage({ params }: { params: Promise<{ id: string }> }) {
           </div>
 
           <div className="flex gap-2 w-full sm:w-auto order-last">
-
+            {isMobile && (
+              <Button
+                onClick={handleToggleOrderingMode}
+                variant="outline"
+                className={`flex-1 sm:flex-none focus:outline-none focus:ring-0 ${isOrderingMode ? "bg-purple-500/20 text-purple-300 border-purple-500/30 hover:bg-purple-500/30" : "bg-gray-700/20 text-gray-300 border-gray-700/30 hover:bg-gray-700/30"}`}
+                tabIndex={-1}
+              >
+                <ListOrdered className="h-4 w-4 sm:mr-2 focus:outline-none focus:ring-0" />
+                {isOrderingMode ? "Terminar" : "Ordenar"}
+              </Button>
+            )}
             <Button
               onClick={() => exportTopicalStudyToPDF(study)}
               variant="outline"
@@ -468,135 +500,22 @@ function TopicalStudyPage({ params }: { params: Promise<{ id: string }> }) {
           </div>
         </div>
 
-        {/* Contenido con drag & drop */}
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-          <SortableContext items={study.entries.map((e) => e.id)} strategy={verticalListSortingStrategy}>
-            <div className="space-y-4">
-              {study.entries.map((entry) => (
-                <SortableItem key={entry.id} id={entry.id}>
-                  <Collapsible
-                    className="group"
-                    onOpenChange={(isOpen) => {
-                      if (!isOpen) {
-                        triggerAutoSave()
-                      }
-                    }}
-                  >
-                  <style jsx global>{`
-                  .dndkit-sortable-item {
-                    transform-origin: center;
-                    will-change: transform;
-                  }
-                  
-                  @media (max-width: 768px) {
-                    * {
-                      -webkit-touch-callout: none;
-                      -webkit-tap-highlight-color: transparent;
-                    }
-                    
-                    .dndkit-sortable-item {
-                      backface-visibility: hidden;
-                      -webkit-backface-visibility: hidden;
-                    }
-                  }
-                `}</style>
-                    <GradientCard gradient="blue">
-                      <div className="flex w-full items-center p-4">
-                        <CollapsibleTrigger className="flex flex-1 text-left min-w-0 items-center justify-between">
-                          <div className="flex-1 min-w-0">
-                            <p className="font-semibold text-white truncate">{entry.referencia || "Sin referencia"}</p>
-                            <p className="text-sm text-gray-400 truncate mt-1">{entry.learning || "Sin aprendizaje"}</p>
-                          </div>
-                          <ChevronDown className="h-5 w-5 text-white transition-transform duration-300 group-data-[state=open]:rotate-180 ml-2 flex-shrink-0" />
-                        </CollapsibleTrigger>
-                        {entry.referencia && (
-                          <div className="ml-2 flex-shrink-0">
-                            <BibleViewer
-                              reference={entry.referencia}
-                              defaultVersion={entry.versionTexto}
-                              onClose={async (selectedVersion) => {
-                                setSaving(true)
-                                const verseText = await fetchVerseText(entry.referencia, selectedVersion)
-                                handleUpdateStudyEntry({ ...entry, versionTexto: selectedVersion })
-                                setSaving(false)
-                              }}
-                              trigger={
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8 text-blue-400 hover:text-blue-300"
-                                >
-                                  <Eye className="h-4 w-4" />
-                                </Button>
-                              }
-                            />
-                          </div>
-                        )}
-                      </div>
-                      <CollapsibleContent>
-                        <CardContent className="pt-4 space-y-6 border-t border-blue-500/20">
-                          <div>
-                            <label className="block text-sm font-medium text-gray-300 mb-3">
-                              Referencia(s) Bíblica(s)
-                            </label>
-                            <div className="flex flex-col sm:flex-row gap-3">
-                              <div className="flex-1">
-                                <Input
-                                  value={entry.referencia}
-                                  onChange={(e) => handleUpdateStudyEntry({ ...entry, referencia: e.target.value })}
-                                  placeholder="Ej: Juan 3:16 o 1 Corintios 13:4-7"
-                                  className="bg-[#2a2a2a]/50 border-gray-700 text-white"
-                                />
-                              </div>
-                              <Badge variant="outline" className="border-gray-600 text-gray-400 shrink-0">
-                                {entry.versionTexto?.toUpperCase() || "RV1960"}
-                              </Badge>
-                              <BibleSelector
-                                onSelect={(ref) => {
-                                  handleUpdateStudyEntry({ ...entry, referencia: ref, versionTexto: "rv1960" })
-                                }}
-                                currentReference={entry.referencia}
-                                trigger={
-                                  <Button
-                                    variant="outline"
-                                    className="bg-[#2a2a2a]/50 border-gray-700 hover:bg-[#3a3a3a]/50 shrink-0"
-                                  >
-                                    <Book className="h-4 w-4 mr-2" />
-                                    Seleccionar
-                                  </Button>
-                                }
-                              />
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                onClick={() => handleRemoveStudyEntry(entry.id)}
-                                className="bg-red-500/20 border-red-500/30 hover:bg-red-500/30"
-                              >
-                                <Trash2 className="h-4 w-4 text-red-400" />
-                              </Button>
-                            </div>
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-300 mb-3 mt-6">
-                              Apuntes y Aprendizaje
-                            </label>
-                            <Textarea
-                              value={entry.learning}
-                              onChange={(e) => handleUpdateStudyEntry({ ...entry, learning: e.target.value })}
-                              placeholder="Escribe aquí tus reflexiones sobre este pasaje..."
-                              className="bg-[#2a2a2a]/50 border-gray-700 text-white min-h-[150px]"
-                              disabled={saving}
-                            />
-                          </div>
-                        </CardContent>
-                      </CollapsibleContent>
-                    </GradientCard>
-                  </Collapsible>
-                </SortableItem>
-              ))}
-            </div>
-          </SortableContext>
-        </DndContext>
+        {/* Contenido de las entradas */}
+        <div className="space-y-4">
+          {study.entries.map((entry, index) => (
+            <StudyEntryItem
+              key={entry.id}
+              entry={entry}
+              onUpdate={handleUpdateStudyEntry}
+              onRemove={handleRemoveStudyEntry}
+              onMoveUp={(idToMove) => handleMoveEntry(idToMove, "up")}
+              onMoveDown={(idToMove) => handleMoveEntry(idToMove, "down")}
+              isFirst={index === 0}
+              isLast={index === study.entries.length - 1}
+              isOrderingMode={isOrderingMode}
+            />
+          ))}
+        </div>
 
         {study.entries.length === 0 && (
           <div className="text-center py-16 text-gray-400">
