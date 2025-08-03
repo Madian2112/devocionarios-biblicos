@@ -34,6 +34,7 @@ import { Separator } from "@/components/ui/separator";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { toast } from "sonner";
 import { BibleVersion } from "@/lib/bible-data";
+import { parseReference } from "@/lib/bible-utils";
 
 interface ApiBibleVersion extends BibleVersion {
   version: string;
@@ -290,47 +291,14 @@ export function BibleViewerContent({
     fetchVersions();
   }, [selectedVersion, versions.length]);
 
-  const eliminarTildes = useCallback((texto: string) => {
-    const tildes: { [key: string]: string } = { 
-      'á': 'a', 'é': 'e', 'í': 'i', 'ó': 'o', 'ú': 'u', 
-      'Á': 'A', 'É': 'E', 'Í': 'I', 'Ó': 'O', 'Ú': 'U' 
-    };
-    return texto.replace(/[áéíóúÁÉÍÓÚ]/g, letra => tildes[letra]);
-  }, []);
-
-  const parseReference = useCallback((ref: string) => {
-    let match = ref.match(/^(.+?)\s+(\d+):(\d+)(?:-(\d+))?$/);
-    if (match) {
-      const [, bookName, chapter, startVerse, endVerse] = match;
-      return {
-        book: eliminarTildes(bookName.trim()),
-        chapter: Number.parseInt(chapter),
-        startVerse: Number.parseInt(startVerse),
-        endVerse: endVerse ? Number.parseInt(endVerse) : null,
-      };
-    }
-    
-    match = ref.match(/^(.+?)\s+(\d+)$/);
-    if (match) {
-      const [, bookName, chapter] = match;
-      return {
-        book: eliminarTildes(bookName.trim()),
-        chapter: Number.parseInt(chapter),
-        startVerse: null,
-        endVerse: null,
-      };
-    }
-
-    return null;
-  }, [eliminarTildes]);
-
   // 🔥 SOLUCIÓN: Improved content loading with request cancellation
   const loadContent = useCallback(async () => {
     const parsed = parseReference(reference);
-    if (parsed?.book) {
-      parsed.book = parsed?.book.replace(' ', "-");
-    }
+    // if (parsed?.book) {
+    //   parsed.book = parsed?.book.replace(' ', "-");
+    // }
 
+    console.log('Asi me lleva el parse de viewer: ', parsed);
     if (!parsed) {
       setError("Formato de referencia inválido");
       setVerseData(null);
@@ -348,7 +316,7 @@ export function BibleViewerContent({
     setError(null);
 
     try { 
-      const apiUrl = `https://bible-api.deno.dev/api/read/${selectedVersion}/${parsed.book}/${parsed.chapter}`;
+      const apiUrl = `https://bible-api.deno.dev/api/read/${selectedVersion}/${parsed.book}/${parsed.startChapter}`;
       const res = await fetch(apiUrl);
       if (!res.ok) {
         throw new Error(`Error ${res.status}: No se pudo obtener la información.`);

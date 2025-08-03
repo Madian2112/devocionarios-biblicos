@@ -223,9 +223,9 @@ function BibleSelectorForm({
                 setStartVerse(1);
                 setEndVerse(null);
             }
-            setSelectedBook(parsed.book);
-            setStartChapter(parsed.startChapter);
-            setEndChapter(parsed.endChapter || null);
+            setSelectedBook(parsed.book.replace('-', ' '));
+            setStartChapter(parsed.startVerse ?? 1);
+            setEndChapter(parsed.endVerse || null);
         }
     }, [currentReference]);
 
@@ -277,6 +277,7 @@ function BibleSelectorForm({
         } else {
             reference = `${selectedBook} ${startChapter}`;
         }
+        console.log('Asi esta la referencia seleccionada: ', reference);
         onSelect(reference);
         setOpen(false);
     }, [selectionType, selectedBook, startChapter, startVerse, endVerse, onSelect, setOpen]);

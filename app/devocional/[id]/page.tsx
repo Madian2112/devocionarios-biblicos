@@ -229,27 +229,22 @@ const addVersiculo = () => {
     handleDevocionalChange('versiculos', devocional.versiculos.filter((v) => v.id !== versiculoId));
   }
   
-const handleVersiculoChange = (index: number, field: keyof Versiculo, value: any) => {
+const handleVersiculoChange = (index: number, updates: Partial<Versiculo>) => {
   if (!devocional) return;
-  
-  
-  
-  
+
   const updatedVersiculos = [...devocional.versiculos];
-  
-  // ✅ VERIFICACIÓN CRÍTICA: Asegurar que el versículo existe
+
   if (index < 0 || index >= updatedVersiculos.length || !updatedVersiculos[index]) {
     console.error(`❌ Versículo en índice ${index} no existe. Array length: ${updatedVersiculos.length}`);
     console.error('Versículos disponibles:', updatedVersiculos.map((v, i) => ({ index: i, id: v.id, referencia: v.referencia })));
     return;
   }
-  
-  // ✅ Ahora es seguro hacer el spread
-  updatedVersiculos[index] = { ...updatedVersiculos[index], [field]: value };
-  
-  
+
+  updatedVersiculos[index] = { ...updatedVersiculos[index], ...updates };
+
   handleDevocionalChange('versiculos', updatedVersiculos);
 };
+
 
   const addReferencia = () => {
     if (!devocional) return
@@ -379,8 +374,7 @@ const handleVersiculoChange = (index: number, field: keyof Versiculo, value: any
                   onSelect={async (reference) => {
                     setSaving(true);
                     const verseText = await fetchVerseText(reference, 'rv1960');
-                    const versoCompleto = `RV1960 - ${reference}\n\n${verseText}`;
-                    setDevocional(prev => prev ? { ...prev, citaBiblica: reference, textoDevocional: versoCompleto, versionCitaBiblica: 'rv1960' } : null);
+                    setDevocional(prev => prev ? { ...prev, citaBiblica: reference, textoDevocional: verseText, versionCitaBiblica: 'rv1960' } : null);
                     setSaving(false);
                   }}
                   trigger={
@@ -402,8 +396,7 @@ const handleVersiculoChange = (index: number, field: keyof Versiculo, value: any
                       if (devocional) { 
                          setSaving(true);
                          const verseText = await fetchVerseText(devocional.citaBiblica, selectedVersion);
-                         const versoCompleto = `${selectedVersion.toUpperCase()} - ${devocional.citaBiblica}\n\n${verseText}`;
-                         handleDevocionalChange('textoDevocional', versoCompleto);
+                         handleDevocionalChange('textoDevocional', verseText);
                          handleDevocionalChange('versionCitaBiblica', selectedVersion);
                          setSaving(false);
                       }
@@ -424,7 +417,7 @@ const handleVersiculoChange = (index: number, field: keyof Versiculo, value: any
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-3">Texto del Devocional</label>
               <Textarea
-                value={devocional.textoDevocional}
+                value={`${devocional.versionCitaBiblica?.toLocaleUpperCase()} - ${devocional.citaBiblica}\n\n${devocional.textoDevocional}`}
                 onChange={(e) => handleDevocionalChange('textoDevocional', e.target.value)}
                 placeholder="Escribe o pega el contenido del devocional aquí..."
                 className="bg-[#2a2a2a]/50 border-gray-700 text-white min-h-[150px] backdrop-blur-sm focus:border-blue-500 transition-colors resize-none"
@@ -492,26 +485,26 @@ const handleVersiculoChange = (index: number, field: keyof Versiculo, value: any
                     <Book className="h-5 w-5 text-blue-400" />
                   </div>
                   Versículos Específicos
-<div className="relative group mr-4 sm:mr-12">
-  <span className="text-xs bg-blue-100 text-blue-800 font-bold px-2 py-0.5 rounded-md flex items-center gap-1 border border-blue-200 cursor-help">
-    NOTA
-    <ExternalLink className="h-3 w-3 text-blue-600" />
-  </span>
+                <div className="relative group mr-4 sm:mr-12">
+                  <span className="text-xs bg-blue-100 text-blue-800 font-bold px-2 py-0.5 rounded-md flex items-center gap-1 border border-blue-200 cursor-help">
+                    NOTA
+                    <ExternalLink className="h-3 w-3 text-blue-600" />
+                  </span>
 
-  <div className="absolute hidden group-hover:block z-10 w-[90vw] max-w-xs sm:w-72 bg-gray-800 text-white text-sm p-3 rounded-md shadow-lg 
-                  left-1/2 -translate-x-1/2 sm:left-auto sm:translate-x-0 sm:right-0 mt-1">
-    <p>Si presenta problemas para agregar versículos, abra la app en la web:</p>
-    <a 
-      href={`https://devocionales-biblicos-rv.netlify.app/devocional/${fecha}`} 
-      target="_blank" 
-      rel="noopener noreferrer"
-      className="mt-1 text-blue-400 hover:text-blue-300 underline break-words block text-[0.75rem]"
-    >
-      https://devocionales-biblicos-rv.netlify.app/devocional/{fecha}
-    </a>
-    <div className="absolute -top-1 right-2 w-2 h-2 bg-gray-800 transform rotate-45"></div>
-  </div>
-</div>
+                  <div className="absolute hidden group-hover:block z-10 w-[90vw] max-w-xs sm:w-72 bg-gray-800 text-white text-sm p-3 rounded-md shadow-lg 
+                                  left-1/2 -translate-x-1/2 sm:left-auto sm:translate-x-0 sm:right-0 mt-1">
+                    <p>Si presenta problemas para agregar versículos, abra la app en la web:</p>
+                    <a 
+                      href={`https://devocionales-biblicos-rv.netlify.app/devocional/${fecha}`} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="mt-1 text-blue-400 hover:text-blue-300 underline break-words block text-[0.75rem]"
+                    >
+                      https://devocionales-biblicos-rv.netlify.app/devocional/{fecha}
+                    </a>
+                    <div className="absolute -top-1 right-2 w-2 h-2 bg-gray-800 transform rotate-45"></div>
+                  </div>
+                </div>
 
                 </h3>
               <Button
@@ -557,7 +550,7 @@ const handleVersiculoChange = (index: number, field: keyof Versiculo, value: any
                                       value={versiculo?.referencia || ''}
                                       onChange={(e) => {
                                         
-                                        handleVersiculoChange(index, 'referencia', e.target.value);
+                                        handleVersiculoChange(index, {referencia: e.target.value});
                                       }}
                                       placeholder="Ej: Salmos 23:1"
                                       className="bg-[#2a2a2a]/50 border-gray-700 text-white backdrop-blur-sm focus:border-blue-500 transition-colors"
@@ -590,8 +583,10 @@ const handleVersiculoChange = (index: number, field: keyof Versiculo, value: any
                                         try {
                                           setSaving(true);
                                           const verseText = await fetchVerseText(versiculo.referencia, selectedVersion);
-                                          handleVersiculoChange(index, 'texto', verseText);
-                                          handleVersiculoChange(index, 'versionTexto', selectedVersion);
+                                          handleVersiculoChange(index, {
+                                            texto: verseText,
+                                            versionTexto: selectedVersion,
+                                          });
                                           setSaving(false);
                                         } catch (error) {
                                           console.error('Error al cambiar versión:', error);
@@ -614,8 +609,8 @@ const handleVersiculoChange = (index: number, field: keyof Versiculo, value: any
                               <div>
                                 <label className="block text-sm font-medium text-gray-300 mb-3">Texto del Versículo</label>
                                 <Textarea
-                                  value={versiculo?.texto || ''}
-                                  onChange={(e) => handleVersiculoChange(index, 'texto', e.target.value)}
+                                  value={`${versiculo.versionTexto?.toUpperCase()} - ${versiculo.referencia} \n\n${versiculo?.texto}` }
+                                  onChange={(e) => handleVersiculoChange(index, {texto: e.target.value})}
                                   placeholder="Texto completo del versículo..."
                                   className="bg-[#2a2a2a]/50 border-gray-700 text-white backdrop-blur-sm focus:border-blue-500 transition-colors resize-none"
                                 />
@@ -626,7 +621,7 @@ const handleVersiculoChange = (index: number, field: keyof Versiculo, value: any
                                 </label>
                                 <Textarea
                                   value={versiculo?.aprendizaje || ''}
-                                  onChange={(e) => handleVersiculoChange(index, 'aprendizaje', e.target.value)}
+                                  onChange={(e) => handleVersiculoChange(index, {aprendizaje:e.target.value})}
                                   placeholder="¿Qué te enseña este versículo específicamente? ¿Cómo se relaciona con tu vida?"
                                   className="bg-[#2a2a2a]/50 border-gray-700 text-white backdrop-blur-sm focus:border-blue-500 transition-colors resize-none"
                                 />

@@ -24,7 +24,7 @@ export function parseReference(ref: string): ParsedReference | null {
   if (verseMatch) {
     const [, bookName, chapter, startVerse, endVerse] = verseMatch;
     return {
-      book: normalizeText(bookName.trim()),
+      book: normalizeText(bookName.trim()).replace(' ', '-'),
       startChapter: parseInt(chapter, 10),
       startVerse: parseInt(startVerse, 10),
       endVerse: endVerse ? parseInt(endVerse, 10) : undefined,
@@ -36,7 +36,7 @@ export function parseReference(ref: string): ParsedReference | null {
   if (chapterMatch) {
     const [, bookName, startChapter, endChapter] = chapterMatch;
     return {
-      book: normalizeText(bookName.trim()),
+      book: normalizeText(bookName.trim()).replace(' ', '-'),
       startChapter: parseInt(startChapter, 10),
       endChapter: endChapter ? parseInt(endChapter, 10) : undefined,
     };
