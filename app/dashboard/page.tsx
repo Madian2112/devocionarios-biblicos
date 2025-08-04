@@ -18,6 +18,7 @@ import {
   Eye,
   Home,
   Calendar as CalendarIcon,
+  List,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -201,9 +202,9 @@ function DashboardPage() {
                 <div className="flex gap-4">
                     <Link href="/devocional/historial">
                     {/* <Link href="/search"> */}
-                        <Button variant="outline" className="bg-[#1a1a1a]/50 border-gray-700 hover:bg-[#2a2a2a]/50">
-                        <Search className="h-4 w-4 mr-2"/> Buscar
-                        </Button>
+                    <Button variant="outline" className="bg-[#1a1a1a]/50 border-gray-700 hover:bg-[#2a2a2a]/50">
+                      <List className="h-4 w-4 mr-2" /> Historial
+                    </Button>
                     </Link>
                     {/* El enlace ahora lleva a la fecha seleccionada */}
                     <Link href={`/devocional/${selectedDate}`}>

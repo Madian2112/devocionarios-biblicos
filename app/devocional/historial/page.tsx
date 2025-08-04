@@ -228,23 +228,25 @@ function HistoryPage() {
     <div className="min-h-screen bg-gradient-to-br from-[#0a0a0a] via-[#0f0f0f] to-[#0a0a0a] text-white">
       <div className="container mx-auto px-4 py-6 max-w-5xl">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8">
-          <Link href="/dashboard" className="mb-4 sm:mb-0">
-            <Button
-              variant="outline"
-              className="bg-[#1a1a1a]/50 border-gray-700 hover:bg-[#2a2a2a]/50 backdrop-blur-sm"
-            >
-              <ChevronLeft className="h-4 w-4 mr-2" />
-              Volver al Dashboard
-            </Button>
-          </Link>
-          <div className="flex-1 text-center w-full sm:w-auto">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-8">
+
+            <Link href="/dashboard">
+                <Button
+                    variant="outline"
+                    className="bg-[#1a1a1a]/50 border-gray-700 hover:bg-[#2a2a2a]/50 backdrop-blur-sm w-full sm:w-auto"
+                >
+                    <ChevronLeft className="h-4 w-4 mr-2" />
+                    Volver al Dashboard
+                </Button>
+            </Link>
+          <div className="text-center order-first sm:order-none">
             <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
               Historial Completo
             </h1>
             <p className="text-gray-400">Todos tus devocionales</p>
           </div>
           <div className="hidden sm:block w-10"></div> {/* Small spacer for visual balance on right, flexible */}
+
         </div>
 
         {/* Search Bar */}
@@ -256,14 +258,14 @@ function HistoryPage() {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Buscar por cita, contenido, etiqueta o día..."
-                className="bg-[#2a2a2a]/50 border-gray-700 text-white pl-12 h-12 backdrop-blur-sm focus:border-blue-500 transition-colors text-lg"
+                className="bg-[#2a2a2a]/50 border-gray-700 text-white pl-12 h-12 backdrop-blur-sm focus:border-blue-500 transition-colors text-base"
               />
             </div>
           </CardContent>
         </GradientCard>
 
         {/* Consolidated Filters and Sort */}
-        <div className="flex justify-end mb-8">
+        <div className="flex justify-end mb-4">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -354,7 +356,7 @@ function HistoryPage() {
         </div>
 
         {/* Results */}
-        <div className="space-y-8">
+        <div className="space-y-8 mt-[-2]">
           {loading ? (
             <GradientCard>
               <CardContent className="text-center py-16">
@@ -366,9 +368,12 @@ function HistoryPage() {
             <>
               {/* Devocionales Section */}
               <div>
-                <h2 className="text-xl font-bold text-white mb-4">
+                {/* <h2 className="text-xl font-bold text-white mb-4">
                   Devocionales ({filteredAndSortedDevocionarios.length})
-                </h2>
+                </h2> */}
+                <Badge variant="outline" className="text-xs mb-3">
+                {filteredAndSortedDevocionarios.length} Devocionales
+                </Badge>
                 {Object.keys(groupedDevocionales).length > 0 ? (
                   Object.keys(groupedDevocionales).map((monthYear) => (
                     <div key={monthYear} className="mb-8">
