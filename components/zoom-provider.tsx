@@ -43,7 +43,7 @@ export function ZoomProvider({ children }: { children: ReactNode }) {
   };
 
   const resetZoom = () => {
-    setZoom(80);
+    setZoom(90);
   };
 
   const value = { zoom, increaseZoom, decreaseZoom, resetZoom };
