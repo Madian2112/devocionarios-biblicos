@@ -248,6 +248,7 @@ function TopicalStudyPage({ params }: { params: { id: string } }) {
           entries: [],
           createdAt: Timestamp.now(),
           updatedAt: Timestamp.now(),
+          orderIndex: 0, // Add this line to satisfy the TopicalStudy type
         })
       } else {
         const fetchedStudy = await smartSyncFirestoreService.getTopicalStudyById(user.uid, id)

@@ -14,12 +14,20 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/web-app-manifest-1024x1024.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
     }
-  ],    
-  "start_url": "/?source=pwa",               
-  "display": "standalone",                   
-  "orientation": "portrait",                 
-  "dir": "auto",                             
-  "lang": "es",                              
-  "scope": "/"                               
+  ],
+  "start_url": "/?source=pwa",
+  "display": "standalone",
+  "orientation": "portrait",
+  "dir": "auto",
+  "lang": "es",
+  "scope": "/",
+  "theme_color": "#000000",
+  "background_color": "#000000"
 }
