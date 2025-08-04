@@ -214,6 +214,7 @@ function BibleSelectorForm({
         const parsed = parseReference(currentReference || "");
         
         if (parsed) {
+          console.log('Asi me lleva el parsed del bible selector: ', parsed)
             if (parsed.startVerse) {
                 setSelectionType('verse');
                 setStartVerse(parsed.startVerse);
@@ -224,7 +225,7 @@ function BibleSelectorForm({
                 setEndVerse(null);
             }
             setSelectedBook(parsed.book.replace('-', ' '));
-            setStartChapter(parsed.startVerse ?? 1);
+            setStartChapter(parsed.startChapter ?? 1);
             setEndChapter(parsed.endVerse || null);
         }
     }, [currentReference]);

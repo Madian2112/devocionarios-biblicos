@@ -168,66 +168,60 @@ class SmartSyncFirestoreService {
   }
 
   // NUEVA FUNCIÓN: Smart Sync - Solo los N documentos más recientes que faltan
-  async smartSyncDevocionales(userId: string): Promise<SyncResult & { data: Devocional[] }> {
-    const settings = await enhancedIndexedDBCache.getUserCacheSettings(userId);
-    const cachedData = await enhancedIndexedDBCache.getDevocionalesByUser(userId);
+async smartSyncDevocionales(userId: string): Promise<SyncResult & { data: Devocional[] }> {
+  const settings = await enhancedIndexedDBCache.getUserCacheSettings(userId);
+  const cachedData = await enhancedIndexedDBCache.getDevocionalesByUser(userId);
+  
+  try {
+    // SIEMPRE hacer petición a Firebase para obtener TODOS los devocionales del usuario
+    const q = query(
+      collection(db, DEVOCIONALES_COLLECTION),
+      where("userId", "==", userId),
+      orderBy("createdAt", "desc") // Ordenar por fecha de creación descendente (más recientes primero)
+    );
     
-    // Determinar cuántos días de datos deberíamos tener
-    const expectedDays = settings.cacheDaysLimit;
-    const missingDates = await enhancedIndexedDBCache.getMissingDatesInCache(userId, expectedDays);
+    const querySnapshot = await getDocs(q);
+    const firebaseData: Devocional[] = [];
     
-    if (missingDates.length === 0) {
-      return {
-        data: cachedData,
-        fromCache: cachedData.length,
-        fromFirestore: 0,
-        totalSynced: cachedData.length,
-        missingDates: [],
-      };
-    }
-
-    // Obtener solo los documentos que faltan de Firestore
-    const newData: Devocional[] = [];
-    
-    // Usar Promise.all para obtener múltiples documentos en paralelo (más eficiente)
-    const promises = missingDates.map(async (fecha) => {
-      const q = query(
-        collection(db, DEVOCIONALES_COLLECTION),
-        where("userId", "==", userId),
-        where("fecha", "==", fecha),
-        firestoreLimit(1)
-      );
-      
-      const querySnapshot = await getDocs(q);
-      if (!querySnapshot.empty) {
-        const doc = querySnapshot.docs[0];
-        return { id: doc.id, ...doc.data() } as Devocional;
-      }
-      return null;
+    querySnapshot.forEach((doc) => {
+      firebaseData.push({ id: doc.id, ...doc.data() } as Devocional);
     });
     
-    const results = await Promise.all(promises);
+    // Determinar cuántos días de datos deberíamos mantener en caché
+    const cacheDaysLimit = settings.cacheDaysLimit;
     
-    // Filtrar nulls y guardar en cache
-    for (const devocional of results) {
-      if (devocional) {
-        newData.push(devocional);
+    // Si Firebase tiene datos, actualizar el caché con los últimos N días
+    if (firebaseData.length > 0) {
+      // Tomar solo los últimos registros según cacheDaysLimit
+      const dataToCache = firebaseData.slice(0, cacheDaysLimit);
+      
+      // Actualizar/guardar en caché los registros (saveDevocional debería hacer upsert)
+      for (const devocional of dataToCache) {
         await enhancedIndexedDBCache.saveDevocional(devocional);
       }
     }
     
-    // Retornar datos actualizados
-    const allData = await enhancedIndexedDBCache.getDevocionalesByUser(userId);
-    
     return {
-      data: allData,
+      data: firebaseData, // Retornar TODOS los datos de Firebase
+      fromCache: cachedData.length, // Cuántos había en caché antes
+      fromFirestore: firebaseData.length, // Cuántos vinieron de Firebase
+      totalSynced: firebaseData.length, // Total sincronizado (todos los de Firebase)
+      missingDates: [], // Ya no aplica este concepto
+    };
+    
+  } catch (error) {
+    console.error('Error en smartSyncDevocionales:', error);
+    
+    // En caso de error, retornar datos del caché
+    return {
+      data: cachedData,
       fromCache: cachedData.length,
-      fromFirestore: newData.length,
-      totalSynced: allData.length,
-      missingDates: missingDates.filter(date => !newData.find(d => d.fecha === date)),
+      fromFirestore: 0,
+      totalSynced: cachedData.length,
+      missingDates: [],
     };
   }
-
+}
   async getDevocionalByDate(key: string, userId: string): Promise<Devocional | null> {
     // Verificar cache primero
     const cached = await enhancedIndexedDBCache.getDevocional(key);

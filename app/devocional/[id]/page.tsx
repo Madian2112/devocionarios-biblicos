@@ -284,6 +284,20 @@ const handleVersiculoChange = (index: number, updates: Partial<Versiculo>) => {
     })
   }
 
+
+  
+
+  const getTextoValue = () => {
+    const versionesBiblicas = ['rv1960', 'rv1995', 'nvi', 'dhh', 'pdt', 'kjv'];
+    const contieneVersion = versionesBiblicas.some(v => 
+      devocional?.textoDevocional?.includes(v.toUpperCase())
+    );
+    
+    return contieneVersion
+      ? devocional?.textoDevocional
+      : `${devocional?.versionCitaBiblica?.toUpperCase()} - ${devocional?.citaBiblica}\n\n${devocional?.textoDevocional}`;
+  };
+
   if (loading) {
       return <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#0a0a0a] to-[#0f0f0f]"><LoadingSpinner size="lg" /></div>
   }
@@ -417,7 +431,7 @@ const handleVersiculoChange = (index: number, updates: Partial<Versiculo>) => {
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-3">Texto del Devocional</label>
               <Textarea
-                value={`${devocional.versionCitaBiblica?.toLocaleUpperCase()} - ${devocional.citaBiblica}\n\n${devocional.textoDevocional}`}
+                value={getTextoValue()}
                 onChange={(e) => handleDevocionalChange('textoDevocional', e.target.value)}
                 placeholder="Escribe o pega el contenido del devocional aquí..."
                 className="bg-[#2a2a2a]/50 border-gray-700 text-white min-h-[150px] backdrop-blur-sm focus:border-blue-500 transition-colors resize-none"

@@ -22,6 +22,10 @@ export interface BibleVersion {
   abbreviation: string;
 }
 
+export interface BibleVersionDeno extends BibleVersion {
+  version: string;
+}
+
 const BIBLE_VERSIONS_CACHE_KEY = 'bible-versions-data';
 
 // Versiones soportadas por la API
@@ -154,6 +158,22 @@ export async function fetchBibleVerseRange(
     return ["Versículos no encontrados"];
   }
 }
+
+export const fetchVersions = async (): Promise<BibleVersionDeno[]> => {
+  try {
+    const response = await fetch("https://bible-api.deno.dev/api/versions");
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data: BibleVersionDeno[] = await response.json();
+    return data;
+  } catch (error) {
+    console.error("Error fetching versions:", error);
+    return [{} as BibleVersionDeno]; 
+  }
+};
 
 export const bibleService = {
   async getVerse(

@@ -33,12 +33,10 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { toast } from "sonner";
-import { BibleVersion } from "@/lib/bible-data";
+import { BibleVersion, BibleVersionDeno, fetchVersions } from "@/lib/bible-data";
 import { parseReference } from "@/lib/bible-utils";
+import { version } from "os";
 
-interface ApiBibleVersion extends BibleVersion {
-  version: string;
-}
 
 interface Verse {
   verse: string;
@@ -253,7 +251,7 @@ export function BibleViewerContent({
   defaultVersion = "rv1960",
   onVersionChange,
 }: BibleViewerContentProps) {
-  const [versions, setVersions] = useState<ApiBibleVersion[]>([]);
+  const [versions, setVersions] = useState<BibleVersionDeno[]>([]);
   const [selectedVersion, setSelectedVersion] = useState(defaultVersion);
   const [verseData, setVerseData] = useState<ChapterData | null>(null);
   const [loading, setLoading] = useState(false);
@@ -272,24 +270,16 @@ export function BibleViewerContent({
   }, [selectedVersion, onVersionChange]);
 
   // 🔥 SOLUCIÓN: Memoized version fetching
-  useEffect(() => {
-    const fetchVersions = async () => {
-      if (versions.length > 0) return; // Evitar fetch duplicado
-      
-      try {
-        const response = await fetch("https://bible-api.deno.dev/api/versions");
-        const data = await response.json();
-        setVersions(data);
-        if (data.length > 0 && !selectedVersion) {
-          setSelectedVersion(data[0].version);
-        }
-      } catch (error) {
-        setError("No se pudieron cargar las versiones disponibles.");
+useEffect(() => {
+  if (versions.length <= 0) {
+    fetchVersions().then(versiones => {
+      setVersions(versiones);
+      if (versiones.length > 0 && !selectedVersion) {
+        setSelectedVersion(versiones[0].version);
       }
-    };
-
-    fetchVersions();
-  }, [selectedVersion, versions.length]);
+    });
+  }
+}, [selectedVersion]);
 
   // 🔥 SOLUCIÓN: Improved content loading with request cancellation
   const loadContent = useCallback(async () => {

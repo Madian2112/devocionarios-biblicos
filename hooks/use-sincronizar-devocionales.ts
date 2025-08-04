@@ -166,9 +166,3 @@ export function useDevocionales (estadoDevocional: boolean = false) {
     forceRefresh: () => fetchDevocionales(true),
   };
 }
-
-
-
-
-
-

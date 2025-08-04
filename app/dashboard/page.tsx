@@ -54,11 +54,22 @@ function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [devocionalDelDia, setDevocionalDelDia] = useState<Devocional | null>(null);
 
-  const { devocionales, loadingSincronizado, error, getDevocionalByKey } = useDevocionales ();
+  const { devocionales, loadingSincronizado, error, getDevocionalByKey, forceRefresh  } = useDevocionales ();
 
   useEffect(() => {
     setLoading(loadingSincronizado);
   }, [loadingSincronizado])
+
+  const handleDevocionalesSync = async () => {
+    console.log('🚀 Iniciando forceRefresh...');
+    
+    try {
+      await forceRefresh();
+      console.log('✅ forceRefresh completado');
+    } catch (error) {
+      console.error('❌ Error en forceRefresh:', error);
+    }
+  };
   
 
   // 🚀 Efecto para cargar devocionales con cache automático
@@ -95,7 +106,7 @@ function DashboardPage() {
       }
     };
     fetchDevocionalDelDia();
-  }, [user, selectedDate]);
+  }, [user, selectedDate, devocionales]);
   
   const handleDateChange = (direction: "prev" | "next") => {
     const currentDate = new Date(selectedDate)
@@ -176,6 +187,7 @@ function DashboardPage() {
                 className="shadow-lg" 
                 showText={false}
                 syncType={SyncType.DEVOCIONALES} // 📖 Solo devocionales
+                onDevocionalesSync={handleDevocionalesSync}
               />
             <div className="flex flex-wrap items-center justify-between gap-4">
                 {/* Botón Home */}
@@ -187,7 +199,8 @@ function DashboardPage() {
 
                 {/* Botones derecha */}
                 <div className="flex gap-4">
-                    <Link href="/search">
+                    <Link href="/devocional/historial">
+                    {/* <Link href="/search"> */}
                         <Button variant="outline" className="bg-[#1a1a1a]/50 border-gray-700 hover:bg-[#2a2a2a]/50">
                         <Search className="h-4 w-4 mr-2"/> Buscar
                         </Button>
