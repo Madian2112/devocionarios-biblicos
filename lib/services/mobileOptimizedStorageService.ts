@@ -69,13 +69,11 @@ class MobileOptimizedStorageService {
   // 🔥 NUEVO: Actualizar un devocional individual en el almacenamiento comprimido
   async updateDevocionalInCompressedStorage(devocional: any): Promise<void> {
     try {
-      console.log('🔄 Actualizando devocional en almacenamiento comprimido:', devocional.id);
       
       // 1. Cargar todos los datos actuales
       const allData = await this.loadCompressedDevocionales();
       
       if (allData.length === 0) {
-        console.log('📭 No hay datos comprimidos, guardando solo este devocional');
         await this.saveCompressedDevocionales([devocional]);
         return;
       }
@@ -86,13 +84,11 @@ class MobileOptimizedStorageService {
       if (existingIndex >= 0) {
         // Actualizar existente
         allData[existingIndex] = { ...allData[existingIndex], ...devocional };
-        console.log('✏️ Devocional actualizado en cache comprimido');
       } else {
         // Agregar nuevo
         allData.push(devocional);
         // Mantener ordenado por fecha
         allData.sort((a, b) => b.fecha.localeCompare(a.fecha));
-        console.log('➕ Nuevo devocional agregado a cache comprimido');
       }
 
       // 3. Re-comprimir todo con los nuevos datos
@@ -107,12 +103,10 @@ class MobileOptimizedStorageService {
   // 🔥 NUEVO: Eliminar un devocional del almacenamiento comprimido
   async removeDevocionalFromCompressedStorage(devocionalId: string): Promise<void> {
     try {
-      console.log('🗑️ Eliminando devocional del almacenamiento comprimido:', devocionalId);
       
       const allData = await this.loadCompressedDevocionales();
       
       if (allData.length === 0) {
-        console.log('📭 No hay datos comprimidos para eliminar');
         return;
       }
 
@@ -120,9 +114,7 @@ class MobileOptimizedStorageService {
       
       if (filteredData.length < allData.length) {
         await this.saveCompressedDevocionales(filteredData, true);
-        console.log('🗑️ Devocional eliminado del cache comprimido');
       } else {
-        console.log('🤷 Devocional no encontrado en cache comprimido');
       }
       
     } catch (error) {
@@ -134,30 +126,24 @@ class MobileOptimizedStorageService {
 // 🔥 MÉTODO CORREGIDO: saveCompressedDevocionales 
 async saveCompressedDevocionales(devocionales: any[], isIndividualUpdate = false): Promise<void> {
   if (!devocionales || devocionales.length === 0) {
-    console.log('📭 No hay devocionales para guardar');
     return;
   }
 
-  console.log(`💾 Iniciando guardado de ${devocionales.length} devocionales...`);
   
   try {
     const db = await this.initDB();
     const deviceInfo = await this.getDeviceCapabilities();
     
     // 🔥 PASO 1: Limpiar datos existentes (sin fallar si no existen)
-    console.log('🗑️ Limpiando chunks existentes...');
     await this.clearChunks();
     
     // 🔥 PASO 2: Comprimir datos
-    console.log('📦 Comprimiendo datos...');
     const compressedChunks = await this.compressDataChunks(devocionales);
     
     if (compressedChunks.length === 0) {
-      console.log('📭 No se generaron chunks comprimidos');
       return;
     }
 
-    console.log(`💾 Guardando ${compressedChunks.length} chunks...`);
     
     // 🔥 PASO 3: Guardar chunks uno por uno (más confiable)
     let chunksGuardados = 0;
@@ -171,7 +157,6 @@ async saveCompressedDevocionales(devocionales: any[], isIndividualUpdate = false
         
         // Log de progreso cada 10 chunks
         if (chunksGuardados % 10 === 0 || chunksGuardados === compressedChunks.length) {
-          console.log(`💾 Progreso: ${chunksGuardados}/${compressedChunks.length} chunks guardados`);
         }
         
         // Pausa pequeña para evitar sobrecargar
@@ -186,10 +171,8 @@ async saveCompressedDevocionales(devocionales: any[], isIndividualUpdate = false
     }
     
     // 🔥 PASO 4: Guardar metadata
-    console.log('📊 Guardando metadata...');
     await this.saveMetadata(db, devocionales, compressedChunks, isIndividualUpdate, deviceInfo);
     
-    console.log(`✅ Guardado completo: ${chunksGuardados}/${compressedChunks.length} chunks guardados`);
     
   } catch (error) {
     console.error('❌ Error en saveCompressedDevocionales:', error);
@@ -258,7 +241,6 @@ private async saveMetadata(
       try {
         existingMetadata = await this.getMobileStorageStats();
       } catch (error) {
-        console.log('📭 No hay metadata existente (usuario nuevo)');
       }
       
       const totalOriginal = compressedChunks.reduce((sum, chunk) => sum + chunk.originalSize, 0);
@@ -283,7 +265,6 @@ private async saveMetadata(
       
       request.onsuccess = () => {
         clearTimeout(timeoutId);
-        console.log('📊 Metadata guardada correctamente');
         resolve();
       };
       
@@ -365,7 +346,6 @@ private async saveMetadata(
     const chunks = this.createChunks(data);
     const compressedChunks: CompressedChunk[] = [];
     
-    console.log(`📱 Dividiendo ${data.length} registros en ${chunks.length} chunks de ${this.CHUNK_SIZE}`);
 
     for (let i = 0; i < chunks.length; i++) {
       if ('memory' in performance && (performance as any).memory) {
@@ -404,7 +384,6 @@ private async saveMetadata(
     const totalOriginal = compressedChunks.reduce((sum, chunk) => sum + chunk.originalSize, 0);
     const totalCompressed = compressedChunks.reduce((sum, chunk) => sum + chunk.compressedSize, 0);
     
-    console.log(`📦 Compresión móvil: ${totalOriginal} bytes → ${totalCompressed} bytes (${Math.round((1 - totalCompressed/totalOriginal) * 100)}% reducción)`);
     
     return compressedChunks;
   }
@@ -422,13 +401,11 @@ private async saveMetadata(
       });
       
       if (chunks.length === 0) {
-        console.log('📭 No hay chunks comprimidos guardados');
         return [];
       }
       
       chunks.sort((a, b) => a.chunkIndex - b.chunkIndex);
       
-      console.log(`📱 Descomprimiendo ${chunks.length} chunks...`);
       const startTime = performance.now();
       
       const allData: any[] = [];
@@ -451,7 +428,6 @@ private async saveMetadata(
       }
       
       const endTime = performance.now();
-      console.log(`⚡ Descompresión móvil completada en ${Math.round(endTime - startTime)}ms - ${allData.length} registros`);
       
       return allData;
       
@@ -472,7 +448,6 @@ private async clearChunks(): Promise<void> {
       const request = store.clear();
       
       request.onsuccess = () => {
-        console.log('🗑️ Chunks limpiados correctamente');
         resolve();
       };
       
@@ -559,7 +534,6 @@ async getMobileStorageStats(): Promise<MobileStorageMetadata | null> {
       })
     ]);
     
-    console.log('🗑️ Cache móvil limpiado completamente');
   }
 
   async needsUpdate(lastSyncFromFirestore: number): Promise<boolean> {
