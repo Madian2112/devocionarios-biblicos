@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
+import { useDevocionales } from "@/hooks/use-devocionales"
 
 type SortOrder = "asc" | "desc"
 type CompletionFilter = "all" | "completed" | "pending"
@@ -119,29 +120,31 @@ function HistoryPage() {
   const { user } = useAuthContext()
   const [searchTerm, setSearchTerm] = useState("")
   const [loading, setLoading] = useState(true)
-  const [devocionales, setDevocionarios] = useState<Devocional[]>([])
+  // const [devocionales, setDevocionarios] = useState<Devocional[]>([])
   const [devocionalSortOrder, setDevocionalSortOrder] = useState<SortOrder>("desc") // Newest first
   const [completionFilter, setCompletionFilter] = useState<CompletionFilter>("all")
   const [selectedBookFilter, setSelectedBookFilter] = useState<string | "all">("all")
+  const {loadFromMobileStorage, devocionales} = useDevocionales()
 
   useDisableMobileZoom()
 
-  useEffect(() => {
-    async function loadAllData() {
-      if (user) {
-        setLoading(true)
-        try {
-          const devos = (await smartSyncFirestoreService.getDevocionarios(user.uid)).data
-          setDevocionarios(devos)
-        } catch (error) {
-          console.error("Error al cargar los datos para historial:", error)
-        } finally {
-          setLoading(false)
-        }
+useEffect(() => {
+  async function loadAllData() {
+    console.log('Se ejecuto el effect del usuario')
+    if (user) {
+      setLoading(true)
+      try {
+        await loadFromMobileStorage() // ✅ Agregar await!
+        console.log('Devocionales cargados:', devocionales.length)
+      } catch (error) {
+        console.error("Error al cargar los datos para historial:", error)
+      } finally {
+        setLoading(false)
       }
     }
-    loadAllData()
-  }, [user])
+  }
+  loadAllData()
+}, [user, loadFromMobileStorage])
 
   const uniqueBooks = useMemo(() => {
     const books = new Set<string>()
@@ -383,7 +386,7 @@ function HistoryPage() {
                       <div className="grid gap-6">
                         {groupedDevocionales[monthYear].map((devocional) => (
                           <div key={devocional.id}>
-                            <Link href={`/devocional/${devocional.fecha}`}>
+                            <Link href={`/devocional/${devocional.fecha}/historial`}>
                               <GradientCard className="group cursor-pointer hover:scale-[1.02] transition-all duration-300">
                                 <CardHeader>
                                   <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2">
@@ -407,7 +410,7 @@ function HistoryPage() {
                                       className={
                                         devocional.completado
                                           ? "bg-green-500/20 text-green-400 border-green-500/30 flex-shrink-0"
-                                          : "border-gray-600 text-gray-400 flex-shrink-0"
+                                          : "bg-yellow-500/20 text-yellow-400 border-yellow-500/30 hover:bg-yellow-500/30"
                                       }
                                     >
                                       {devocional.completado ? (

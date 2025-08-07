@@ -35,7 +35,7 @@ import { BibleViewer } from "@/components/bible/bible-viewer"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import withAuth from "@/components/auth/with-auth"
 import {SmartSyncButton} from '@/components/cache/boton-inteligente'
-import {useDevocionales } from '@/hooks/use-sincronizar-devocionales'
+import {useDevocionales } from '@/hooks/use-devocionales'
 import { SyncType } from "@/lib/enums/SyncType"
 
 function DashboardPage() {
@@ -54,12 +54,47 @@ function DashboardPage() {
   // const [devocionales, setDevocionales] = useState<Devocional[]>([])
   const [loading, setLoading] = useState(true);
   const [devocionalDelDia, setDevocionalDelDia] = useState<Devocional | null>(null);
+  
 
-  const { devocionales, loadingSincronizado, error, getDevocionalByKey, forceRefresh  } = useDevocionales ();
+  // const { devocionales, loadingSincronizado, error, getDevocionalByKey, forceRefresh  } = useDevocionales ();
+    const { 
+    devocionales, 
+    loadingSincronizado, 
+    error,
+    getDevocionalByKey,
+    mobileStats, // 🔥 Nuevo: estadísticas de compresión
+    loadingProgress, // 🔥 Nuevo: progreso de carga
+    forceRefresh,
+    clearMobileCache // 🔥 Nuevo: limpiar cache
+  } = useDevocionales();
+
 
   useEffect(() => {
     setLoading(loadingSincronizado);
   }, [loadingSincronizado])
+
+    const getDateText = (selectedDate:any) => {
+    const today = new Date();
+    const selected = new Date(selectedDate);
+    
+    // Resetear las horas para comparar solo fechas
+    today.setHours(0, 0, 0, 0);
+    selected.setHours(0, 0, 0, 0);
+    
+    const diffTime = today.getTime() - selected.getTime();
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) return "Hoy";
+    if (diffDays === 1) return "Ayer";
+    if (diffDays === 2) return "Antier";
+    if (diffDays > 2) return `${diffDays} días atrás`;
+    if (diffDays === -1) return "Mañana";
+    if (diffDays === -2) return "Pasado mañana";
+    if (diffDays < -2) return `En ${Math.abs(diffDays)} días`;
+    
+    return "Hoy"; // fallback
+  };
+
 
   const handleDevocionalesSync = async () => {
     console.log('🚀 Iniciando forceRefresh...');
@@ -245,7 +280,7 @@ function DashboardPage() {
                     className="bg-[#2a2a2a]/50 border-gray-700 text-white text-center w-full max-w-[200px]"
                   />
                   <Button onClick={() => setSelectedDate(getLocalDateString())} variant="link" size="sm" className="text-gray-400 hover:text-white">
-                    Hoy: {formatDate(getLocalDateString())}
+                    {getDateText(selectedDate)}: {formatDate(selectedDate)}
                   </Button>
                   {/* 🗓️ Info de zona horaria (solo para desarrollo) */}
                   {process.env.NODE_ENV === 'development' && (
@@ -344,7 +379,7 @@ function DashboardPage() {
                   </div>
                   <h3 className="text-xl font-semibold text-white mb-2">No hay devocional para esta fecha</h3>
                   <p className="text-gray-400 mb-6">Comienza tu reflexión diaria creando un nuevo devocional</p>
-                  <Link href={`/devocional/${selectedDate}`}>
+                  <Link href={`/devocional/${selectedDate}/dashboard`}>
                     <Button
                         className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
                     >
@@ -371,7 +406,7 @@ function DashboardPage() {
               <CardContent>
                 <div className="space-y-3">
                   {devocionales.slice(0, 5).map((devocional) => (
-                    <Link href={`/devocional/${devocional.fecha}`} key={`${devocional.id}-${user?.email}`}>
+                    <Link href={`/devocional/${devocional.fecha}/dashboard`} key={`${devocional.id}-${user?.email}`}>
                         <div
                             className="group flex items-center justify-between p-4 bg-[#1a1a1a]/30 rounded-xl cursor-pointer hover:bg-[#2a2a2a]/50 transition-all duration-300 backdrop-blur-sm border border-gray-800/50 hover:border-gray-700/50"
                         >
@@ -401,7 +436,7 @@ function DashboardPage() {
                                 className={`cursor-pointer transition-all hover:scale-105 ${
                                 devocional.completado
                                     ? "bg-green-500/20 text-green-400 border-green-500/30 hover:bg-green-500/30"
-                                    : "border-gray-600 text-gray-400 hover:border-gray-500 hover:text-gray-300"
+                                    : "bg-yellow-500/20 text-yellow-400 border-yellow-500/30 hover:bg-yellow-500/30"
                                 }`}
                             >
                             {devocional.completado ? (

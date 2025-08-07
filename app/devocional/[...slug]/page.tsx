@@ -40,22 +40,30 @@ import { useToast } from "@/hooks/use-toast"
 import { notificationService } from "@/lib/notification-service"
 import { useDisableMobileZoom } from '@/hooks/use-disable-mobile-zoom';
 import { usePWACleanup, usePWADetection } from "@/hooks/use-pwa-cleanup"
-import {useDevocionales} from '@/hooks/use-sincronizar-devocionales'
+import {useDevocionales} from '@/hooks/use-devocionales'
 
 
-function DevocionalPage({ params }: { params: Promise<{ id: string }> }) {
+function DevocionalPage({ params }: { 
+  params: Promise<{  slug: string[] }> 
+}) {
   const router = useRouter();
   const { user } = useAuthContext();
   const { toast } = useToast();
-  const { id: fecha } = use(params); // El id de la ruta es la fecha
+  const { slug } = use(params);
+  const [ fecha, tipo ] = slug; // El id de la ruta es la fecha
   const isPWA = usePWADetection();
   const { triggerCleanup } = usePWACleanup(`devocional-${fecha}`);
   const [devocional, setDevocional] = useState<Devocional | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const { saveDevocional, getDevocionalByKey } = useDevocionales ();
+  const { saveDevocional, getDevocionalByKey } = useDevocionales();
 
   useDisableMobileZoom()
+
+
+  useEffect(() =>{
+    console.log('As es el valor del tipo que me lleva: ', tipo)
+  }, [tipo])
 
   useEffect(() => {
     if (isPWA) {
@@ -285,7 +293,24 @@ const handleVersiculoChange = (index: number, updates: Partial<Versiculo>) => {
   }
 
 
-  
+  const openInBrowser = (url: string) => {
+    // Detectar si está en PWA
+    const isPWA = window.matchMedia('(display-mode: standalone)').matches || 
+                  (window.navigator as any)?.standalone === true;
+    
+    if (isPWA) {
+      // En PWA, esto debería abrir en el navegador
+      window.location.href = url;
+    } else {
+      // En navegador normal
+      window.open(url, '_blank', 'noopener,noreferrer');
+    }
+  };
+
+  const handleClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    openInBrowser(`https://devocionales-biblicos-rv.netlify.app/devocional/${fecha}`);
+  };
 
   const getTextoValue = () => {
     const versionesBiblicas = ['rv1960', 'rv1995', 'nvi', 'dhh', 'pdt', 'kjv'];
@@ -311,7 +336,7 @@ const handleVersiculoChange = (index: number, updates: Partial<Versiculo>) => {
       <div className="container mx-auto px-4 py-6 max-w-5xl">
         {/* Header mejorado */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-8">
-            <Link href="/dashboard">
+            <Link href={tipo === 'dashboard' ? '/dashboard' : '/devocional/historial'}>
                 <Button
                     variant="outline"
                     className="bg-[#1a1a1a]/50 border-gray-700 hover:bg-[#2a2a2a]/50 backdrop-blur-sm w-full sm:w-auto"
@@ -509,9 +534,7 @@ const handleVersiculoChange = (index: number, updates: Partial<Versiculo>) => {
                                   left-1/2 -translate-x-1/2 sm:left-auto sm:translate-x-0 sm:right-0 mt-1">
                     <p>Si presenta problemas para agregar versículos, abra la app en la web:</p>
                     <a 
-                      href={`https://devocionales-biblicos-rv.netlify.app/devocional/${fecha}`} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
+                      onClick={handleClick}
                       className="mt-1 text-blue-400 hover:text-blue-300 underline break-words block text-[0.75rem]"
                     >
                       https://devocionales-biblicos-rv.netlify.app/devocional/{fecha}

@@ -11,55 +11,86 @@ const formatDate = (dateString: string) => {
   });
 };
 
-// Función auxiliar para manejar múltiples páginas cortando el contenido
 const addImageToPDF = (pdf: jsPDF, canvas: HTMLCanvasElement) => {
   const pageHeight = pdf.internal.pageSize.getHeight();
   const pageWidth = pdf.internal.pageSize.getWidth();
   
+  // Definir márgenes
+  const topMargin = 20;
+  const bottomMargin = 20;
+  const leftMargin = 20;
+  const rightMargin = 20;
+  
+  // Calcular el área disponible para contenido
+  const availableWidth = pageWidth - leftMargin - rightMargin;
+  const availableHeight = pageHeight - topMargin - bottomMargin;
+  
   // Calcular el ancho escalado manteniendo la proporción
   const imgWidth = canvas.width;
   const imgHeight = canvas.height;
-  const ratio = pageWidth / imgWidth;
-  const scaledWidth = pageWidth;
-  const scaledHeight = imgHeight * ratio;
+  const ratio = availableWidth / imgWidth;
+  const scaledWidth = availableWidth;
   
-  // Calcular cuánta altura de la imagen cabe en una página
-  const pageContentHeight = pageHeight;
-  const imgHeightPerPage = pageContentHeight / ratio; // Altura en píxeles de la imagen original que cabe en una página
+  // Calcular cuánta altura de la imagen cabe en una página (considerando márgenes)
+  const imgHeightPerPage = availableHeight / ratio;
   
-  let srcY = 0; // Posición Y de donde empezar a cortar en la imagen original
+  // Si la imagen completa cabe en una página, no dividir
+  if (imgHeight <= imgHeightPerPage) {
+    const scaledHeight = imgHeight * ratio;
+    pdf.addImage(canvas.toDataURL('image/png'), 'PNG', leftMargin, topMargin, scaledWidth, scaledHeight);
+    return;
+  }
+  
+  let srcY = 0;
   let pageNumber = 0;
+  const overlap = 10; // Píxeles de superposición para evitar cortes abruptos
   
   while (srcY < imgHeight) {
     if (pageNumber > 0) {
       pdf.addPage();
     }
     
-    // Calcular cuánta altura tomar de la imagen original para esta página
     const remainingHeight = imgHeight - srcY;
-    const heightToTake = Math.min(imgHeightPerPage, remainingHeight);
+    let heightToTake = Math.min(imgHeightPerPage, remainingHeight);
     
-    // Crear un canvas temporal para la porción de esta página
+    // Para páginas intermedias (no la última), añadir superposición
+    if (remainingHeight > imgHeightPerPage) {
+      heightToTake += overlap;
+    }
+    
+    // Asegurar que no excedamos los límites de la imagen original
+    heightToTake = Math.min(heightToTake, imgHeight - srcY);
+    
     const tempCanvas = document.createElement('canvas');
     const tempCtx = tempCanvas.getContext('2d');
     
     tempCanvas.width = imgWidth;
     tempCanvas.height = heightToTake;
     
-    // Copiar la porción correspondiente de la imagen original
+    // Copiar la porción correspondiente
     tempCtx.drawImage(
       canvas,
-      0, srcY, imgWidth, heightToTake, // Fuente: x, y, width, height
-      0, 0, imgWidth, heightToTake     // Destino: x, y, width, height
+      0, srcY, imgWidth, heightToTake,
+      0, 0, imgWidth, heightToTake
     );
     
-    // Convertir a imagen y añadir al PDF
     const pageImgData = tempCanvas.toDataURL('image/png');
     const scaledHeightForThisPage = heightToTake * ratio;
     
-    pdf.addImage(pageImgData, 'PNG', 0, 0, scaledWidth, scaledHeightForThisPage);
+    // Ajustar la altura escalada para que no exceda el área disponible
+    const finalScaledHeight = Math.min(scaledHeightForThisPage, availableHeight);
     
-    srcY += heightToTake;
+    pdf.addImage(
+      pageImgData, 
+      'PNG', 
+      leftMargin,
+      topMargin,
+      scaledWidth,
+      finalScaledHeight
+    );
+    
+    // Avanzar menos para crear superposición en la siguiente página
+    srcY += imgHeightPerPage - (pageNumber > 0 ? overlap : 0);
     pageNumber++;
   }
 };
@@ -209,7 +240,7 @@ export const exportTopicalStudyToPDF = async (topic: TopicalStudy) => {
           <h3 style="font-size: 20px; margin-bottom: 5px;">${
             entry.referencia
           }</h3>
-          <p style="font-size: 16px; line-height: 1.6; font-style: italic;">${
+          <p style="font-size: 16px; line-height: 1.6; font-style: italic;"><strong>Aprendizaje: </strong>${
             entry.learning
           }</p>
         </div>
