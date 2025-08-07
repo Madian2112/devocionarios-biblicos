@@ -309,7 +309,7 @@ const handleVersiculoChange = (index: number, updates: Partial<Versiculo>) => {
 
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault();
-    openInBrowser(`https://devocionales-biblicos-rv.netlify.app/devocional/${fecha}`);
+    openInBrowser(`https://devocionales-biblicos.com/devocional/${fecha}/dashboard`);
   };
 
   const getTextoValue = () => {
@@ -537,7 +537,7 @@ const handleVersiculoChange = (index: number, updates: Partial<Versiculo>) => {
                       onClick={handleClick}
                       className="mt-1 text-blue-400 hover:text-blue-300 underline break-words block text-[0.75rem]"
                     >
-                      https://devocionales-biblicos-rv.netlify.app/devocional/{fecha}
+                      https://devocionales-biblicos.com/devocional/{fecha}/dashboard
                     </a>
                     <div className="absolute -top-1 right-2 w-2 h-2 bg-gray-800 transform rotate-45"></div>
                   </div>
