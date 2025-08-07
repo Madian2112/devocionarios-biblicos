@@ -342,7 +342,7 @@ const handleVersiculoChange = (index: number, updates: Partial<Versiculo>) => {
                     className="bg-[#1a1a1a]/50 border-gray-700 hover:bg-[#2a2a2a]/50 backdrop-blur-sm w-full sm:w-auto"
                 >
                     <ChevronLeft className="h-4 w-4 mr-2" />
-                    Volver al Dashboard
+                    Volver al {tipo == 'dashboard' ? 'Dashboard' : 'Historial'} 
                 </Button>
             </Link>
 
@@ -510,7 +510,7 @@ const handleVersiculoChange = (index: number, updates: Partial<Versiculo>) => {
                     value={devocional.aprendizajeGeneral}
                     onChange={(e) => handleDevocionalChange('aprendizajeGeneral', e.target.value)}
                     placeholder="¿Qué aprendiste hoy? ¿Cómo puedes aplicar este mensaje en tu vida diaria? ¿Qué cambios quieres hacer?"
-                    className="bg-[#2a2a2a]/50 border-gray-700 text-white min-h-[200px] backdrop-blur-sm focus:border-purple-500 transition-colors resize-none"
+                    className="bg-[#2a2a2a]/50 border-gray-700 text-white min-h-[350px] backdrop-blur-sm focus:border-purple-500 transition-colors resize-none"
                   />
                 </CardContent>
               </GradientCard>
@@ -643,7 +643,7 @@ const handleVersiculoChange = (index: number, updates: Partial<Versiculo>) => {
                                   )}
                                 </div>
                               </div>
-                              <div>
+                              {/* <div>
                                 <label className="block text-sm font-medium text-gray-300 mb-3">Texto del Versículo</label>
                                 <Textarea
                                   value={`${versiculo.versionTexto?.toUpperCase()} - ${versiculo.referencia} \n\n${versiculo?.texto}` }
@@ -651,7 +651,7 @@ const handleVersiculoChange = (index: number, updates: Partial<Versiculo>) => {
                                   placeholder="Texto completo del versículo..."
                                   className="bg-[#2a2a2a]/50 border-gray-700 text-white backdrop-blur-sm focus:border-blue-500 transition-colors resize-none"
                                 />
-                              </div>
+                              </div> */}
                               <div>
                                 <label className="block text-sm font-medium text-gray-300 mb-3">
                                   Aprendizaje del Versículo
@@ -660,7 +660,7 @@ const handleVersiculoChange = (index: number, updates: Partial<Versiculo>) => {
                                   value={versiculo?.aprendizaje || ''}
                                   onChange={(e) => handleVersiculoChange(index, {aprendizaje:e.target.value})}
                                   placeholder="¿Qué te enseña este versículo específicamente? ¿Cómo se relaciona con tu vida?"
-                                  className="bg-[#2a2a2a]/50 border-gray-700 text-white backdrop-blur-sm focus:border-blue-500 transition-colors resize-none"
+                                  className="bg-[#2a2a2a]/50 border-gray-700 min-h-[180px] text-white backdrop-blur-sm focus:border-blue-500 transition-colors resize-none"
                                 />
                               </div>
                             </CardContent>

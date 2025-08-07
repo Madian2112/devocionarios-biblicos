@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useRef } from "react"
 import Link from "next/link"
 import { BookOpen, Search, ChevronLeft, CheckCircle2, Circle, Eye, CalendarDays, Filter, Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -27,6 +27,7 @@ import {
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
 import { useDevocionales } from "@/hooks/use-devocionales"
+import { useRouter } from "next/router"
 
 type SortOrder = "asc" | "desc"
 type CompletionFilter = "all" | "completed" | "pending"
@@ -116,6 +117,8 @@ function extractBookName(citation: string): string | null {
   return null
 }
 
+const SCROLL_POSITION_KEY = 'devocionales_scroll_position';
+
 function HistoryPage() {
   const { user } = useAuthContext()
   const [searchTerm, setSearchTerm] = useState("")
@@ -125,26 +128,89 @@ function HistoryPage() {
   const [completionFilter, setCompletionFilter] = useState<CompletionFilter>("all")
   const [selectedBookFilter, setSelectedBookFilter] = useState<string | "all">("all")
   const {loadFromMobileStorage, devocionales} = useDevocionales()
+  const containerRef = useRef(null);
 
   useDisableMobileZoom()
 
-useEffect(() => {
-  async function loadAllData() {
-    console.log('Se ejecuto el effect del usuario')
-    if (user) {
-      setLoading(true)
-      try {
-        await loadFromMobileStorage() // ✅ Agregar await!
-        console.log('Devocionales cargados:', devocionales.length)
-      } catch (error) {
-        console.error("Error al cargar los datos para historial:", error)
-      } finally {
-        setLoading(false)
+  // Efecto para restaurar la posición del scroll
+  useEffect(() => {
+    // Esperar a que los devocionales estén cargados
+    if (!loading && devocionales.length > 0) {
+      const savedPosition = sessionStorage.getItem(SCROLL_POSITION_KEY);
+      if (savedPosition) {
+        try {
+          const { elementId, scrollTop } = JSON.parse(savedPosition);
+          
+          // Usar setTimeout para asegurar que el DOM esté completamente renderizado
+          setTimeout(() => {
+            // Intentar hacer scroll al elemento específico
+            const element = document.getElementById(elementId);
+            if (element) {
+              element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            } else {
+              // Si no encuentra el elemento, usar la posición de scroll guardada
+              window.scrollTo({ top: scrollTop, behavior: 'smooth' });
+            }
+            
+            // Limpiar después de restaurar
+            sessionStorage.removeItem(SCROLL_POSITION_KEY);
+          }, 100); // Pequeño delay para asegurar el renderizado
+        } catch (error) {
+          console.error('Error al restaurar posición:', error);
+          sessionStorage.removeItem(SCROLL_POSITION_KEY);
+        }
       }
     }
-  }
-  loadAllData()
-}, [user, loadFromMobileStorage])
+  }, [loading, devocionales]);
+
+  // Función para limpiar la posición guardada (solo para el botón de dashboard)
+  const clearScrollPosition = () => {
+    sessionStorage.removeItem(SCROLL_POSITION_KEY);
+  };
+
+  // Función para guardar la posición antes de navegar a un devocional
+  const handleDevocionalClick = (devocionalId: any) => {
+    try {
+      const scrollPosition = {
+        elementId: `devocional-${devocionalId}`,
+        scrollTop: window.pageYOffset || document.documentElement.scrollTop
+      };
+      sessionStorage.setItem(SCROLL_POSITION_KEY, JSON.stringify(scrollPosition));
+    } catch (error) {
+      console.error('Error al guardar posición:', error);
+    }
+  };
+
+  // Efecto para limpiar la posición cuando se cierra la aplicación
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      sessionStorage.removeItem(SCROLL_POSITION_KEY);
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, []);
+
+  useEffect(() => {
+    async function loadAllData() {
+      console.log('Se ejecuto el effect del usuario')
+      if (user) {
+        setLoading(true)
+        try {
+          await loadFromMobileStorage() // ✅ Agregar await!
+          console.log('Devocionales cargados:', devocionales.length)
+        } catch (error) {
+          console.error("Error al cargar los datos para historial:", error)
+        } finally {
+          setLoading(false)
+        }
+      }
+    }
+    loadAllData()
+  }, [user, loadFromMobileStorage])
 
   const uniqueBooks = useMemo(() => {
     const books = new Set<string>()
@@ -232,16 +298,18 @@ useEffect(() => {
       <div className="container mx-auto px-4 py-6 max-w-5xl">
         {/* Header */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-8">
-
+          <div ref={containerRef}>
             <Link href="/dashboard">
                 <Button
                     variant="outline"
                     className="bg-[#1a1a1a]/50 border-gray-700 hover:bg-[#2a2a2a]/50 backdrop-blur-sm w-full sm:w-auto"
+                    onClick={clearScrollPosition} // Solo limpia cuando va al dashboard
                 >
                     <ChevronLeft className="h-4 w-4 mr-2" />
                     Volver al Dashboard
                 </Button>
             </Link>
+          </div>
           <div className="text-center order-first sm:order-none">
             <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
               Historial Completo
@@ -385,9 +453,11 @@ useEffect(() => {
                         </h3>
                       <div className="grid gap-6">
                         {groupedDevocionales[monthYear].map((devocional) => (
-                          <div key={devocional.id}>
+                          <div key={devocional.id} id={`devocional-${devocional.id}`}>
                             <Link href={`/devocional/${devocional.fecha}/historial`}>
-                              <GradientCard className="group cursor-pointer hover:scale-[1.02] transition-all duration-300">
+                              <GradientCard 
+                                    className="group cursor-pointer hover:scale-[1.02] transition-all duration-300"
+                                    onClick={() => handleDevocionalClick(devocional.id)}>
                                 <CardHeader>
                                   <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2">
                                     <div className="flex items-center gap-3 min-w-0 flex-1">

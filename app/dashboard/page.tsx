@@ -73,15 +73,21 @@ function DashboardPage() {
     setLoading(loadingSincronizado);
   }, [loadingSincronizado])
 
-    const getDateText = (selectedDate:any) => {
+  const getDateText = (selectedDate:any) => {
+    // Crear fecha de hoy en zona horaria local
     const today = new Date();
-    const selected = new Date(selectedDate);
+    const todayYear = today.getFullYear();
+    const todayMonth = today.getMonth();
+    const todayDay = today.getDate();
     
-    // Resetear las horas para comparar solo fechas
-    today.setHours(0, 0, 0, 0);
-    selected.setHours(0, 0, 0, 0);
+    // Extraer año, mes y día del selectedDate string (YYYY-MM-DD)
+    const [selectedYear, selectedMonth, selectedDay] = selectedDate.split('-').map(Number);
     
-    const diffTime = today.getTime() - selected.getTime();
+    // Crear fechas en zona horaria local para comparación exacta
+    const todayLocal = new Date(todayYear, todayMonth, todayDay);
+    const selectedLocal = new Date(selectedYear, selectedMonth - 1, selectedDay); // mes - 1 porque Date usa 0-11
+    
+    const diffTime = todayLocal.getTime() - selectedLocal.getTime();
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
     
     if (diffDays === 0) return "Hoy";
@@ -332,7 +338,7 @@ function DashboardPage() {
                       {devocionalDelDia.completado ? "Completado" : "Pendiente"}
                     </Badge>
                 </Button>
-                    <Link href={`/devocional/${devocionalDelDia.fecha}`}>
+                    <Link href={`/devocional/${devocionalDelDia.fecha}/dashboard`}>
                         <Button
                             variant="outline"
                             className="bg-[#2a2a2a]/50 border-gray-700 hover:bg-[#3a3a3a]/50 backdrop-blur-sm"

@@ -95,6 +95,7 @@ const addImageToPDF = (pdf: jsPDF, canvas: HTMLCanvasElement) => {
   }
 };
 
+
 // Función principal para exportar a PDF (versión mejorada)
 export const exportDevocionalToPDF = async (devocional: Devocional) => {
   // 1. Crear un contenedor temporal para el contenido del PDF
