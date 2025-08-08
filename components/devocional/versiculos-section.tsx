@@ -1,6 +1,7 @@
-"use client"
+// O si creas el archivo separado:
+// import { BibleSelectorPWA } from "@/components/bible/bible-selector-pwa""use client"
 
-import { useState } from "react"
+import { useState, useCallback, useMemo } from "react"
 import {
   Book,
   Plus,
@@ -14,10 +15,10 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { GradientCard } from "@/components/ui/gradient-card"
-import { BibleSelector } from "@/components/bible/bible-selector"
 import { BibleViewer } from "@/components/bible/bible-viewer"
 import { fetchVerseText } from "@/lib/bible-api"
 import type { Versiculo } from "@/lib/firestore"
+import { BibleSelectorPWA } from "./bible-selector-pwa"
 
 interface VersiculosSectionProps {
   versiculos: Versiculo[]
@@ -35,14 +36,22 @@ export function VersiculosSection({
   onSavingChange 
 }: VersiculosSectionProps) {
   const [saving, setSaving] = useState(false)
+  const [activeSelector, setActiveSelector] = useState<string | null>(null)
 
-  // Generar IDs únicos para instancias de componentes
-  const getVersiculoId = (versiculoId: string) => `versiculo-${versiculoId}-${fecha}`
-  const getVersiculoViewerId = (versiculoId: string) => `versiculo-viewer-${versiculoId}-${fecha}`
+  // 🔥 SOLUCIÓN: Memoized IDs para evitar re-renders en PWA
+  const instanceIds = useMemo(() => ({
+    getVersiculoId: (versiculoId: string) => `vs-${versiculoId}-${fecha}-${userId}`,
+    getVersiculoViewerId: (versiculoId: string) => `vv-${versiculoId}-${fecha}-${userId}`
+  }), [fecha, userId])
 
-  const addVersiculo = () => {
+  // 🔥 SOLUCIÓN: Función para manejar la apertura/cierre de selectores
+  const handleSelectorToggle = useCallback((versiculoId: string, isOpen: boolean) => {
+    setActiveSelector(isOpen ? versiculoId : null)
+  }, [])
+
+  const addVersiculo = useCallback(() => {
     const newVersiculo: Versiculo = {
-      id: Date.now().toString(),
+      id: `${Date.now()}-${Math.random()}`, // ID más único para PWA
       referencia: "",
       texto: "",
       aprendizaje: "",
@@ -51,27 +60,29 @@ export function VersiculosSection({
     
     const updatedVersiculos = [...versiculos, newVersiculo]
     onVersiculosChange(updatedVersiculos)
-  }
+  }, [versiculos, onVersiculosChange])
 
-  const removeVersiculo = (versiculoId: string) => {
+  const removeVersiculo = useCallback((versiculoId: string) => {
     const updatedVersiculos = versiculos.filter((v) => v.id !== versiculoId)
     onVersiculosChange(updatedVersiculos)
-  }
-  
-  const handleVersiculoChange = (index: number, updates: Partial<Versiculo>) => {
+    // Cerrar selector activo si es el que se está eliminando
+    if (activeSelector?.includes(versiculoId)) {
+      setActiveSelector(null)
+    }
+  }, [versiculos, onVersiculosChange, activeSelector])
+  const handleVersiculoChange = useCallback((index: number, updates: Partial<Versiculo>) => {
     const updatedVersiculos = [...versiculos]
 
     if (index < 0 || index >= updatedVersiculos.length || !updatedVersiculos[index]) {
       console.error(`❌ Versículo en índice ${index} no existe. Array length: ${updatedVersiculos.length}`)
-      console.error('Versículos disponibles:', updatedVersiculos.map((v, i) => ({ index: i, id: v.id, referencia: v.referencia })))
       return
     }
 
     updatedVersiculos[index] = { ...updatedVersiculos[index], ...updates }
     onVersiculosChange(updatedVersiculos)
-  }
+  }, [versiculos, onVersiculosChange])
 
-  const handleBibleSelection = async (index: number, reference: string) => {
+  const handleBibleSelection = useCallback(async (index: number, reference: string) => {
     try {
       if (!versiculos[index]) {
         console.error(`❌ No se puede actualizar versículo en índice ${index} - no existe`)
@@ -89,13 +100,16 @@ export function VersiculosSection({
         versionTexto: 'rv1960'
       })
       
+      // Cerrar el selector después de la selección
+      setActiveSelector(null)
+      
     } catch (error) {
       console.error('❌ Error al obtener el texto del versículo:', error)
     } finally {
       setSaving(false)
       onSavingChange?.(false)
     }
-  }
+  }, [versiculos, handleVersiculoChange, onSavingChange])
 
   const openInBrowser = (url: string) => {
     const isPWA = window.matchMedia('(display-mode: standalone)').matches || 
@@ -188,16 +202,17 @@ export function VersiculosSection({
                   <Badge variant="outline" className="border-gray-600 text-gray-400 shrink-0">
                     {versiculo?.versionTexto?.toUpperCase() || 'RV1960'}
                   </Badge>
-                  <BibleSelector
-                    key={getVersiculoId(versiculo.id)}
-                    instanceId={`versiculo-${versiculo.id}`}
+                  <BibleSelectorPWA
+                    key={instanceIds.getVersiculoId(versiculo.id)}
+                    instanceId={instanceIds.getVersiculoId(versiculo.id)}
                     onSelect={(reference) => handleBibleSelection(index, reference)}
                     currentReference={versiculo?.referencia || ''}
                     trigger={
                       <Button
                         variant="outline"
                         size="sm"
-                        className="bg-[#2a2a2a]/50 border-gray-700 hover:bg-[#3a3a3a]/50 shrink-0"
+                        disabled={activeSelector !== null && !activeSelector.includes(versiculo.id)}
+                        className="bg-[#2a2a2a]/50 border-gray-700 hover:bg-[#3a3a3a]/50 shrink-0 disabled:opacity-50"
                       >
                         <Book className="h-4 w-4" />
                       </Button>
@@ -205,7 +220,7 @@ export function VersiculosSection({
                   />
                   {versiculo?.referencia && (
                     <BibleViewer
-                      instanceId={getVersiculoViewerId(versiculo.id)}
+                      instanceId={instanceIds.getVersiculoViewerId(versiculo.id)}
                       reference={versiculo.referencia}
                       defaultVersion={versiculo?.versionTexto}
                       onClose={async (selectedVersion) => {
@@ -229,7 +244,8 @@ export function VersiculosSection({
                         <Button
                           variant="outline"
                           size="icon"
-                          className="bg-[#2a2a2a]/50 border-gray-700 hover:bg-[#3a3a3a]/50 shrink-0"
+                          disabled={activeSelector !== null}
+                          className="bg-[#2a2a2a]/50 border-gray-700 hover:bg-[#3a3a3a]/50 shrink-0 disabled:opacity-50"
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
