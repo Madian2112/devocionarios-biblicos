@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge"
 import { GradientCard } from "@/components/ui/gradient-card"
 import { BibleSelector } from "@/components/bible/bible-selector"
 import { BibleViewer } from "@/components/bible/bible-viewer"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { fetchVerseText } from "@/lib/bible-api"
 import type { Versiculo } from "@/lib/firestore"
 
@@ -35,6 +36,7 @@ export function VersiculosSection({
   onSavingChange 
 }: VersiculosSectionProps) {
   const [saving, setSaving] = useState(false)
+  const [openWebDialogOpen, setOpenWebDialogOpen] = useState(false)
 
   // Generar IDs únicos para instancias de componentes
   const getVersiculoId = (versiculoId: string) => `versiculo-${versiculoId}-${fecha}`
@@ -98,18 +100,36 @@ export function VersiculosSection({
   }
 
   const openInBrowser = (url: string) => {
-    const isPWA = window.matchMedia('(display-mode: standalone)').matches || 
-                  (window.navigator as any)?.standalone === true
-    
-    if (isPWA) {
+    try {
+      // Para PWA en iOS, forzar la apertura en el navegador usando window.location
+      if (navigator.userAgent.includes('iPhone') || navigator.userAgent.includes('iPad')) {
+        // Crear un enlace temporal y hacer clic en él para forzar Safari
+        const link = document.createElement('a')
+        link.href = url
+        link.target = '_blank'
+        link.rel = 'noopener noreferrer'
+        
+        // Agregar al DOM temporalmente
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+      } else {
+        window.open(url, '_blank', 'noopener,noreferrer')
+      }
+    } catch (error) {
+      console.error('Error al abrir enlace:', error)
+      // Fallback: usar window.location como última opción
       window.location.href = url
-    } else {
-      window.open(url, '_blank', 'noopener,noreferrer')
     }
   }
 
-  const handleClick = (e: React.MouseEvent) => {
+  const handleNoteClick = (e: React.MouseEvent) => {
     e.preventDefault()
+    setOpenWebDialogOpen(true)
+  }
+
+  const confirmOpenWeb = () => {
+    setOpenWebDialogOpen(false)
     openInBrowser(`https://devocionales-biblicos.com/devocional/${fecha}/dashboard`)
   }
 
@@ -130,12 +150,12 @@ export function VersiculosSection({
             <div className="absolute hidden group-hover:block z-10 w-[90vw] max-w-xs sm:w-72 bg-gray-800 text-white text-sm p-3 rounded-md shadow-lg 
                             left-1/2 -translate-x-1/2 sm:left-auto sm:translate-x-0 sm:right-0 mt-1">
               <p>Si presenta problemas para agregar versículos, abra la app en la web:</p>
-              <a 
-                onClick={handleClick}
-                className="mt-1 text-blue-400 hover:text-blue-300 underline break-words block text-[0.75rem]"
+              <button 
+                onClick={handleNoteClick}
+                className="mt-1 text-blue-400 hover:text-blue-300 underline break-words block text-[0.75rem] cursor-pointer text-left"
               >
                 https://devocionales-biblicos.com/devocional/{fecha}/dashboard
-              </a>
+              </button>
               <div className="absolute -top-1 right-2 w-2 h-2 bg-gray-800 transform rotate-45"></div>
             </div>
           </div>
@@ -149,6 +169,29 @@ export function VersiculosSection({
           Agregar Versículo
         </Button>
       </div>
+
+      {/* Modal de confirmación para abrir en web */}
+      <AlertDialog open={openWebDialogOpen} onOpenChange={setOpenWebDialogOpen}>
+        <AlertDialogContent className="bg-gray-900 border-gray-800">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white">¿Abrir en el navegador?</AlertDialogTitle>
+            <AlertDialogDescription className="text-gray-400">
+              Antes de continuar, asegúrate de <strong className="text-white">guardar tu devocional</strong> para no perder 
+              los cambios realizados. Al abrir el enlace en el navegador, se abrirá una nueva sesión.
+              <br /><br />
+              ¿Has guardado tu devocional y deseas continuar?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-gray-800 border-gray-700 text-white hover:bg-gray-700">
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={confirmOpenWeb} className="bg-blue-600 hover:bg-blue-700 text-white">
+              Sí, abrir en navegador
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {versiculos && versiculos.length > 0 ? (
         versiculos.map((versiculo, index) => (
