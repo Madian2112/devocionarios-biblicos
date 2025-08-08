@@ -111,24 +111,24 @@ export const exportDevocionalToPDF = async (devocional: Devocional) => {
   // 2. Construir el HTML del contenido del PDF
   let contentHTML = `
     <div style="border-bottom: 2px solid #ccc; padding-bottom: 10px; margin-bottom: 20px;">
-      <h1 style="font-size: 28px; margin: 0; color: #1a73e8;">Devocional Bíblico</h1>
-      <p style="font-size: 16px; margin: 5px 0 0;">${formatDate(
+      <h1 style="font-size: 31px; margin: 0; color: #1a73e8;">Devocional Bíblico</h1>
+      <p style="font-size: 19px; margin: 5px 0 0;">${formatDate(
         devocional.fecha
       )}</p>
     </div>
 
     <div style="margin-bottom: 20px;">
-      <h2 style="font-size: 22px; color: #333; border-bottom: 1px solid #eee; padding-bottom: 5px;">Cita Principal: ${
+      <h2 style="font-size: 25px; color: #333; border-bottom: 1px solid #eee; padding-bottom: 5px;">Cita Principal: ${
         devocional.citaBiblica
       }</h2>
-      <p style="font-size: 16px; line-height: 1.6;">${
+      <p style="font-size: 19px; line-height: 1.6;">${
         devocional.textoDevocional
       }</p>
     </div>
 
     <div style="margin-bottom: 20px;">
-      <h3 style="font-size: 20px; color: #1a73e8;">Aprendizaje General</h3>
-      <p style="font-size: 16px; line-height: 1.6; font-style: italic;">${
+      <h3 style="font-size: 23px; color: #1a73e8;">Aprendizaje General</h3>
+      <p style="font-size: 19px; line-height: 1.6; font-style: italic;">${
         devocional.aprendizajeGeneral
       }</p>
     </div>
@@ -137,13 +137,13 @@ export const exportDevocionalToPDF = async (devocional: Devocional) => {
   // 3. Añadir versículos específicos si existen
   if (devocional.versiculos && devocional.versiculos.length > 0) {
     contentHTML += `<div style="margin-bottom: 20px;">
-      <h3 style="font-size: 20px; color: #1a73e8;">Versículos Clave</h3>`;
+      <h3 style="font-size: 23px; color: #1a73e8;">Versículos Clave</h3>`;
     devocional.versiculos.forEach((v) => {
       contentHTML += `
         <div style="margin-bottom: 15px; padding-left: 15px; border-left: 3px solid #1a73e8;">
-          <strong style="font-size: 18px;">${v.referencia}</strong>
-          <p style="font-size: 16px; line-height: 1.6; margin: 5px 0;">${v.texto}</p>
-          <p style="font-size: 15px; line-height: 1.5; color: #555; font-style: italic;"><strong>Aprendizaje:</strong> ${v.aprendizaje}</p>
+          <strong style="font-size: 21px;">${v.referencia}</strong>
+          <p style="font-size: 19px; line-height: 1.6; margin: 5px 0;">${v.texto}</p>
+          <p style="font-size: 18px; line-height: 1.5; color: #555; font-style: italic;"><strong>Aprendizaje:</strong> ${v.aprendizaje}</p>
         </div>
       `;
     });
@@ -153,13 +153,13 @@ export const exportDevocionalToPDF = async (devocional: Devocional) => {
   // 4. Añadir referencias si existen
   if (devocional.referencias && devocional.referencias.length > 0) {
     contentHTML += `<div style="margin-bottom: 20px;">
-      <h3 style="font-size: 20px; color: #1a73e8;">Referencias Adicionales</h3>
+      <h3 style="font-size: 23px; color: #1a73e8;">Referencias Adicionales</h3>
       <ul style="list-style: none; padding: 0;">`;
     devocional.referencias.forEach((r) => {
       contentHTML += `
         <li style="margin-bottom: 10px;">
-          <a href="${r.url}" style="font-size: 16px; color: #1a73e8; text-decoration: none;">${r.url}</a>
-          <p style="font-size: 15px; line-height: 1.5; margin: 5px 0 0;">${r.descripcion}</p>
+          <a href="${r.url}" style="font-size: 19px; color: #1a73e8; text-decoration: none;">${r.url}</a>
+          <p style="font-size: 18px; line-height: 1.5; margin: 5px 0 0;">${r.descripcion}</p>
         </li>
       `;
     });
@@ -170,8 +170,8 @@ export const exportDevocionalToPDF = async (devocional: Devocional) => {
   if (devocional.tags && devocional.tags.length > 0) {
     contentHTML += `
       <div style="border-top: 2px solid #ccc; padding-top: 10px; margin-top: 20px;">
-        <strong style="font-size: 16px;">Temas:</strong>
-        <span style="font-size: 16px; color: #555;">${devocional.tags.join(
+        <strong style="font-size: 19px;">Temas:</strong>
+        <span style="font-size: 19px; color: #555;">${devocional.tags.join(
           ", "
         )}</span>
       </div>
@@ -225,8 +225,8 @@ export const exportTopicalStudyToPDF = async (topic: TopicalStudy) => {
   // 2. Construir el HTML del contenido del PDF
   let contentHTML = `
     <div style="border-bottom: 2px solid #ccc; padding-bottom: 10px; margin-bottom: 20px;">
-      <h1 style="font-size: 28px; margin: 0; color: #1a73e8;">Estudio Bíblico por Tema</h1>
-      <p style="font-size: 22px; margin: 5px 0 0; color: #333;">${
+      <h1 style="font-size: 31px; margin: 0; color: #1a73e8;">Estudio Bíblico por Tema</h1>
+      <p style="font-size: 25px; margin: 5px 0 0; color: #333;">${
         topic.name
       }</p>
     </div>
@@ -238,10 +238,10 @@ export const exportTopicalStudyToPDF = async (topic: TopicalStudy) => {
     topic.entries.forEach((entry, index) => {
       contentHTML += `
         <div style="margin-bottom: 20px; padding-left: 15px; border-left: 3px solid #1a73e8;">
-          <h3 style="font-size: 20px; margin-bottom: 5px;">${
+          <h3 style="font-size: 23px; margin-bottom: 5px;">${
             entry.referencia
           }</h3>
-          <p style="font-size: 16px; line-height: 1.6; font-style: italic;"><strong>Aprendizaje: </strong>${
+          <p style="font-size: 19px; line-height: 1.6; font-style: italic;"><strong>Aprendizaje: </strong>${
             entry.learning
           }</p>
         </div>
@@ -316,26 +316,26 @@ export const exportDevocionalToPDFAlternative = async (devocional: Devocional) =
   };
 
   // Contenido del PDF
-  addText('Devocional Bíblico', 24, 'bold', '#1a73e8');
-  addText(formatDate(devocional.fecha), 14);
+  addText('Devocional Bíblico', 27, 'bold', '#1a73e8');
+  addText(formatDate(devocional.fecha), 17);
   yPosition += 10;
   
-  addText(`Cita Principal: ${devocional.citaBiblica}`, 18, 'bold');
-  addText(devocional.textoDevocional, 12);
+  addText(`Cita Principal: ${devocional.citaBiblica}`, 21, 'bold');
+  addText(devocional.textoDevocional, 15);
   yPosition += 10;
   
-  addText('Aprendizaje General', 16, 'bold', '#1a73e8');
-  addText(devocional.aprendizajeGeneral, 12);
+  addText('Aprendizaje General', 19, 'bold', '#1a73e8');
+  addText(devocional.aprendizajeGeneral, 15);
   
   // Versículos
   if (devocional.versiculos && devocional.versiculos.length > 0) {
     yPosition += 10;
-    addText('Versículos Clave', 16, 'bold', '#1a73e8');
+    addText('Versículos Clave', 19, 'bold', '#1a73e8');
     
     devocional.versiculos.forEach(v => {
-      addText(v.referencia, 14, 'bold');
-      addText(v.texto ?? '', 12);
-      addText(`Aprendizaje: ${v.aprendizaje}`, 11);
+      addText(v.referencia, 17, 'bold');
+      addText(v.texto ?? '', 15);
+      addText(`Aprendizaje: ${v.aprendizaje}`, 14);
       yPosition += 5;
     });
   }
@@ -343,18 +343,18 @@ export const exportDevocionalToPDFAlternative = async (devocional: Devocional) =
   // Referencias
   if (devocional.referencias && devocional.referencias.length > 0) {
     yPosition += 10;
-    addText('Referencias Adicionales', 16, 'bold', '#1a73e8');
+    addText('Referencias Adicionales', 19, 'bold', '#1a73e8');
     
     devocional.referencias.forEach(r => {
-      addText(r.url, 11, 'normal', '#1a73e8');
-      addText(r.descripcion, 11);
+      addText(r.url, 14, 'normal', '#1a73e8');
+      addText(r.descripcion, 14);
     });
   }
   
   // Tags
   if (devocional.tags && devocional.tags.length > 0) {
     yPosition += 10;
-    addText(`Temas: ${devocional.tags.join(', ')}`, 12);
+    addText(`Temas: ${devocional.tags.join(', ')}`, 15);
   }
 
   pdf.save(`Devocional-${devocional.fecha}-${devocional.citaBiblica}.pdf`);
