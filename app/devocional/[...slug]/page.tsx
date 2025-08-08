@@ -411,7 +411,7 @@ const handleVersiculoChange = (index: number, updates: Partial<Versiculo>) => {
                 <BibleSelector
                   instanceId={instanceIds.mainDevocional} 
                   currentReference={devocional.citaBiblica}
-                  onSelect={async (reference:any) => {
+                  onSelect={async (reference) => {
                     setSaving(true);
                     const verseText = await fetchVerseText(reference, 'rv1960');
                     setDevocional(prev => prev ? { ...prev, citaBiblica: reference, textoDevocional: verseText, versionCitaBiblica: 'rv1960' } : null);
