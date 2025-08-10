@@ -2,42 +2,40 @@ import { useEffect } from 'react';
 
 export const useDisableMobileZoom = () => {
   useEffect(() => {
-    // Guardar el viewport original
+    // Método más agresivo: cambiar viewport globalmente
     const viewport = document.querySelector('meta[name="viewport"]');
-    const originalContent = viewport?.getAttribute('content') || 'width=device-width, initial-scale=1.0';
     
-    const handleFocusIn = (e: FocusEvent) => {
-      const target = e.target as HTMLElement;
-      if (target && target.matches('input, textarea, select')) {
-        // Prevenir el zoom inmediatamente
-        if (viewport) {
-          viewport.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
-        }
+    if (viewport) {
+      // Establecer viewport restrictivo desde el inicio
+      viewport.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
+    }
+
+    // Prevenir gestos de zoom
+    const preventZoom = (e: TouchEvent) => {
+      if (e.touches.length > 1) {
+        e.preventDefault();
       }
     };
 
-    const handleFocusOut = (e: FocusEvent) => {
-      const target = e.target as HTMLElement;
-      if (target && target.matches('input, textarea, select')) {
-        // Restaurar el viewport original después de un delay más largo
-        setTimeout(() => {
-          if (viewport) {
-            viewport.setAttribute('content', originalContent);
-          }
-        }, 500); // Aumenté el delay a 500ms
+    const preventDoubleTabZoom = (e: TouchEvent) => {
+      let clickTime = new Date().getTime();
+      if (clickTime - (window as any).lastClickTime < 300) {
+        e.preventDefault();
       }
+      (window as any).lastClickTime = clickTime;
     };
 
-    // Usar capture: true para interceptar antes
-    document.addEventListener('focusin', handleFocusIn, { capture: true });
-    document.addEventListener('focusout', handleFocusOut, { capture: true });
+    // Agregar event listeners
+    document.addEventListener('touchstart', preventZoom, { passive: false });
+    document.addEventListener('touchend', preventDoubleTabZoom, { passive: false });
 
     return () => {
-      document.removeEventListener('focusin', handleFocusIn, { capture: true });
-      document.removeEventListener('focusout', handleFocusOut, { capture: true });
-      // Restaurar viewport original al desmontar
+      document.removeEventListener('touchstart', preventZoom);
+      document.removeEventListener('touchend', preventDoubleTabZoom);
+      
+      // Restaurar viewport al desmontar (opcional)
       if (viewport) {
-        viewport.setAttribute('content', originalContent);
+        viewport.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes');
       }
     };
   }, []);

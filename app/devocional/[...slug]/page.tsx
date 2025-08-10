@@ -59,9 +59,6 @@ function DevocionalPage({ params }: {
   const [saving, setSaving] = useState(false);
   const { saveDevocional, getDevocionalByKey } = useDevocionales();
 
-  useDisableMobileZoom()
-
-
   useEffect(() =>{
     console.log('As es el valor del tipo que me lleva: ', tipo)
   }, [tipo])
@@ -331,6 +328,9 @@ const handleVersiculoChange = (index: number, updates: Partial<Versiculo>) => {
   if (!devocional) {
       return <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#0a0a0a] to-[#0f0f0f] text-white">Cargando devocional... <Link href="/dashboard" className="ml-2 underline">Volver</Link></div>
   }
+
+
+  useDisableMobileZoom()
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#0a0a0a] via-[#0f0f0f] to-[#0a0a0a] text-white">
