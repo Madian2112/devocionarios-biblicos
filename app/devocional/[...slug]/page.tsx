@@ -34,7 +34,6 @@ import { exportDevocionalToPDF } from "@/lib/pdf-exporter"
 import type { Devocional, Versiculo, Referencia } from "@/lib/firestore"
 import { useAuthContext } from "@/context/auth-context"
 import { Timestamp } from "firebase/firestore"
-import { fetchVerseText } from "@/lib/bible-api"
 import withAuth from "@/components/auth/with-auth"
 import { useToast } from "@/hooks/use-toast"
 import { notificationService } from "@/lib/notification-service"
@@ -42,6 +41,7 @@ import { usePWACleanup, usePWADetection } from "@/hooks/use-pwa-cleanup"
 import {useDevocionales} from '@/hooks/use-devocionales'
 import { VersiculosSection } from "@/components/devocional/versiculos-section"
 import { useDisableTextareaZoom } from "@/hooks/use-disable-mobile-zoom-textarea"
+import { fetchVerseText } from "@/lib/bible/bible-api"
 
 
 function DevocionalPage({ params }: { 
@@ -521,6 +521,7 @@ const handleVersiculoChange = (index: number, updates: Partial<Versiculo>) => {
                   versiculos={devocional?.versiculos || []}
                   fecha={fecha}
                   userId={user?.uid}
+                  citaBiblica={devocional.citaBiblica}
                   onVersiculosChange={(newVersiculos) => handleDevocionalChange('versiculos', newVersiculos)}
                   onSavingChange={setSaving}
                 />

@@ -1,109 +1,90 @@
-import { BibleBook } from "../bible-data";
+import { BibleBook } from "./bible-data";
 
-const DB_NAME = 'BibleDB';
-const DB_VERSION = 1;
-const STORE_NAME = 'books';
-const CACHE_KEY = 'bible_books';
-const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 horas en milisegundos
-
-// Interfaz para el objeto almacenado en IndexedDB
-interface CachedData {
-  key: string;
-  data: BibleBook[];
-  timestamp: number;
-}
-
-// Función para inicializar IndexedDB
-function initDB(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
-    
-    request.onerror = () => reject(request.error);
-    request.onsuccess = () => resolve(request.result);
-    
-    request.onupgradeneeded = (event) => {
-      const db = (event.target as IDBOpenDBRequest).result;
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        const store = db.createObjectStore(STORE_NAME, { keyPath: 'key' });
-        store.createIndex('timestamp', 'timestamp', { unique: false });
+export const preloadBibleBooks = async (): Promise<void> => {
+  try {
+    // Verificar si ya están en localStorage
+    const stored = localStorage.getItem('bible_books_cache');
+    if (stored) {
+      const data = JSON.parse(stored);
+      if (data.books && data.books.length > 0) {
+        console.log('✅ Libros ya están en localStorage');
+        return;
       }
-    };
-  });
-}
+    }
 
-// Función para obtener datos de IndexedDB
-export async function getFromIndexedDB(): Promise<BibleBook[] | null> {
-  try {
-    const db = await initDB();
-    const transaction = db.transaction([STORE_NAME], 'readonly');
-    const store = transaction.objectStore(STORE_NAME);
+    // Si no están, cargarlos
+    console.log('🚀 Precargando libros bíblicos...');
+    const response = await fetch('https://api.biblesupersearch.com/api/books?language=es');
     
-    return new Promise((resolve, reject) => {
-      const request = store.get(CACHE_KEY);
-      
-      request.onerror = () => reject(request.error);
-      request.onsuccess = () => {
-        const result = request.result as CachedData;
-        
-        if (!result) {
-          resolve(null);
-          return;
-        }
-        
-        // Verificar si los datos no han expirado
-        const now = Date.now();
-        if (now - result.timestamp > CACHE_DURATION) {
-          // Los datos han expirado, eliminarlos
-          deleteFromIndexedDB();
-          resolve(null);
-          return;
-        }
-        
-        resolve(result.data);
-      };
-    });
-  } catch (error) {
-    console.warn('Error al acceder a IndexedDB:', error);
-    return null;
-  }
-}
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
 
-// Función para guardar datos en IndexedDB
-export async function saveToIndexedDB(data: BibleBook[]): Promise<void> {
-  try {
-    const db = await initDB();
-    const transaction = db.transaction([STORE_NAME], 'readwrite');
-    const store = transaction.objectStore(STORE_NAME);
-    
-    const cachedData: CachedData = {
-      key: CACHE_KEY,
-      data: data,
-      timestamp: Date.now()
-    };
-    
-    return new Promise((resolve, reject) => {
-      const request = store.put(cachedData);
-      request.onerror = () => reject(request.error);
-      request.onsuccess = () => resolve();
-    });
-  } catch (error) {
-    console.warn('Error al guardar en IndexedDB:', error);
-  }
-}
+    const apiData = await response.json();
+    const books: BibleBook[] = apiData.results.map((book: any) => ({
+      id: book.id,
+      name: book.name,
+      shortname: book.shortname,
+      chapters: book.chapters,
+      chapter_verses: book.chapter_verses,
+    }));
 
-// Función para eliminar datos expirados de IndexedDB
-async function deleteFromIndexedDB(): Promise<void> {
-  try {
-    const db = await initDB();
-    const transaction = db.transaction([STORE_NAME], 'readwrite');
-    const store = transaction.objectStore(STORE_NAME);
-    
-    return new Promise((resolve, reject) => {
-      const request = store.delete(CACHE_KEY);
-      request.onerror = () => reject(request.error);
-      request.onsuccess = () => resolve();
-    });
+    // Guardar en localStorage
+    localStorage.setItem('bible_books_cache', JSON.stringify({ 
+      books, 
+      timestamp: Date.now() 
+    }));
+
+    console.log('✅ Libros precargados y guardados en localStorage');
   } catch (error) {
-    console.warn('Error al eliminar de IndexedDB:', error);
+    console.error('❌ Error precargando libros:', error);
   }
-}
+};
+
+export const getBooksFromStorage = async (): Promise<BibleBook[]> => {
+  try {
+    const stored = localStorage.getItem('bible_books_cache');
+    if (stored) {
+      const data = JSON.parse(stored);
+      return data.books;
+    }
+    else{
+      return await loadBooksFromAPI()
+    }
+  } catch (error) {
+    console.warn('Error leyendo localStorage:', error);
+  }
+  return [];
+};
+
+// 🚀 FUNCIÓN SIMPLE: Cargar desde API como fallback
+const loadBooksFromAPI = async (): Promise<BibleBook[]> => {
+  try {
+    console.log('🌐 Cargando libros desde API (fallback)...');
+    const response = await fetch('https://api.biblesupersearch.com/api/books?language=es');
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+    const books: BibleBook[] = data.results.map((book: any) => ({
+      id: book.id,
+      name: book.name,
+      shortname: book.shortname,
+      chapters: book.chapters,
+      chapter_verses: book.chapter_verses,
+    }));
+
+    // Guardar en localStorage para próximas veces
+    localStorage.setItem('bible_books_cache', JSON.stringify({ 
+      books, 
+      timestamp: Date.now() 
+    }));
+
+    return books;
+  } catch (error) {
+    console.error('Error cargando desde API:', error);
+    return [];
+  }
+};

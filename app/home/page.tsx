@@ -20,6 +20,7 @@ import { useAuthContext } from "@/context/auth-context"
 import { useState, useEffect } from "react"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { useStatistics } from "@/hooks/use-statistics"
+import { preloadBibleBooks } from "@/lib/bible/bible-indexdb"
 
 function HomePage() {
   const router = useRouter();
@@ -37,6 +38,13 @@ function HomePage() {
       }
     }
   }, [user, loading, router, isLoggingOut]);
+
+  useEffect(() => {
+    if (user) {
+      console.log('🚀 Precargando libros bíblicos...');
+      preloadBibleBooks();
+    }
+  }, [user]);
 
   // 🧹 Limpiar sessionStorage al desmontar componente
   useEffect(() => {

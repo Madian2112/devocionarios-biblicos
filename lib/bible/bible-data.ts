@@ -1,5 +1,5 @@
 // Reemplazo toda la data hardcodeada por funciones que consultan Bible API
-import {getFromIndexedDB, saveToIndexedDB} from './bible-indexdb'
+// import {getFromIndexedDB, saveToIndexedDB} from './bible-indexdb'
 
 export interface BibleBook {
   id: number;
@@ -30,21 +30,7 @@ export interface BibleVersionDeno extends BibleVersion {
 const BIBLE_VERSIONS_CACHE_KEY = 'bible-versions-data';
 
 // Versiones soportadas por la API
-const SUPPORTED_BIBLE_VERSIONS: BibleVersion[] = [
-  { id: "rv_1909", name: "Reina Valera 1909", abbreviation: "RV1909" },
-  { id: "rv_1858", name: "Reina Valera 1858 NT", abbreviation: "RV1858" },
-  { id: "rvg", name: "Reina Valera Gómez", abbreviation: "RVG" },
-  {
-    id: "rv_1909_strongs",
-    name: "Reina-Valera 1909 w/Strong's",
-    abbreviation: "RV1909 S",
-  },
-  {
-    id: "sagradas",
-    name: "Sagradas Escrituras 1569",
-    abbreviation: "SAGRADAS",
-  },
-];
+const SUPPORTED_BIBLE_VERSIONS: BibleVersion[] = [];
 
 // Obtener versiones de la Biblia (con caché)
 export function getBibleVersions(): BibleVersion[] {
@@ -64,53 +50,6 @@ export function getBibleVersions(): BibleVersion[] {
     console.warn("No se pudo guardar las versiones en localStorage.");
   }
   return SUPPORTED_BIBLE_VERSIONS;
-}
-
-// Obtener libros de la Biblia en español (con caché)
-export async function fetchBibleBooks(): Promise<BibleBook[]> {
-  try {
-    // Intentar obtener desde IndexedDB
-    const cachedBooks = await getFromIndexedDB();
-    if (cachedBooks) {
-      console.log('Libros cargados desde IndexedDB');
-      return cachedBooks;
-    }
-  } catch (error) {
-    console.warn('No se pudo acceder a IndexedDB para cargar libros:', error);
-  }
-
-  // Obtener desde la API si no hay caché válido
-  try {
-    console.log('Obteniendo libros desde la API...');
-    const res = await fetch('https://api.biblesupersearch.com/api/books?language=es');
-    
-    if (!res.ok) {
-      throw new Error(`Error HTTP: ${res.status}`);
-    }
-    
-    const data = await res.json();
-    
-    const result: BibleBook[] = data.results.map((book: any) => ({
-      id: book.id,
-      name: book.name,
-      shortname: book.shortname,
-      chapters: book.chapters,
-      chapter_verses: book.chapter_verses,
-    }));
-
-    // Guardar en IndexedDB para futuras consultas
-    try {
-      await saveToIndexedDB(result);
-      console.log('Libros guardados en IndexedDB');
-    } catch (saveError) {
-      console.warn('No se pudieron guardar los libros en IndexedDB:', saveError);
-    }
-
-    return result;
-  } catch (error) {
-    console.error('Error al obtener los libros de la API:', error);
-    throw error;
-  }
 }
 // Obtener un versículo específico
 export async function fetchBibleVerse(

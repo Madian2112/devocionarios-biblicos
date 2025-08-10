@@ -33,9 +33,9 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { toast } from "sonner";
-import { BibleVersion, BibleVersionDeno, fetchVersions } from "@/lib/bible-data";
 import { parseReference } from "@/lib/bible-utils";
 import { version } from "os";
+import { BibleVersionDeno, fetchVersions } from "@/lib/bible/bible-data";
 
 
 interface Verse {

@@ -119,65 +119,178 @@ function extractBookName(citation: string): string | null {
 
 const SCROLL_POSITION_KEY = 'devocionales_scroll_position';
 
+// Hook personalizado para manejo inteligente de scroll
+const useIntelligentScroll = () => {
+  const scrollToElement = (elementId: string, options: {
+    behavior?: ScrollBehavior
+    block?: ScrollLogicalPosition
+    hideScrollBars?: boolean
+    showLoadingState?: boolean
+  } = {}) => {
+    const {
+      behavior = 'auto',
+      block = 'center',
+      hideScrollBars = true,
+      showLoadingState = false
+    } = options;
+    
+    return new Promise<void>((resolve) => {
+      // Ocultar scroll bars temporalmente si se requiere
+      if (hideScrollBars) {
+        document.documentElement.style.scrollBehavior = 'auto';
+        document.body.style.overflow = 'hidden';
+      }
+      
+      requestAnimationFrame(() => {
+        const element = document.getElementById(elementId);
+        
+        if (element) {
+          // Verificar si el elemento ya está visible
+          const rect = element.getBoundingClientRect();
+          const isVisible = rect.top >= 0 && rect.bottom <= window.innerHeight;
+          
+          if (!isVisible) {
+            element.scrollIntoView({ behavior, block });
+          }
+        }
+        
+        // Restaurar scroll bars después del siguiente frame
+        if (hideScrollBars) {
+          requestAnimationFrame(() => {
+            document.body.style.overflow = '';
+            document.documentElement.style.scrollBehavior = '';
+            resolve();
+          });
+        } else {
+          resolve();
+        }
+      });
+    });
+  };
+  
+  return { scrollToElement };
+};
+
+// Componente de Loading mejorado
+const RestorePositionOverlay = ({ isRestoring }: { isRestoring: boolean }) => {
+  if (!isRestoring) return null;
+  
+  return (
+    <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-50 flex items-center justify-center">
+      <div className="bg-[#1a1a1a] rounded-lg p-4 border border-gray-700">
+        <div className="flex items-center gap-3">
+          <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
+          <span className="text-white text-sm">Restaurando posición...</span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 function HistoryPage() {
   const { user } = useAuthContext()
   const [searchTerm, setSearchTerm] = useState("")
   const [loading, setLoading] = useState(true)
-  // const [devocionales, setDevocionarios] = useState<Devocional[]>([])
   const [devocionalSortOrder, setDevocionalSortOrder] = useState<SortOrder>("desc") // Newest first
   const [completionFilter, setCompletionFilter] = useState<CompletionFilter>("all")
   const [selectedBookFilter, setSelectedBookFilter] = useState<string | "all">("all")
+  const [isRestoring, setIsRestoring] = useState(false)
+  const [contentReady, setContentReady] = useState(false)
   const {loadFromMobileStorage, devocionales} = useDevocionales()
   const containerRef = useRef(null);
+  const { scrollToElement } = useIntelligentScroll();
 
   useDisableMobileZoom()
 
-  // Efecto para restaurar la posición del scroll
+  // Efecto para controlar cuando mostrar el contenido
   useEffect(() => {
-    // Esperar a que los devocionales estén cargados
+    if (!loading && !isRestoring) {
+      // Pequeño delay para asegurar que todo esté renderizado
+      setTimeout(() => setContentReady(true), 50);
+    } else {
+      setContentReady(false);
+    }
+  }, [loading, isRestoring]);
+
+  // Efecto mejorado para restaurar la posición del scroll
+  useEffect(() => {
     if (!loading && devocionales.length > 0) {
       const savedPosition = sessionStorage.getItem(SCROLL_POSITION_KEY);
       if (savedPosition) {
+        setIsRestoring(true);
+        
         try {
           const { elementId, scrollTop } = JSON.parse(savedPosition);
           
-          // Usar setTimeout para asegurar que el DOM esté completamente renderizado
-          setTimeout(() => {
-            // Intentar hacer scroll al elemento específico
+          // Usar timeout mínimo para asegurar renderizado completo
+          setTimeout(async () => {
             const element = document.getElementById(elementId);
+            
             if (element) {
-              element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              // Scroll instantáneo y silencioso al elemento específico
+              await scrollToElement(elementId, {
+                behavior: 'auto',
+                block: 'center',
+                hideScrollBars: true
+              });
             } else {
-              // Si no encuentra el elemento, usar la posición de scroll guardada
-              window.scrollTo({ top: scrollTop, behavior: 'smooth' });
+              // Fallback: scroll instantáneo a la posición guardada
+              window.scrollTo({ 
+                top: scrollTop, 
+                behavior: 'auto',
+                left: 0
+              });
             }
             
-            // Limpiar después de restaurar
             sessionStorage.removeItem(SCROLL_POSITION_KEY);
-          }, 100); // Pequeño delay para asegurar el renderizado
+            setIsRestoring(false);
+          }, 16); // Un frame (16ms) es suficiente
+          
         } catch (error) {
           console.error('Error al restaurar posición:', error);
           sessionStorage.removeItem(SCROLL_POSITION_KEY);
+          setIsRestoring(false);
         }
       }
     }
-  }, [loading, devocionales]);
+  }, [loading, devocionales, scrollToElement]);
 
   // Función para limpiar la posición guardada (solo para el botón de dashboard)
   const clearScrollPosition = () => {
     sessionStorage.removeItem(SCROLL_POSITION_KEY);
   };
 
-  // Función para guardar la posición antes de navegar a un devocional
+  // Función mejorada para manejar clicks en devocionales
   const handleDevocionalClick = (devocionalId: any) => {
     try {
+      // Guardar posición actual con más precisión
+      const element = document.getElementById(`devocional-${devocionalId}`);
       const scrollPosition = {
         elementId: `devocional-${devocionalId}`,
-        scrollTop: window.pageYOffset || document.documentElement.scrollTop
+        scrollTop: window.pageYOffset || document.documentElement.scrollTop,
+        // Información adicional para mejor restauración
+        timestamp: Date.now(),
+        viewportHeight: window.innerHeight
       };
+      
       sessionStorage.setItem(SCROLL_POSITION_KEY, JSON.stringify(scrollPosition));
     } catch (error) {
       console.error('Error al guardar posición:', error);
+    }
+  };
+
+  // Función utilitaria para scroll manual (para botones o acciones específicas)
+  const scrollToDevocionalSmooth = async (index: number) => {
+    if (index >= 0 && index < filteredAndSortedDevocionarios.length) {
+      const targetDevocional = filteredAndSortedDevocionarios[index];
+      const targetId = `devocional-${targetDevocional.id}`;
+      
+      // Para acciones del usuario, usar scroll suave
+      await scrollToElement(targetId, {
+        behavior: 'smooth',
+        block: 'center',
+        hideScrollBars: false
+      });
     }
   };
 
@@ -200,7 +313,7 @@ function HistoryPage() {
       if (user) {
         setLoading(true)
         try {
-          await loadFromMobileStorage() // ✅ Agregar await!
+          await loadFromMobileStorage()
           console.log('Devocionales cargados:', devocionales.length)
         } catch (error) {
           console.error("Error al cargar los datos para historial:", error)
@@ -295,7 +408,15 @@ function HistoryPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#0a0a0a] via-[#0f0f0f] to-[#0a0a0a] text-white">
-      <div className="container mx-auto px-4 py-6 max-w-5xl">
+      {/* Overlay de restauración */}
+      <RestorePositionOverlay isRestoring={isRestoring} />
+      
+      {/* Contenido principal */}
+      <div 
+        className={`container mx-auto px-4 py-6 max-w-5xl transition-opacity duration-200 ${
+          contentReady ? 'opacity-100' : 'opacity-0'
+        }`}
+      >
         {/* Header */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-8">
           <div ref={containerRef}>
@@ -317,7 +438,6 @@ function HistoryPage() {
             <p className="text-gray-400">Todos tus devocionales</p>
           </div>
           <div className="hidden sm:block w-10"></div> {/* Small spacer for visual balance on right, flexible */}
-
         </div>
 
         {/* Search Bar */}
@@ -439,9 +559,6 @@ function HistoryPage() {
             <>
               {/* Devocionales Section */}
               <div>
-                {/* <h2 className="text-xl font-bold text-white mb-4">
-                  Devocionales ({filteredAndSortedDevocionarios.length})
-                </h2> */}
                 <Badge variant="outline" className="text-xs mb-3">
                 {filteredAndSortedDevocionarios.length} Devocionales
                 </Badge>

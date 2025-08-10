@@ -16,13 +16,14 @@ import { Badge } from "@/components/ui/badge"
 import { GradientCard } from "@/components/ui/gradient-card"
 import { BibleSelector } from "@/components/bible/bible-selector"
 import { BibleViewer } from "@/components/bible/bible-viewer"
-import { fetchVerseText } from "@/lib/bible-api"
 import type { Versiculo } from "@/lib/firestore"
+import { fetchVerseText } from "@/lib/bible/bible-api"
 
 interface VersiculosSectionProps {
   versiculos: Versiculo[]
   fecha: string
   userId?: string
+  citaBiblica:string
   onVersiculosChange: (versiculos: Versiculo[]) => void
   onSavingChange?: (saving: boolean) => void
 }
@@ -31,6 +32,7 @@ export function VersiculosSection({
   versiculos, 
   fecha, 
   userId, 
+  citaBiblica,
   onVersiculosChange,
   onSavingChange 
 }: VersiculosSectionProps) {
@@ -113,6 +115,11 @@ export function VersiculosSection({
     openInBrowser(`https://devocionales-biblicos.com/devocional/${fecha}/dashboard`)
   }
 
+  const seleccionarCapituloSiNoHayVersiculo = (referencia:string):string =>{
+    console.log('Asi me lleva la data de la referencia: ', referencia)
+    return referencia == '' ? `${citaBiblica}:1` : referencia
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -159,7 +166,7 @@ export function VersiculosSection({
                 <div className="flex gap-3 items-center">
                   <div className="flex-1">
                     <Input
-                      value={versiculo?.referencia || ''}
+                      value={seleccionarCapituloSiNoHayVersiculo(versiculo.referencia.toString())}
                       onChange={(e) => {
                         handleVersiculoChange(index, {referencia: e.target.value})
                       }}
@@ -174,7 +181,8 @@ export function VersiculosSection({
                     key={getVersiculoId(versiculo.id)}
                     instanceId={`versiculo-${versiculo.id}`}
                     onSelect={(reference) => handleBibleSelection(index, reference)}
-                    currentReference={versiculo?.referencia || ''}
+                    currentReference={seleccionarCapituloSiNoHayVersiculo(versiculo.referencia.toString())}
+                    esMostrarCapitulo={false}
                     trigger={
                       <Button
                         variant="outline"

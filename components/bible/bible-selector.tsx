@@ -32,17 +32,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { bibleService, fetchBibleBooks, BibleBook, getBibleVersions, BibleVersion } from "@/lib/bible-data";
 import { parseReference, normalizeText } from "@/lib/bible-utils";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Switch } from "@/components/ui/switch";
+import { getBooksFromStorage } from "@/lib/bible/bible-indexdb";
+import { BibleBook, bibleService, BibleVersion, getBibleVersions } from "@/lib/bible/bible-data";
 
 interface BibleSelectorProps {
   onSelect: (reference: string) => void;
   trigger?: React.ReactNode;
   currentReference?: string;
   instanceId?: string;
+  esMostrarCapitulo?: boolean
 }
 
 const LibroApocalpsis = (libro: string) =>{
@@ -87,6 +87,7 @@ export function BibleSelector({
   trigger,
   currentReference = "Juan 3:16",
   instanceId = "default",
+  esMostrarCapitulo = true
 }: BibleSelectorProps) {
   const [open, setOpen] = useState(false);
   const isMobile = useIsMobile();
@@ -129,6 +130,7 @@ export function BibleSelector({
       setOpen={setOpen}
       currentReference={currentReference}
       instanceId={`${instanceId}-${localKey}`}
+      esMostrarCapitulo = {esMostrarCapitulo}
     />
   );
   
@@ -190,6 +192,7 @@ interface BibleSelectorFormProps {
   setOpen: (open: boolean) => void;
   currentReference?: string;
   instanceId?: string;
+  esMostrarCapitulo: boolean
 }
 
 function BibleSelectorForm({
@@ -197,6 +200,7 @@ function BibleSelectorForm({
   setOpen,
   currentReference,
   instanceId = "default",
+  esMostrarCapitulo
 }: BibleSelectorFormProps) {
     const [selectionType, setSelectionType] = useState<'verse' | 'chapter'>('verse');
     const [selectedBook, setSelectedBook] = useState('Juan');
@@ -238,7 +242,7 @@ function BibleSelectorForm({
     // Efecto #2: Carga de datos
     useEffect(() => {
       setLoadingBooks(true);
-      fetchBibleBooks().then(data => {
+      getBooksFromStorage().then(data => {
         setBooks(data);
         setLoadingBooks(false);
       }).catch(() => setLoadingBooks(false));
@@ -293,6 +297,7 @@ function BibleSelectorForm({
   return (
     <div className="space-y-6 p-4" key={`form-content-${instanceId}`}>
         {/* Switch para tipo de selección */}
+        {esMostrarCapitulo &&
         <div className="flex items-center justify-center space-x-2">
             <Label>Versículo</Label>
             <Switch
@@ -300,7 +305,7 @@ function BibleSelectorForm({
                 onCheckedChange={(checked) => setSelectionType(checked ? 'chapter' : 'verse')}
             />
             <Label>Capítulo</Label>
-        </div>
+        </div> }
 
       {/* Selector de libro */}
       <div>
