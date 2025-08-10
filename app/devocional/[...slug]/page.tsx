@@ -38,15 +38,16 @@ import { fetchVerseText } from "@/lib/bible-api"
 import withAuth from "@/components/auth/with-auth"
 import { useToast } from "@/hooks/use-toast"
 import { notificationService } from "@/lib/notification-service"
-import { useDisableMobileZoom } from '@/hooks/use-disable-mobile-zoom';
 import { usePWACleanup, usePWADetection } from "@/hooks/use-pwa-cleanup"
 import {useDevocionales} from '@/hooks/use-devocionales'
 import { VersiculosSection } from "@/components/devocional/versiculos-section"
+import { useDisableTextareaZoom } from "@/hooks/use-disable-mobile-zoom-textarea"
 
 
 function DevocionalPage({ params }: { 
   params: Promise<{  slug: string[] }> 
 }) {
+  useDisableTextareaZoom(); // Hook después del return
   const router = useRouter();
   const { user } = useAuthContext();
   const { toast } = useToast();
@@ -329,8 +330,6 @@ const handleVersiculoChange = (index: number, updates: Partial<Versiculo>) => {
       return <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#0a0a0a] to-[#0f0f0f] text-white">Cargando devocional... <Link href="/dashboard" className="ml-2 underline">Volver</Link></div>
   }
 
-
-  useDisableMobileZoom()
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#0a0a0a] via-[#0f0f0f] to-[#0a0a0a] text-white">
