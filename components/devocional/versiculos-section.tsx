@@ -121,24 +121,6 @@ export function VersiculosSection({
             <Book className="h-5 w-5 text-blue-400" />
           </div>
           Versículos Específicos
-          <div className="relative group mr-4 sm:mr-12">
-            <span className="text-xs bg-blue-100 text-blue-800 font-bold px-2 py-0.5 rounded-md flex items-center gap-1 border border-blue-200 cursor-help">
-              NOTA
-              <ExternalLink className="h-3 w-3 text-blue-600" />
-            </span>
-
-            <div className="absolute hidden group-hover:block z-10 w-[90vw] max-w-xs sm:w-72 bg-gray-800 text-white text-sm p-3 rounded-md shadow-lg 
-                            left-1/2 -translate-x-1/2 sm:left-auto sm:translate-x-0 sm:right-0 mt-1">
-              <p>Si presenta problemas para agregar versículos, abra la app en la web:</p>
-              <a 
-                onClick={handleClick}
-                className="mt-1 text-blue-400 hover:text-blue-300 underline break-words block text-[0.75rem]"
-              >
-                https://devocionales-biblicos.com/devocional/{fecha}/dashboard
-              </a>
-              <div className="absolute -top-1 right-2 w-2 h-2 bg-gray-800 transform rotate-45"></div>
-            </div>
-          </div>
         </h3>
         
         <Button

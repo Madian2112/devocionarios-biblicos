@@ -2,9 +2,14 @@ import { useEffect } from 'react';
 
 export const useDisableMobileZoom = () => {
   useEffect(() => {
+    // Guardar el viewport original
+    const viewport = document.querySelector('meta[name="viewport"]');
+    const originalContent = viewport?.getAttribute('content') || 'width=device-width, initial-scale=1.0';
+    
     const handleFocusIn = (e: FocusEvent) => {
-      if (e.target && (e.target as HTMLElement).matches('input, textarea, select')) {
-        const viewport = document.querySelector('meta[name="viewport"]');
+      const target = e.target as HTMLElement;
+      if (target && target.matches('input, textarea, select')) {
+        // Prevenir el zoom inmediatamente
         if (viewport) {
           viewport.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
         }
@@ -12,22 +17,28 @@ export const useDisableMobileZoom = () => {
     };
 
     const handleFocusOut = (e: FocusEvent) => {
-      if (e.target && (e.target as HTMLElement).matches('input, textarea, select')) {
+      const target = e.target as HTMLElement;
+      if (target && target.matches('input, textarea, select')) {
+        // Restaurar el viewport original después de un delay más largo
         setTimeout(() => {
-          const viewport = document.querySelector('meta[name="viewport"]');
           if (viewport) {
-            viewport.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes');
+            viewport.setAttribute('content', originalContent);
           }
-        }, 300);
+        }, 500); // Aumenté el delay a 500ms
       }
     };
 
-    document.addEventListener('focusin', handleFocusIn);
-    document.addEventListener('focusout', handleFocusOut);
+    // Usar capture: true para interceptar antes
+    document.addEventListener('focusin', handleFocusIn, { capture: true });
+    document.addEventListener('focusout', handleFocusOut, { capture: true });
 
     return () => {
-      document.removeEventListener('focusin', handleFocusIn);
-      document.removeEventListener('focusout', handleFocusOut);
+      document.removeEventListener('focusin', handleFocusIn, { capture: true });
+      document.removeEventListener('focusout', handleFocusOut, { capture: true });
+      // Restaurar viewport original al desmontar
+      if (viewport) {
+        viewport.setAttribute('content', originalContent);
+      }
     };
   }, []);
 };

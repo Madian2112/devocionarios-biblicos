@@ -11,7 +11,6 @@ import {
   Timestamp,
 } from "firebase/firestore";
 import { db } from "./firebase";
-import {cachedFirestoreService} from "@/lib/firestore-cached"
 
 // --- Sub-colecciones y tipos anidados ---
 
@@ -69,25 +68,6 @@ const DEVOCIONALES_COLLECTION = "devocionales";
 const TOPICS_COLLECTION = "estudios_topicos";
 
 export const firestoreService = {
-  // --- DEVOCIONALES ---
-  async saveDevocional(userId: string, devocional: Omit<Devocional, "createdAt" | "updatedAt" | "userId">) {
-    const docRef = doc(db, DEVOCIONALES_COLLECTION, devocional.id);
-    const now = Timestamp.now();
-
-    const docSnap = await getDoc(docRef);
-    const data: Devocional = {
-      ...devocional,
-      userId,
-      updatedAt: now,
-      createdAt: docSnap.exists() ? docSnap.data().createdAt : now,
-    };
-    
-    // console.log('DocRef: ', docRef, '\n', 'Now: ', now, '\n', 'DocSnap: ', docSnap, '\n', 'Data: ', data, '\n', 'Devocional: ', devocional)
-    cachedFirestoreService.saveDevocional(userId, devocional);
-
-    await setDoc(docRef, data, { merge: true });
-    return data;
-  },
 
   async   getDevocionarios(userId: string): Promise<Devocional[]> {
     const q = query(

@@ -526,6 +526,102 @@ const handleVersiculoChange = (index: number, updates: Partial<Versiculo>) => {
                   onSavingChange={setSaving}
                 />
             </TabsContent>
+            <TabsContent value="referencias">
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xl font-semibold text-white flex items-center gap-3">
+                    <div className="p-2 bg-green-500/20 rounded-lg">
+                      <LinkIcon className="h-5 w-5 text-green-400" />
+                    </div>
+                    Referencias y Enlaces
+                  </h3>
+                  <Button
+                    onClick={addReferencia}
+                    className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Agregar Referencia
+                  </Button>
+                </div>
+
+                {devocional.referencias.map((referencia, index) => (
+                  <GradientCard key={referencia.id} gradient="green" className="group">
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-lg text-white flex items-center gap-2">
+                          <span className="bg-green-500/20 text-green-400 px-2 py-1 rounded-lg text-sm font-medium">
+                            #{index + 1}
+                          </span>
+                          Referencia {index + 1}
+                        </CardTitle>
+                        <div className="flex items-center gap-2">
+                          {referencia.url && (
+                            <Link href={referencia.url} target="_blank">
+                                <Button
+                                variant="outline"
+                                size="icon"
+                                className="opacity-0 group-hover:opacity-100 transition-opacity bg-blue-500/20 border-blue-500/30 hover:bg-blue-500/30"
+                                >
+                                <LinkIcon className="h-4 w-4 text-blue-400" />
+                                </Button>
+                            </Link>
+                          )}
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => removeReferencia(referencia.id)}
+                            className="opacity-0 group-hover:opacity-100 transition-opacity bg-red-500/20 border-red-500/30 hover:bg-red-500/30"
+                          >
+                            <Trash2 className="h-4 w-4 text-red-400" />
+                          </Button>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-3">URL del Enlace</label>
+                        <Input
+                          value={referencia.url}
+                          onChange={(e) => handleReferenciaChange(index, 'url', e.target.value)}
+                          placeholder="https://ejemplo.com/estudio-biblico"
+                          className="bg-[#2a2a2a]/50 border-gray-700 text-white backdrop-blur-sm focus:border-green-500 transition-colors"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-3">Descripción</label>
+                        <Textarea
+                          value={referencia.descripcion}
+                          onChange={(e) => handleReferenciaChange(index, 'descripcion', e.target.value)}
+                          placeholder="¿Qué información útil encontraste en este enlace? ¿Cómo complementa tu estudio?"
+                          className="bg-[#2a2a2a]/50 border-gray-700 text-white backdrop-blur-sm focus:border-green-500 transition-colors resize-none"
+                        />
+                      </div>
+                    </CardContent>
+                  </GradientCard>
+                ))}
+
+                {devocional.referencias.length === 0 && (
+                  <GradientCard>
+                    <CardContent className="text-center py-16">
+                      <div className="p-4 bg-green-500/10 rounded-full w-fit mx-auto mb-6">
+                        <LinkIcon className="h-12 w-12 text-green-400" />
+                      </div>
+                      <h3 className="text-xl font-semibold text-white mb-2">No hay referencias agregadas</h3>
+                      <p className="text-gray-400 mb-6">
+                        Agrega enlaces y recursos que complementen tu estudio bíblico
+                      </p>
+                      <Button
+                        onClick={addReferencia}
+                        className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Agregar Primera Referencia
+                      </Button>
+                    </CardContent>
+                  </GradientCard>
+                )}
+              </div>
+              </TabsContent>
           </Tabs>
 
         {/* Gestión de Etiquetas */}

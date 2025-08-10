@@ -21,24 +21,6 @@ const inter = Inter({
   fallback: ["system-ui", "arial"],
 });
 
-// Componente dinámico para evitar renderizado en el servidor
-const ServiceWorkerRegistration = dynamic(() => Promise.resolve(() => {
-  useEffect(() => {
-    if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js').then(
-          (registration) => {
-            console.log('Service Worker registrado:', registration);
-          },
-          (error) => {
-            console.error('Error al registrar el Service Worker:', error);
-          }
-        );
-      });
-    }
-  }, []);
-  return null;
-}), { ssr: false });
 
 export default function RootLayout({
   children,
@@ -71,7 +53,6 @@ export default function RootLayout({
         {/* Icons and Manifest */}
         <link rel="icon" href="/favicon.ico" sizes="any" />
         <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"/>
-        <link rel="manifest" href="/manifest.json" />
         
         {/* Preload important resources */}
         <link rel="preload" href="/_next/static/css/app/layout.css" as="style" />
@@ -94,7 +75,6 @@ export default function RootLayout({
               <ZoomControls />
               <Toaster />
               {/* Registrar Service Worker */}
-              <ServiceWorkerRegistration />
             </ZoomProvider>
           </ThemeProvider>
         </AuthProvider>
