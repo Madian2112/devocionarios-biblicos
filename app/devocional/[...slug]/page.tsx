@@ -646,9 +646,9 @@ const handleVersiculoChange = (index: number, updates: Partial<Versiculo>) => {
                       onClick={() => {
                         handleTagsChange(devocional.tags?.filter((t) => t !== tag) || []);
                       }}
-                      className="ml-2 text-yellow-400 hover:text-white"
+                      className="ml-2 text-yellow-400 hover:text-white h-6 w-6"
                     >
-                      <Trash2 className="h-3 w-3" />
+                      <Trash2 className="h-5 w-5" />
                     </button>
                   </Badge>
                 ))}
