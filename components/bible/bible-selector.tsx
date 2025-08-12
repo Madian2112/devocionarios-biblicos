@@ -295,40 +295,40 @@ function BibleSelectorForm({
     }, [selectionType, selectedBook, startChapter, startVerse, endVerse]);
 
   return (
-    <div className="space-y-6 p-4" key={`form-content-${instanceId}`}>
+<div className="space-y-6 p-4" key={`form-content-${instanceId}`}>
         {/* Switch para tipo de selección */}
         {esMostrarCapitulo &&
         <div className="flex items-center justify-center space-x-2">
-            <Label>Versículo</Label>
+            <Label className="text-base">Versículo</Label>
             <Switch
                 checked={selectionType === 'chapter'}
                 onCheckedChange={(checked) => setSelectionType(checked ? 'chapter' : 'verse')}
             />
-            <Label>Capítulo</Label>
+            <Label className="text-base">Capítulo</Label>
         </div> }
 
       {/* Selector de libro */}
       <div>
-        <Label className="text-gray-300 mb-2 block">Libro</Label>
+        <Label className="text-gray-300 mb-2 block text-base font-medium">Libro</Label>
         <Select 
           key={`book-select-${instanceId}`} 
           value={selectedBook} 
           onValueChange={handleBookChange} 
           disabled={loadingBooks}
         >
-          <SelectTrigger className="bg-[#2a2a2a]/50 border-gray-700 text-white">
+          <SelectTrigger className="bg-[#2a2a2a]/50 border-gray-700 text-white text-base">
             <SelectValue placeholder="Seleccione un libro" />
           </SelectTrigger>
           <SelectContent className="bg-[#1a1a1a] border-gray-800 text-white max-h-60">
              <ScrollArea className="h-60">
                 {loadingBooks ? (
-                  <div className="text-center text-gray-400 py-4">Cargando libros...</div>
+                  <div className="text-center text-gray-400 py-4 text-base">Cargando libros...</div>
                 ) : (
                   books.map((book) => (
                     <SelectItem
                       key={`${instanceId}-book-${LibroApocalpsis(book.name)}`}
                       value={LibroApocalpsis(book.name)}
-                      className="hover:bg-[#2a2a2a]"
+                      className="hover:bg-[#2a2a2a] text-lg"
                     >
                       {LibroApocalpsis(book.name)}
                     </SelectItem>
@@ -344,20 +344,20 @@ function BibleSelectorForm({
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {/* Capítulo */}
           <div>
-            <Label className="text-gray-300 mb-2 block">Capítulo</Label>
+            <Label className="text-gray-300 mb-2 block text-base font-medium">Capítulo</Label>
             <Select 
               key={`chapter-select-${instanceId}`} 
               value={startChapter.toString()} 
               onValueChange={(v) => setStartChapter(parseInt(v))} 
               disabled={!selectedBook}
             >
-              <SelectTrigger className="bg-[#2a2a2a]/50 border-gray-700 text-white">
+              <SelectTrigger className="bg-[#2a2a2a]/50 border-gray-700 text-white text-base">
                 <SelectValue placeholder="Seleccione un capítulo" />
               </SelectTrigger>
               <SelectContent className="bg-[#1a1a1a] border-gray-800 text-white max-h-60">
                 <ScrollArea className="h-60">
                   {Array.from({ length: maxChapters }, (_, i) => i + 1).map(c => 
-                    <SelectItem key={`${instanceId}-chapter-${c}`} value={c.toString()} className="hover:bg-[#2a2a2a]">
+                    <SelectItem key={`${instanceId}-chapter-${c}`} value={c.toString()} className="hover:bg-[#2a2a2a] text-lg">
                       {c}
                     </SelectItem>
                   )}
@@ -367,20 +367,20 @@ function BibleSelectorForm({
           </div>
           {/* Versículo Inicial */}
           <div>
-            <Label className="text-gray-300 mb-2 block">Versículo</Label>
+            <Label className="text-gray-300 mb-2 block text-base font-medium">Versículo</Label>
             <Select 
               key={`verse-select-${instanceId}`} 
               value={startVerse.toString()} 
               onValueChange={(v) => setStartVerse(parseInt(v))} 
               disabled={!selectedBook}
             >
-               <SelectTrigger className="bg-[#2a2a2a]/50 border-gray-700 text-white">
+               <SelectTrigger className="bg-[#2a2a2a]/50 border-gray-700 text-white text-base">
                  <SelectValue placeholder="Seleccione un versículo" />
                </SelectTrigger>
                <SelectContent className="bg-[#1a1a1a] border-gray-800 text-white max-h-60">
                  <ScrollArea className="h-60">
                    {Array.from({ length: maxVerses }, (_, i) => i + 1).map(v => 
-                     <SelectItem key={`${instanceId}-verse-${v}`} value={v.toString()} className="hover:bg-[#2a2a2a]">
+                     <SelectItem key={`${instanceId}-verse-${v}`} value={v.toString()} className="hover:bg-[#2a2a2a] text-lg">
                        {v}
                      </SelectItem>
                    )}
@@ -390,23 +390,23 @@ function BibleSelectorForm({
           </div>
           {/* Versículo Final */}
           <div>
-            <Label className="text-gray-300 mb-2 block">Hasta (opcional)</Label>
+            <Label className="text-gray-300 mb-2 block text-base font-medium">Hasta (opcional)</Label>
             <Select 
               key={`end-verse-select-${instanceId}`} 
               value={endVerse?.toString() || 'none'} 
               onValueChange={(v) => setEndVerse(v === 'none' ? null : parseInt(v))} 
               disabled={!selectedBook}
             >
-              <SelectTrigger className="bg-[#2a2a2a]/50 border-gray-700 text-white">
+              <SelectTrigger className="bg-[#2a2a2a]/50 border-gray-700 text-white text-base">
                 <SelectValue placeholder="Seleccionar" />
               </SelectTrigger>
               <SelectContent className="bg-[#1a1a1a] border-gray-800 text-white max-h-60">
                 <ScrollArea className="h-60">
-                    <SelectItem key={`${instanceId}-none`} value="none" className="hover:bg-[#2a2a2a]">
+                    <SelectItem key={`${instanceId}-none`} value="none" className="hover:bg-[#2a2a2a] text-base">
                       Solo un versículo
                     </SelectItem>
                     {Array.from({ length: maxVerses }, (_, i) => i + 1).filter(v => v > startVerse).map(v => 
-                      <SelectItem key={`${instanceId}-end-verse-${v}`} value={v.toString()} className="hover:bg-[#2a2a2a]">
+                      <SelectItem key={`${instanceId}-end-verse-${v}`} value={v.toString()} className="hover:bg-[#2a2a2a] text-base">
                         {v}
                       </SelectItem>
                     )}
@@ -418,20 +418,20 @@ function BibleSelectorForm({
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-1 gap-4">
             <div>
-              <Label className="text-gray-300 mb-2 block">Capítulo</Label>
+              <Label className="text-gray-300 mb-2 block text-base font-medium">Capítulo</Label>
               <Select 
                 key={`chapter-only-select-${instanceId}`} 
                 value={startChapter.toString()} 
                 onValueChange={(v) => setStartChapter(parseInt(v))} 
                 disabled={!selectedBook}
               >
-                <SelectTrigger className="bg-[#2a2a2a]/50 border-gray-700 text-white">
+                <SelectTrigger className="bg-[#2a2a2a]/50 border-gray-700 text-white text-base">
                   <SelectValue placeholder="Seleccione un capítulo" />
                 </SelectTrigger>
                 <SelectContent className="bg-[#1a1a1a] border-gray-800 text-white max-h-60">
                   <ScrollArea className="h-60">
                     {Array.from({ length: maxChapters }, (_, i) => i + 1).map(c => 
-                      <SelectItem key={`${instanceId}-chapter-only-${c}`} value={c.toString()} className="hover:bg-[#2a2a2a]">
+                      <SelectItem key={`${instanceId}-chapter-only-${c}`} value={c.toString()} className="hover:bg-[#2a2a2a] text-base">
                         {c}
                       </SelectItem>
                     )}
@@ -445,14 +445,14 @@ function BibleSelectorForm({
       {/* Botón y vista previa */}
       <div className="flex flex-col-reverse sm:flex-row gap-4 items-center pt-4">
           <div className="flex-1 w-full sm:w-auto">
-             <p className="text-gray-300 text-sm mb-1 text-center sm:text-left">Vista previa:</p>
+             <p className="text-gray-300 text-base mb-1 text-center sm:text-left font-medium">Vista previa:</p>
              <div className="text-white font-medium bg-[#2a2a2a]/30 rounded-lg p-3 border border-gray-700/50 text-center text-base">
               {generatePreviewReference()}
             </div>
           </div>
           <Button
             onClick={handleSelect}
-            className="w-full sm:w-auto bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 flex-shrink-0"
+            className="w-full sm:w-auto bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 flex-shrink-0 text-base py-3"
           >
             Seleccionar
           </Button>

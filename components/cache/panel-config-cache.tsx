@@ -26,17 +26,17 @@ export function CacheSettingsPanel() {
   const [showConfirmClear, setShowConfirmClear] = useState(false);
   const { toast } = useToast();
 
-  if (loading) {
-    return (
-      <div className="p-4 bg-white rounded-lg shadow">
-        <div className="animate-pulse">
-          <div className="h-4 bg-gray-200 rounded mb-4"></div>
-          <div className="h-4 bg-gray-200 rounded mb-2"></div>
-          <div className="h-4 bg-gray-200 rounded"></div>
-        </div>
-      </div>
-    );
-  }
+  // if (loading) {
+  //   return (
+  //     <div className="p-4 bg-black rounded-lg shadow">
+  //       <div className="animate-pulse">
+  //         <div className="h-4 bg-black rounded mb-4"></div>
+  //         <div className="h-4 bg-black rounded mb-2"></div>
+  //         <div className="h-4 bg-black rounded"></div>
+  //       </div>
+  //     </div>
+  //   );
+  // }
 
   if (!settings || !cacheStats) {
     return (

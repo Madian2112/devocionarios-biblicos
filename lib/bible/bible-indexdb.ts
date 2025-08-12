@@ -1,9 +1,12 @@
 import { BibleBook } from "./bible-data";
 
+
+const USER_BOOKS_KEY = 'bible_books_cache';
+
 export const preloadBibleBooks = async (): Promise<void> => {
   try {
     // Verificar si ya están en localStorage
-    const stored = localStorage.getItem('bible_books_cache');
+    const stored = localStorage.getItem(USER_BOOKS_KEY);
     if (stored) {
       const data = JSON.parse(stored);
       if (data.books && data.books.length > 0) {
@@ -30,7 +33,7 @@ export const preloadBibleBooks = async (): Promise<void> => {
     }));
 
     // Guardar en localStorage
-    localStorage.setItem('bible_books_cache', JSON.stringify({ 
+    localStorage.setItem(USER_BOOKS_KEY, JSON.stringify({ 
       books, 
       timestamp: Date.now() 
     }));
@@ -43,7 +46,8 @@ export const preloadBibleBooks = async (): Promise<void> => {
 
 export const getBooksFromStorage = async (): Promise<BibleBook[]> => {
   try {
-    const stored = localStorage.getItem('bible_books_cache');
+    const stored = localStorage.getItem(USER_BOOKS_KEY);
+    // console.log('Asi me lleva el local storage de los libros: ', stored)
     if (stored) {
       const data = JSON.parse(stored);
       return data.books;
@@ -77,7 +81,7 @@ const loadBooksFromAPI = async (): Promise<BibleBook[]> => {
     }));
 
     // Guardar en localStorage para próximas veces
-    localStorage.setItem('bible_books_cache', JSON.stringify({ 
+    localStorage.setItem(USER_BOOKS_KEY, JSON.stringify({ 
       books, 
       timestamp: Date.now() 
     }));

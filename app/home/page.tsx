@@ -39,12 +39,12 @@ function HomePage() {
     }
   }, [user, loading, router, isLoggingOut]);
 
-  useEffect(() => {
-    if (user) {
-      console.log('🚀 Precargando libros bíblicos...');
-      preloadBibleBooks();
-    }
-  }, [user]);
+  // useEffect(() => {
+  //   if (user) {
+  //     console.log('🚀 Precargando libros bíblicos...');
+  //     preloadBibleBooks();
+  //   }
+  // }, [user]);
 
   // 🧹 Limpiar sessionStorage al desmontar componente
   useEffect(() => {
