@@ -373,9 +373,10 @@ function DashboardPage() {
                         </div>
                       </div>
                     </div>
-                    <p className="text-gray-300 leading-relaxed">
+                    <p className="text-gray-300 leading-relaxed whitespace-pre-line break-words">
                       {devocionalDelDia.aprendizajeGeneral}
                     </p>
+
                   </div>
                 </div>
               ) : (
