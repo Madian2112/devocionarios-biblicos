@@ -15,10 +15,14 @@ service cloud.firestore {
     match /estudios_topicos/{document} {
       allow read, write: if isSignedIn();
     }
-    
+
+    match /deep_studies/{document} {
+      allow read, write: if isSignedIn();
+    }
+
     // Negar todo lo demás por defecto
     match /{document=**} {
       allow read, write: if false;
     }
   }
-} 
+}

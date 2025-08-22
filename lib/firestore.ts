@@ -68,6 +68,33 @@ const DEVOCIONALES_COLLECTION = "devocionales";
 const TOPICS_COLLECTION = "estudios_topicos";
 
 export const firestoreService = {
+  async getDocuments<T>(collectionName: string, field: string, value: string): Promise<T[]> {
+    const q = query(
+      collection(db, collectionName),
+      where(field, "==", value),
+      orderBy("createdAt", "desc")
+    );
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as T);
+  },
+
+  async getDocument<T>(collectionName: string, documentId: string): Promise<T | null> {
+    const docRef = doc(db, collectionName, documentId);
+    const docSnap = await getDoc(docRef);
+    if (!docSnap.exists()) return null;
+    return { id: docSnap.id, ...docSnap.data() } as T;
+  },
+
+  async saveDocument<T extends { id: string }>(collectionName: string, documentId: string, data: T): Promise<void> {
+    const docRef = doc(db, collectionName, documentId);
+    await setDoc(docRef, data);
+  },
+
+  async deleteDocument(collectionName: string, documentId: string): Promise<void> {
+    const docRef = doc(db, collectionName, documentId);
+    await deleteDoc(docRef);
+  },
+
 
   async   getDevocionarios(userId: string): Promise<Devocional[]> {
     const q = query(
