@@ -336,6 +336,10 @@ function HistoryPage() {
     return Array.from(books).sort((a, b) => a.localeCompare(b))
   }, [devocionales])
 
+  const removeAccents = (str:any) => {
+    return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  };
+
   const filteredAndSortedDevocionarios = useMemo(() => {
     let currentDevocionales = devocionales
 
@@ -350,13 +354,13 @@ function HistoryPage() {
           Number.parseInt(fechaParts[2]),
         )
         const nombreDia = fechaObj.toLocaleDateString("es-ES", { weekday: "long" }).toLowerCase()
-
+        const lowerCaseSearchNormalized = removeAccents(lowerCaseSearch);
         return (
-          d.citaBiblica.toLowerCase().includes(lowerCaseSearch) ||
-          d.textoDevocional.toLowerCase().includes(lowerCaseSearch) ||
-          d.aprendizajeGeneral.toLowerCase().includes(lowerCaseSearch) ||
-          nombreDia.includes(lowerCaseSearch) ||
-          d.tags?.some((tag) => tag.toLowerCase().includes(lowerCaseSearch))
+          removeAccents(d.citaBiblica.toLowerCase()).includes(lowerCaseSearchNormalized) ||
+          removeAccents(d.textoDevocional.toLowerCase()).includes(lowerCaseSearchNormalized) ||
+          removeAccents(d.aprendizajeGeneral.toLowerCase()).includes(lowerCaseSearchNormalized) ||
+          removeAccents(nombreDia).includes(lowerCaseSearchNormalized) ||
+          d.tags?.some((tag) => removeAccents(tag.toLowerCase()).includes(lowerCaseSearchNormalized))
         )
       })
     }
