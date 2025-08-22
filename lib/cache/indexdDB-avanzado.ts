@@ -1,4 +1,4 @@
-import { Devocional, TopicalStudy } from "../firestore";
+import { Devocional, TopicalStudy, StudyTopic } from "../firestore";
 
 // lib/cache/enhancedIndexedDBService.ts
 export interface CacheConfig {
@@ -7,6 +7,7 @@ export interface CacheConfig {
   stores: {
     devocionales: string;
     topicalStudies: string;
+    studyTopics: string;
     metadata: string;
     settings: string;
   };
@@ -28,10 +29,11 @@ export interface UserCacheSettings {
 
 const CACHE_CONFIG: CacheConfig = {
   dbName: 'DevocionalApp',
-  version: 2, // Incrementado para agregar store de settings
+  version: 3, // Incrementado para agregar store de study topics
   stores: {
     devocionales: 'devocionales',
     topicalStudies: 'topical_studies',
+    studyTopics: 'study_topics',
     metadata: 'cache_metadata',
     settings: 'user_settings',
   },
@@ -86,6 +88,16 @@ class EnhancedIndexedDBCacheService {
           topicalStore.createIndex('userId', 'userId', { unique: false });
           topicalStore.createIndex('userId_name', ['userId', 'name'], { unique: false });
           topicalStore.createIndex('userId_updatedAt', ['userId', 'updatedAt'], { unique: false });
+        }
+
+        // Store para study topics
+        if (!db.objectStoreNames.contains(CACHE_CONFIG.stores.studyTopics)) {
+          const studyTopicsStore = db.createObjectStore(CACHE_CONFIG.stores.studyTopics, {
+            keyPath: 'id',
+          });
+          studyTopicsStore.createIndex('userId', 'userId', { unique: false });
+          studyTopicsStore.createIndex('userId_name', ['userId', 'name'], { unique: false });
+          studyTopicsStore.createIndex('userId_updatedAt', ['userId', 'updatedAt'], { unique: false });
         }
 
         // Store para metadata del cache
@@ -341,6 +353,99 @@ class EnhancedIndexedDBCacheService {
     });
   }
 
+  // ==================== STUDY TOPICS ====================
+
+  async saveStudyTopic(topic: StudyTopic): Promise<void> {
+    await this.init();
+    
+    const transaction = this.db!.transaction([CACHE_CONFIG.stores.studyTopics], 'readwrite');
+    const store = transaction.objectStore(CACHE_CONFIG.stores.studyTopics);
+    
+    await new Promise<void>((resolve, reject) => {
+      const request = store.put(topic);
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    });
+
+    await this._updateMetadata(`study_topics_${topic.userId}`, topic.userId);
+  }
+
+  async getStudyTopic(id: string): Promise<StudyTopic | null> {
+    await this.init();
+    
+    return new Promise((resolve, reject) => {
+      const transaction = this.db!.transaction([CACHE_CONFIG.stores.studyTopics], 'readonly');
+      const store = transaction.objectStore(CACHE_CONFIG.stores.studyTopics);
+      const request = store.get(id);
+
+      request.onsuccess = () => resolve(request.result || null);
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  async getStudyTopicsByUser(userId: string): Promise<StudyTopic[]> {
+    await this.init();
+
+    return new Promise((resolve, reject) => {
+      const transaction = this.db!.transaction([CACHE_CONFIG.stores.studyTopics], 'readonly');
+      const store = transaction.objectStore(CACHE_CONFIG.stores.studyTopics);
+      const index = store.index('userId');
+      const request = index.getAll(userId);
+
+      request.onsuccess = () => {
+        const results = request.result || [];
+        results.sort((a, b) => a.name.localeCompare(b.name));
+        resolve(results);
+      };
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  async deleteStudyTopic(id: string): Promise<void> {
+    await this.init();
+    
+    const transaction = this.db!.transaction([CACHE_CONFIG.stores.studyTopics], 'readwrite');
+    const store = transaction.objectStore(CACHE_CONFIG.stores.studyTopics);
+    
+    await new Promise<void>((resolve, reject) => {
+      const request = store.delete(id);
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  private async _cleanupOldStudyTopics(userId: string, daysToKeep: number): Promise<void> {
+    const cutoffTimestamp = Date.now() - (daysToKeep * 24 * 60 * 60 * 1000);
+    
+    await this.init();
+    
+    return new Promise((resolve, reject) => {
+      const transaction = this.db!.transaction([CACHE_CONFIG.stores.studyTopics], 'readwrite');
+      const store = transaction.objectStore(CACHE_CONFIG.stores.studyTopics);
+      const index = store.index('userId_updatedAt');
+      
+      const range = IDBKeyRange.bound(
+        [userId, 0], 
+        [userId, cutoffTimestamp], 
+        false, 
+        true
+      );
+      const request = index.openCursor(range);
+      
+      request.onsuccess = (event) => {
+        const cursor = (event.target as IDBRequest).result;
+        if (cursor) {
+          cursor.delete();
+          cursor.continue();
+        } else {
+          resolve();
+        }
+      };
+      
+      request.onerror = () => reject(request.error);
+    });
+  }
+
   private async _cleanupOldTopicalStudies(userId: string, daysToKeep: number): Promise<void> {
     const cutoffTimestamp = Date.now() - (daysToKeep * 24 * 60 * 60 * 1000);
     
@@ -406,7 +511,8 @@ class EnhancedIndexedDBCacheService {
   private async _cleanupOldData(userId: string, daysToKeep: number): Promise<void> {
     await Promise.all([
       this._cleanupOldDevocionales(userId, daysToKeep),
-      this._cleanupOldTopicalStudies(userId, daysToKeep)
+      this._cleanupOldTopicalStudies(userId, daysToKeep),
+      this._cleanupOldStudyTopics(userId, daysToKeep)
     ]);
   }
 

@@ -20,6 +20,7 @@ import { Devocional, TopicalStudy } from '../firestore';
 
 const DEVOCIONALES_COLLECTION = 'devocionales';
 const TOPICS_COLLECTION = 'estudios_topicos';
+const STUDY_TOPICS_COLLECTION = 'temas_estudio';
 
 // Helpers para fechas
 const getDateXDaysAgo = (days: number): string => {
@@ -436,6 +437,140 @@ async smartSyncDevocionales(userId: string): Promise<SyncResult & { data: Devoci
     
     // Invalidar cache de la lista para forzar refresh
     await enhancedIndexedDBCache.invalidateCache(`topical_studies_${userId}`);
+  }
+
+  // ==================== TEMAS DE ESTUDIO ====================
+
+  async saveStudyTopic(userId: string, topic: Omit<StudyTopic, "createdAt" | "updatedAt" | "userId">) {
+    const docRef = doc(db, STUDY_TOPICS_COLLECTION, topic.id);
+    const now = Timestamp.now();
+
+    let existingDoc = await enhancedIndexedDBCache.getStudyTopic(topic.id);
+    
+    const data: StudyTopic = {
+      ...topic,
+      userId,
+      updatedAt: now,
+      createdAt: existingDoc?.createdAt || now,
+    };
+    
+    await setDoc(docRef, data, { merge: true });
+    await enhancedIndexedDBCache.saveStudyTopic(data);
+    
+    return data;
+  }
+
+  async getStudyTopics(userId: string, forceRefresh = false): Promise<SyncResult & { data: StudyTopic[] }> {
+    const cacheKey = `study_topics_${userId}`;
+    
+    if (!forceRefresh && await enhancedIndexedDBCache.isCacheValid(cacheKey)) {
+      const cached = await enhancedIndexedDBCache.getStudyTopicsByUser(userId);
+      if (cached.length > 0) {
+        return {
+          data: cached,
+          fromCache: cached.length,
+          fromFirestore: 0,
+          totalSynced: cached.length,
+        };
+      }
+    }
+
+    const q = query(
+      collection(db, STUDY_TOPICS_COLLECTION),
+      where("userId", "==", userId),
+      orderBy("name", "asc")
+    );
+    
+    const querySnapshot = await getDocs(q);
+    const firestoreData = querySnapshot.docs.map(doc => ({ 
+      id: doc.id, 
+      ...doc.data() 
+    }) as StudyTopic);
+    
+    for (const topic of firestoreData) {
+      await enhancedIndexedDBCache.saveStudyTopic(topic);
+    }
+    
+    return {
+      data: firestoreData,
+      fromCache: 0,
+      fromFirestore: firestoreData.length,
+      totalSynced: firestoreData.length,
+    };
+  }
+
+  async smartSyncStudyTopics(userId: string): Promise<SyncResult & { data: StudyTopic[] }> {
+    const cachedData = await enhancedIndexedDBCache.getStudyTopicsByUser(userId);
+    
+    const q = query(
+      collection(db, STUDY_TOPICS_COLLECTION),
+      where("userId", "==", userId),
+      orderBy("updatedAt", "desc")
+    );
+    
+    const querySnapshot = await getDocs(q);
+    const firestoreData = querySnapshot.docs.map(doc => ({ 
+      id: doc.id, 
+      ...doc.data() 
+    }) as StudyTopic);
+    
+    const cachedMap = new Map(cachedData.map(topic => [topic.id, topic]));
+    const newOrUpdated: StudyTopic[] = [];
+    
+    for (const firestoreTopic of firestoreData) {
+      const cachedTopic = cachedMap.get(firestoreTopic.id);
+      
+      if (!cachedTopic) {
+        newOrUpdated.push(firestoreTopic);
+      } else {
+        const firestoreUpdated = firestoreTopic.updatedAt?.toMillis ? 
+          firestoreTopic.updatedAt.toMillis() : 0;
+        const cachedUpdated = cachedTopic.updatedAt?.toMillis ? 
+          cachedTopic.updatedAt.toMillis() : 0;
+        
+        if (firestoreUpdated > cachedUpdated) {
+          newOrUpdated.push(firestoreTopic);
+        }
+      }
+    }
+    
+    for (const topic of newOrUpdated) {
+      await enhancedIndexedDBCache.saveStudyTopic(topic);
+    }
+    
+    const updatedData = await enhancedIndexedDBCache.getStudyTopicsByUser(userId);
+    
+    return {
+      data: updatedData,
+      fromCache: cachedData.length - newOrUpdated.length,
+      fromFirestore: newOrUpdated.length,
+      totalSynced: updatedData.length,
+    };
+  }
+
+  async getStudyTopicById(userId: string, id: string): Promise<StudyTopic | null> {
+    const cached = await enhancedIndexedDBCache.getStudyTopic(id);
+    if (cached && cached.userId === userId) {
+      return cached;
+    }
+
+    const docRef = doc(db, STUDY_TOPICS_COLLECTION, id);
+    const docSnap = await getDoc(docRef);
+
+    if (!docSnap.exists() || docSnap.data().userId !== userId) {
+      return null;
+    }
+
+    const topic = { id: docSnap.id, ...docSnap.data() } as StudyTopic;
+    await enhancedIndexedDBCache.saveStudyTopic(topic);
+    
+    return topic;
+  }
+
+  async deleteStudyTopic(id: string, userId: string) {
+    await deleteDoc(doc(db, STUDY_TOPICS_COLLECTION, id));
+    await enhancedIndexedDBCache.deleteStudyTopic(id);
+    await enhancedIndexedDBCache.invalidateCache(`study_topics_${userId}`);
   }
 
   // ==================== CONFIGURACIÓN DE CACHE ====================

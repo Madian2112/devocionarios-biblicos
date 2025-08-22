@@ -29,11 +29,34 @@ export interface Referencia {
   versiculoId?: string; // Opcional, si está ligado a un versículo específico
 }
 
+export interface BibleReference {
+  book: string;
+  chapter: string;
+  verse: string;
+}
+
 export interface StudyEntry {
   id: string; // ID único para la entrada
   referencia: string; // Cita bíblica, ej: "Romanos 12:1-2"
   learning: string; // Lo que aprendiste de esta cita
   versionTexto?: string; // Versión de la biblia usada
+}
+
+export interface Subtopic {
+  id: string;
+  title: string;
+  content: string;
+  bibleReferences: Referencia[];
+  webLinks: WebLink[];
+  order: number;
+  completed: boolean;
+}
+
+export interface WebLink {
+  id: string;
+  title: string;
+  url: string;
+  description?: string;
 }
 
 // --- Colecciones Principales ---
@@ -58,14 +81,35 @@ export interface TopicalStudy {
   id: string; // ID único del estudio
   userId: string; // ID del usuario al que pertenece
   name: string; // Nombre del tema (ej: "El Perdón", "La Fe")
-  entries: StudyEntry[]; // Array de citas y aprendizajes sobre el tema
+  description: string;
+  bibleReferences: Referencia[];
+  webLinks: WebLink[];
+  subtopics: Subtopic[];
+  tags: string[];
+  completed: boolean;
   createdAt: Timestamp;
   updatedAt: Timestamp;
   orderIndex: number
 }
 
+export interface StudyTopic {
+  id: string; // ID único del tema de estudio
+  userId: string; // ID del usuario al que pertenece
+  name: string; // Nombre del tema (ej: "Cómo será la venida del Señor")
+  description: string;
+  bibleReferences: BibleReference[];
+  webLinks: WebLink[];
+  subtopics: Subtopic[];
+  tags: string[];
+  completed: boolean;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+  order: number;
+}
+
 const DEVOCIONALES_COLLECTION = "devocionales";
 const TOPICS_COLLECTION = "estudios_topicos";
+const STUDY_TOPICS_COLLECTION = "temas_estudio";
 
 export const firestoreService = {
 
@@ -136,5 +180,47 @@ export const firestoreService = {
 
   async deleteTopicalStudy(id: string) {
     await deleteDoc(doc(db, TOPICS_COLLECTION, id));
+  },
+
+  // --- TEMAS DE ESTUDIO ---
+  async saveStudyTopic(userId: string, topic: Omit<StudyTopic, "createdAt" | "updatedAt" | "userId">) {
+    const docRef = doc(db, STUDY_TOPICS_COLLECTION, topic.id);
+    const now = Timestamp.now();
+
+    const docSnap = await getDoc(docRef);
+    const data: StudyTopic = {
+      ...topic,
+      userId,
+      updatedAt: now,
+      createdAt: docSnap.exists() ? docSnap.data().createdAt : now,
+    };
+    
+    await setDoc(docRef, data, { merge: true });
+    return data;
+  },
+
+  async getStudyTopics(userId: string): Promise<StudyTopic[]> {
+    const q = query(
+      collection(db, STUDY_TOPICS_COLLECTION),
+      where("userId", "==", userId),
+      orderBy("name", "asc"),
+    );
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as StudyTopic);
+  },
+
+  async getStudyTopicById(userId: string, id: string): Promise<StudyTopic | null> {
+    const docRef = doc(db, STUDY_TOPICS_COLLECTION, id);
+    const docSnap = await getDoc(docRef);
+
+    if (!docSnap.exists() || docSnap.data().userId !== userId) {
+      return null;
+    }
+
+    return { id: docSnap.id, ...docSnap.data() } as StudyTopic;
+  },
+
+  async deleteStudyTopic(id: string) {
+    await deleteDoc(doc(db, STUDY_TOPICS_COLLECTION, id));
   },
 };

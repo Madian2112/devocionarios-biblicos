@@ -138,7 +138,7 @@ const handleLogout = () => {
         </div>
         
         {/* 🚀 NAVEGACIÓN PRINCIPAL - ACCESO RÁPIDO EN MÓVILES */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
             <Link href="/dashboard">
                 <GradientCard gradient="blue" className="group hover:scale-105 transition-transform cursor-pointer h-full">
                     <CardContent className="p-6 sm:p-8 text-center">
@@ -154,6 +154,15 @@ const handleLogout = () => {
                     <Library className="h-10 w-10 sm:h-12 sm:w-12 text-green-400 mx-auto mb-4"/>
                     <h2 className="text-xl sm:text-2xl font-bold text-white">Estudio por Temas</h2>
                     <p className="text-gray-400 mt-2 text-sm sm:text-base">Profundiza en conceptos clave de la Biblia.</p>
+                    </CardContent>
+                </GradientCard>
+            </Link>
+            <Link href="/study-topics">
+                <GradientCard gradient="purple" className="group hover:scale-105 transition-transform cursor-pointer h-full">
+                    <CardContent className="p-6 sm:p-8 text-center">
+                    <Book className="h-10 w-10 sm:h-12 sm:w-12 text-purple-400 mx-auto mb-4"/>
+                    <h2 className="text-xl sm:text-2xl font-bold text-white">Temas de Estudio</h2>
+                    <p className="text-gray-400 mt-2 text-sm sm:text-base">Organiza y estudia temas bíblicos con subtemas.</p>
                     </CardContent>
                 </GradientCard>
             </Link>
